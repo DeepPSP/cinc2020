@@ -13,13 +13,16 @@ def run_12ECG_classifier(data,header_data,classes,model):
 
     all_labels = ['Normal', 'AF', 'I-AVB', 'LBBB', 'RBBB', 'PAC', 'PVC', 'STD', 'STE']
 
+    valid_label_indices = [i for i,l in enumerate(all_labels) if l in classes]
+    valid_labels = [l for i,l in enumerate(all_labels) if l in classes]
+
     class_map = {
-        l: classes.index(l) for l in all_labels
+        l: classes.index(l) for l in valid_labels
     }
 
     # Use your classifier here to obtain a label and score for each class.
     features = get_12ECG_features(data, header_data)
-    pred_score = model.predict(features)
+    pred_score = model.predict(features)[...,valid_label_indices]
     pred_score = np.mean(pred_score, axis=0)  # or np.max?
 
     threshold = 0.5
@@ -28,11 +31,11 @@ def run_12ECG_classifier(data,header_data,classes,model):
         pred_labels = np.argmax(pred_score)
 
     for l in pred_labels:
-        ln = all_labels[l]
+        ln = valid_labels[l]
         current_label[class_map[ln]] = 1
 
     for i in range(num_classes):
-        current_score[class_map[all_labels[i]]] = pred_score[i]
+        current_score[class_map[valid_labels[i]]] = pred_score[i]
 
     return current_label, current_score
 
