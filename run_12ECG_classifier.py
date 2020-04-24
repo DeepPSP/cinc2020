@@ -28,7 +28,7 @@ def run_12ECG_classifier(data,header_data,classes,model):
     threshold = 0.5
     pred_labels = np.where(pred_score>=threshold)[0]
     if len(pred_labels) == 0:
-        pred_labels = np.argmax(pred_score)
+        pred_labels = np.array([np.argmax(pred_score)], dtype=int)
 
     for l in pred_labels:
         ln = valid_labels[l]
