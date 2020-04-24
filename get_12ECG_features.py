@@ -139,7 +139,21 @@ def findpeaks(data, spacing=1, limit=None):
 
 
 def get_12ECG_features(data, header_data):
+    """
+    """
+    _len_t = 6
+    freq = 500
+    input_len = _len_t * freq
+    ecg = np.array(data).T
+    x = []
+    for i in range(ecg.shape[0]//input_len):
+        seg = ecg[input_len*i:input_len*(i+1)]
+        seg = (seg - np.mean(seg)) / np.std(seg)
+        x.append(seg)
+    x = np.array(x)
+    return x
 
+def get_12ECG_features_old(data, header_data):
     tmp_hea = header_data[0].split(' ')
     ptID = tmp_hea[0]
     num_leads = int(tmp_hea[1])
