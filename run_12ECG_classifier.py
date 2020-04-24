@@ -2,7 +2,7 @@
 
 import numpy as np
 import joblib
-from keras.models import loaded_model
+from keras.models import load_model
 from get_12ECG_features import get_12ECG_features
 
 def run_12ECG_classifier(data,header_data,classes,model):
@@ -20,8 +20,7 @@ def run_12ECG_classifier(data,header_data,classes,model):
     # Use your classifier here to obtain a label and score for each class.
     features = get_12ECG_features(data, header_data)
     pred_score = model.predict(features)
-    pred_score = np.sum(pred_score, axis=0)
-    pred_score = pred_score / np.linalg.norm(pred_score)
+    pred_score = np.mean(pred_score, axis=0)  # or np.max?
 
     threshold = 0.5
     pred_labels = np.where(pred_score>=threshold)[0]
@@ -40,7 +39,7 @@ def run_12ECG_classifier(data,header_data,classes,model):
 def load_12ECG_model():
     # load the model from disk 
     filename='weights-0.22loss.hdf5'
-    loaded_model = loaded_model(filename)
+    loaded_model = load_model(filename)
 
     return loaded_model
 
