@@ -127,3 +127,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+test/CPSC0223/
+test/CPSC0236/
