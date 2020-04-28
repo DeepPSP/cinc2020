@@ -1,4 +1,5 @@
 import numpy as np
+from itertools import product
 from sklearn.metrics import confusion_matrix, fbeta_score, f1_score
 from numbers import Real
 from typing import Optional
@@ -43,6 +44,7 @@ class ConfusionMatrixDisplay:
     """Confusion Matrix visualization.
     
     from sklearn.metrics._plot, in support for older versions of sklearn (<=0.20.x)
+    url: https://github.com/scikit-learn/scikit-learn/blob/master/sklearn/metrics/_plot/confusion_matrix.py
 
     Parameters
     ----------
