@@ -12,7 +12,7 @@ from keras.layers import (
     Conv1D,
     MaxPooling1D,
     GlobalAveragePooling1D, AveragePooling1D,
-    concatenate,
+    concatenate, add,
 )
 from keras.initializers import he_normal, he_uniform, Orthogonal
 from keras.optimizers import Adam, SGD
@@ -25,7 +25,7 @@ from .const import SEED, model_input_len, batch_size, all_labels, nb_leads
 class TI_CNN(Sequential):
     """
     """
-    def __init__(self, classes:list, input_len:int, bidirectional:bool=True):
+    def __init__(self, classes:list, input_len:int, cnn:str, bidirectional:bool=True):
         """
         """
         super(Sequential, self).__init__(name='TI_CNN')
@@ -33,18 +33,26 @@ class TI_CNN(Sequential):
         self.nb_classes = len(classes)
         self.input_len = input_len
         self.bidirectional = bidirectional
-    
-        self._build_model()
+        self.cnn = cnn.lower()
 
-    def _build_model(self):
+        if self.cnn == 'vgg':
+            self._build_vgg_model()
+        elif self.cnn == 'resnet':
+            self._build_resnet_model()
+        elif self.cnn == 'xception':
+            self._build_xception_model()
+
+    def _build_vgg_model(self):
         """
         """
         self.add(
-        Conv1D(
-            input_shape = (self.input_len, nb_leads),
-            filters=64, kernel_size=3, strides=1, padding='same',
-            kernel_initializer=he_normal(SEED),
-            name='conv1_1',
+            Input(shape=(self.input_len, nb_leads)), name='input',
+        )
+        self.add(
+            Conv1D(
+                filters=64, kernel_size=3, strides=1, padding='same',
+                kernel_initializer=he_normal(SEED),
+                name='conv1_1',
             )
         )
         self.add(
@@ -279,249 +287,120 @@ class TI_CNN(Sequential):
         return self
 
 
-# def get_model():
-#     """ not finished,
-#     """
-#     TI_CNN = Sequential(name='TI_CNN')
+    def _build_resnet_model(self):
+        """
+        # ref. the Stanford model
+        """
+        
+        self.compile(loss='binary_crossentropy', optimizer=Adam(0.0001))
 
-#     TI_CNN.add(
-#         Conv1D(
-#             input_shape = (freq*cell_len_t, 12),
-#             filters=64, kernel_size=3, strides=1, padding='same',
-#             kernel_initializer=he_normal(SEED),
-#             name='conv1_1',
-#             )
-#     )
-#     TI_CNN.add(
-#         BatchNormalization(name='bn1_1',)
-#     )
-#     TI_CNN.add(
-#         ReLU(name='relu1_1',)
-#     )
-#     TI_CNN.add(
-#         Conv1D(
-#             filters=64, kernel_size=3, strides=1, padding='same',
-#             kernel_initializer=he_normal(SEED),
-#             name='conv1_2',
-#             )
-#     )
-#     TI_CNN.add(
-#         BatchNormalization(name='bn1_2',)
-#     )
-#     TI_CNN.add(
-#         ReLU(name='relu1_2',)
-#     )
-#     TI_CNN.add(
-#         MaxPooling1D(
-#             pool_size=3, strides=3,
-#             name='maxpooling1',
-#         )
-#     )
-#     TI_CNN.add(
-#         Conv1D(
-#             filters=128, kernel_size=3, strides=1, padding='same',
-#             kernel_initializer=he_normal(SEED),
-#             name='conv2_1',
-#             )
-#     )
-#     TI_CNN.add(
-#         BatchNormalization(name='bn2_1',)
-#     )
-#     TI_CNN.add(
-#         ReLU(name='relu2_1',)
-#     )
-#     TI_CNN.add(
-#         Conv1D(
-#             filters=128, kernel_size=3, strides=1, padding='same',
-#             kernel_initializer=he_normal(SEED),
-#             name='conv2_2',
-#             )
-#     )
-#     TI_CNN.add(
-#         BatchNormalization(name='conv2_2',)
-#     )
-#     TI_CNN.add(
-#         ReLU(name='relu2_2',)
-#     )
-#     TI_CNN.add(
-#         MaxPooling1D(
-#             pool_size=3, strides=3,
-#             name='maxpooling2',
-#         )
-#     )
-#     TI_CNN.add(
-#         Conv1D(
-#             filters=256, kernel_size=3, strides=1, padding='same',
-#             kernel_initializer=he_normal(SEED),
-#             name='conv3_1',
-#             )
-#     )
-#     TI_CNN.add(
-#         BatchNormalization(name='bn3_1',)
-#     )
-#     TI_CNN.add(
-#         ReLU(name='relu3_1',)
-#     )
-#     TI_CNN.add(
-#         Conv1D(
-#             filters=256, kernel_size=3, strides=1, padding='same',
-#             kernel_initializer=he_normal(SEED),
-#             name='conv3_2',
-#             )
-#     )
+        return self
 
-#     TI_CNN.add(
-#         BatchNormalization(name='bn3_2',)
-#     )
-#     TI_CNN.add(
-#         ReLU(name='relu3_2',)
-#     )
-#     TI_CNN.add(
-#         Conv1D(
-#             filters=256, kernel_size=3, strides=1, padding='same',
-#             kernel_initializer=he_normal(SEED),
-#             name='conv3_3',
-#             )
-#     )
-#     TI_CNN.add(
-#         BatchNormalization(name='bn3_3',)
-#     )
-#     TI_CNN.add(
-#         ReLU(name='relu3_3',)
-#     )
-#     TI_CNN.add(
-#         MaxPooling1D(
-#             pool_size=3, strides=3,
-#             name='maxpooling3',
-#         )
-#     )
-#     TI_CNN.add(
-#         Conv1D(
-#             filters=512, kernel_size=3, strides=1, padding='same',
-#             kernel_initializer=he_normal(SEED),
-#             name='conv4_1',
-#             )
-#     )
-#     TI_CNN.add(
-#         BatchNormalization(name='bn4_1',)
-#     )
-#     TI_CNN.add(
-#         ReLU(name='relu4_1',)
-#     )
-#     TI_CNN.add(
-#         Conv1D(
-#             filters=512, kernel_size=3, strides=1, padding='same',
-#             kernel_initializer=he_normal(SEED),
-#             name='conv4_2',
-#             )
-#     )
 
-#     TI_CNN.add(
-#         BatchNormalization(name='bn4_2',)
-#     )
-#     TI_CNN.add(
-#         ReLU(name='relu4_2',)
-#     )
-#     TI_CNN.add(
-#         Conv1D(
-#             filters=512, kernel_size=3, strides=1, padding='same',
-#             kernel_initializer=he_normal(SEED),
-#             name='conv4_3',
-#             )
-#     )
-#     TI_CNN.add(
-#         BatchNormalization(name='bn4_3',)
-#     )
-#     TI_CNN.add(
-#         ReLU(name='relu4_3',)
-#     )
-#     TI_CNN.add(
-#         MaxPooling1D(
-#             pool_size=3, strides=3,
-#             name='maxpooling4',
-#         )
-#     )
-#     TI_CNN.add(
-#         Conv1D(
-#             filters=512, kernel_size=3, strides=1, padding='same',
-#             kernel_initializer=he_normal(SEED),
-#             name='conv5_1',
-#             )
-#     )
-#     TI_CNN.add(
-#         BatchNormalization(name='bn5_1',)
-#     )
-#     TI_CNN.add(
-#         ReLU(name='relu5_1',)
-#     )
-#     TI_CNN.add(
-#         Conv1D(
-#             filters=512, kernel_size=3, strides=1, padding='same',
-#             kernel_initializer=he_normal(SEED),
-#             name='conv5_2',
-#             )
-#     )
+    def _build_xception_model(self):
+        """
+        #
+        """
+        
+        self.compile(loss='binary_crossentropy', optimizer=Adam(0.0001))
 
-#     TI_CNN.add(
-#         BatchNormalization(name='bn5_2',)
-#     )
-#     TI_CNN.add(
-#         ReLU(name='relu5_2',)
-#     )
-#     TI_CNN.add(
-#         Conv1D(
-#             filters=512, kernel_size=3, strides=1, padding='same',
-#             kernel_initializer=he_normal(SEED),
-#             name='conv5_3',
-#             )
-#     )
-#     TI_CNN.add(
-#         BatchNormalization(name='bn5_3',)
-# )
-#     TI_CNN.add(
-#         ReLU(name='relu5_3',)
-#     )
-#     TI_CNN.add(
-#         MaxPooling1D(
-#             pool_size=3, strides=3,
-#             name='maxpooling5',
-#         )
-#     )
+        return self
 
-#     TI_CNN.add(
-#         Bidirectional(LSTM(
-#             128, kernel_initializer=Orthogonal(seed=SEED),
-#             return_sequences=True,
-#             name='bd_lstm1',
-#         ))
-#     )
 
-#     TI_CNN.add(
-#         Bidirectional(LSTM(
-#             32, kernel_initializer=Orthogonal(seed=SEED),
-#             return_sequences=True,
-#             name='bd_lstm2',
-#         ))
-#     )
+def identity_block(input_tensor, kernel_size, filters, stage, block):
+    """The identity block is the block that has no conv layer at shortcut.
+    # Arguments
+        input_tensor: input tensor
+        kernel_size: default 3, the kernel size of
+            middle conv layer at main path
+        filters: list of integers, the filters of 3 conv layer at main path
+        stage: integer, current stage label, used for generating layer names
+        block: 'a','b'..., current block label, used for generating layer names
+    # Returns
+        Output tensor for the block.
+    """
+    filters1, filters2, filters3 = filters
+    bn_axis = 2
+    conv_name_base = 'res' + str(stage) + block + '_branch'
+    bn_name_base = 'bn' + str(stage) + block + '_branch'
 
-#     TI_CNN.add(
-#         Bidirectional(LSTM(
-#             9, kernel_initializer=Orthogonal(seed=SEED),
-#             return_sequences=False,
-#             name='bd_lstm3',
-#         ))
-#     )
+    x = Conv1D(filters1, 1,
+                      kernel_initializer=he_normal(seed=SEED),
+                      name=conv_name_base + '2a')(input_tensor)
+    x = BatchNormalization(axis=bn_axis, name=bn_name_base + '2a')(x)
+    x = Activation('relu')(x)
 
-#     TI_CNN.add(
-#         Dense(
-#             nb_classes,activation='sigmoid',
-#             name='prediction',
-#         )
-#     )
+    x = Conv1D(filters2, kernel_size,
+                      padding='same',
+                      kernel_initializer=he_normal(seed=SEED),
+                      name=conv_name_base + '2b')(x)
+    x = BatchNormalization(axis=bn_axis, name=bn_name_base + '2b')(x)
+    x = Activation('relu')(x)
 
-#     TI_CNN.compile(loss='binary_crossentropy', optimizer=Adam(0.0001))
+    x = Conv1D(filters3, 1,
+                      kernel_initializer=he_normal(seed=SEED),
+                      name=conv_name_base + '2c')(x)
+    x = BatchNormalization(axis=bn_axis, name=bn_name_base + '2c')(x)
 
-#     return TI_CNN
+    x = add([x, input_tensor])
+    x = Activation('relu')(x)
+    return x
+
+
+def conv_block(input_tensor,
+               kernel_size,
+               filters,
+               stage,
+               block,
+               strides=2):
+    """A block that has a conv layer at shortcut.
+    # Arguments
+        input_tensor: input tensor
+        kernel_size: default 3, the kernel size of
+            middle conv layer at main path
+        filters: list of integers, the filters of 3 conv layer at main path
+        stage: integer, current stage label, used for generating layer names
+        block: 'a','b'..., current block label, used for generating layer names
+        strides: Strides for the first conv layer in the block.
+    # Returns
+        Output tensor for the block.
+    Note that from stage 3,
+    the first conv layer at main path is with strides=(2, 2)
+    And the shortcut should have strides=(2, 2) as well
+    """
+    filters1, filters2, filters3 = filters
+    bn_axis = 2
+    conv_name_base = 'res' + str(stage) + block + '_branch'
+    bn_name_base = 'bn' + str(stage) + block + '_branch'
+
+    x = Conv1D(filters1, 1, strides=strides,
+                      kernel_initializer=he_normal(seed=SEED),
+                      name=conv_name_base + '2a')(input_tensor)
+    x = BatchNormalization(axis=bn_axis, name=bn_name_base + '2a')(x)
+    x = Activation('relu')(x)
+
+    x = Conv1D(filters2, kernel_size, padding='same',
+                      kernel_initializer=he_normal(seed=SEED),
+                      name=conv_name_base + '2b')(x)
+    x = BatchNormalization(axis=bn_axis, name=bn_name_base + '2b')(x)
+    x = Activation('relu')(x)
+
+    x = Conv1D(filters3, 1,
+                      kernel_initializer=he_normal(seed=SEED),
+                      name=conv_name_base + '2c')(x)
+    x = BatchNormalization(axis=bn_axis, name=bn_name_base + '2c')(x)
+
+    shortcut = Conv1D(filters3, 1, strides=strides,
+                             kernel_initializer=he_normal(seed=SEED),
+                             name=conv_name_base + '1')(input_tensor)
+    shortcut = BatchNormalization(
+        axis=bn_axis, name=bn_name_base + '1')(shortcut)
+
+    x = add([x, shortcut])
+    x = Activation('relu')(x)
+    return x
+
+
 
 if __name__ == '__main__':
     # model = get_model()
