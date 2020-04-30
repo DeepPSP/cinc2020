@@ -4,6 +4,31 @@ import numpy as np
 from scipy.signal import butter, lfilter
 from scipy import stats
 
+
+__all__ = [
+    "get_12ECG_features",
+]
+
+
+def get_12ECG_features(data, header_data):
+    """
+    """
+    _len_t = 6
+    freq = 500
+    input_len = _len_t * freq
+    ecg = np.array(data).T
+    x = []
+    for i in range(ecg.shape[0]//input_len):
+        seg = ecg[input_len*i:input_len*(i+1)]
+        seg = (seg - np.mean(seg)) / np.std(seg)
+        x.append(seg)
+    x = np.array(x)
+    return x
+
+
+# -------------------------------------------
+# unused functions from official sample repo
+
 def detect_peaks(ecg_measurements,signal_frequency,gain):
 
         """
@@ -137,21 +162,6 @@ def findpeaks(data, spacing=1, limit=None):
             ind = ind[data[ind] > limit]
         return ind
 
-
-def get_12ECG_features(data, header_data):
-    """
-    """
-    _len_t = 6
-    freq = 500
-    input_len = _len_t * freq
-    ecg = np.array(data).T
-    x = []
-    for i in range(ecg.shape[0]//input_len):
-        seg = ecg[input_len*i:input_len*(i+1)]
-        seg = (seg - np.mean(seg)) / np.std(seg)
-        x.append(seg)
-    x = np.array(x)
-    return x
 
 def get_12ECG_features_old(data, header_data):
     tmp_hea = header_data[0].split(' ')

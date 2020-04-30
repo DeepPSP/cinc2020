@@ -39,7 +39,7 @@
 # Example:
 #   Omitted due to length. See the below examples.
 
-import numpy as np, os, os.path, sys
+import numpy as np, os, sys
 
 
 def evaluate_12ECG_score(label_directory, output_directory):
