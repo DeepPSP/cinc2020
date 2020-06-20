@@ -307,6 +307,9 @@ class TI_CNN(Sequential):
         return self
 
 
+# -----------------------------------------
+# from resnet50 of keras_applications
+
 def identity_block(input_tensor, kernel_size, filters, stage, block):
     """The identity block is the block that has no conv layer at shortcut.
     # Arguments
@@ -324,22 +327,26 @@ def identity_block(input_tensor, kernel_size, filters, stage, block):
     conv_name_base = 'res' + str(stage) + block + '_branch'
     bn_name_base = 'bn' + str(stage) + block + '_branch'
 
-    x = Conv1D(filters1, 1,
-                      kernel_initializer=he_normal(seed=SEED),
-                      name=conv_name_base + '2a')(input_tensor)
+    x = Conv1D(
+        filters1, 1,
+        kernel_initializer=he_normal(seed=SEED),
+        name=conv_name_base + '2a')(input_tensor)
     x = BatchNormalization(axis=bn_axis, name=bn_name_base + '2a')(x)
     x = Activation('relu')(x)
 
-    x = Conv1D(filters2, kernel_size,
-                      padding='same',
-                      kernel_initializer=he_normal(seed=SEED),
-                      name=conv_name_base + '2b')(x)
+    x = Conv1D(
+        filters2, kernel_size,
+        padding='same',
+        kernel_initializer=he_normal(seed=SEED),
+        name=conv_name_base + '2b')(x)
     x = BatchNormalization(axis=bn_axis, name=bn_name_base + '2b')(x)
     x = Activation('relu')(x)
 
-    x = Conv1D(filters3, 1,
-                      kernel_initializer=he_normal(seed=SEED),
-                      name=conv_name_base + '2c')(x)
+    x = Conv1D(
+        filters3, 1,
+        kernel_initializer=he_normal(seed=SEED),
+        name=conv_name_base + '2c'
+    )(x)
     x = BatchNormalization(axis=bn_axis, name=bn_name_base + '2c')(x)
 
     x = add([x, input_tensor])
@@ -373,33 +380,38 @@ def conv_block(input_tensor,
     conv_name_base = 'res' + str(stage) + block + '_branch'
     bn_name_base = 'bn' + str(stage) + block + '_branch'
 
-    x = Conv1D(filters1, 1, strides=strides,
-                      kernel_initializer=he_normal(seed=SEED),
-                      name=conv_name_base + '2a')(input_tensor)
+    x = Conv1D(
+        filters1, 1, strides=strides,
+        kernel_initializer=he_normal(seed=SEED),
+        name=conv_name_base + '2a')(input_tensor)
     x = BatchNormalization(axis=bn_axis, name=bn_name_base + '2a')(x)
     x = Activation('relu')(x)
 
-    x = Conv1D(filters2, kernel_size, padding='same',
-                      kernel_initializer=he_normal(seed=SEED),
-                      name=conv_name_base + '2b')(x)
+    x = Conv1D(
+        filters2, kernel_size, padding='same',
+        kernel_initializer=he_normal(seed=SEED),
+        name=conv_name_base + '2b')(x)
     x = BatchNormalization(axis=bn_axis, name=bn_name_base + '2b')(x)
     x = Activation('relu')(x)
 
-    x = Conv1D(filters3, 1,
-                      kernel_initializer=he_normal(seed=SEED),
-                      name=conv_name_base + '2c')(x)
+    x = Conv1D(
+        filters3, 1,
+        kernel_initializer=he_normal(seed=SEED),
+        name=conv_name_base + '2c')(x)
     x = BatchNormalization(axis=bn_axis, name=bn_name_base + '2c')(x)
 
-    shortcut = Conv1D(filters3, 1, strides=strides,
-                             kernel_initializer=he_normal(seed=SEED),
-                             name=conv_name_base + '1')(input_tensor)
+    shortcut = Conv1D(
+        filters3, 1, strides=strides,
+        kernel_initializer=he_normal(seed=SEED),
+        name=conv_name_base + '1')(input_tensor)
     shortcut = BatchNormalization(
         axis=bn_axis, name=bn_name_base + '1')(shortcut)
 
     x = add([x, shortcut])
     x = Activation('relu')(x)
     return x
-
+    
+# -----------------------------------------
 
 
 if __name__ == '__main__':
