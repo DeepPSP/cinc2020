@@ -240,7 +240,7 @@ class TI_CNN(Sequential):
         )
         self.add(
             BatchNormalization(name='bn5_3',)
-    )
+        )
         self.add(
             ReLU(name='relu5_3',)
         )
