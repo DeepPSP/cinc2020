@@ -14,6 +14,7 @@ __all__ = [
     "df_weights_abbr",
     "dx_mapping_scored",
     "dx_mapping_unscored",
+    "load_weights",
 ]
 
 
@@ -188,27 +189,58 @@ df_weights_abbr.index = \
     df_weights_abbr.index.map(lambda i: snomed_ct_code_to_abbr(i))
 
 
+
 def load_weights(classes:Sequence[Union[int,str]]=None, return_fmt:str='np') -> Union[np.ndarray, pd.DataFrame]:
-    """
+    """ finished, checked,
+
+    load the weight matrix of the `classes`
 
     Parameters:
     -----------
-    to write
+    classes: sequence of str or int, optional,
+        the classes to load their weights,
+        if not given, weights of all classes in `dx_mapping_scored` will be loaded
+    return_fmt: str, default 'np',
+        'np' or 'pd', the values in the form of a 2d array or a DataFrame
+
+    Returns:
+    --------
+    mat: 2d array or DataFrame,
+        the weight matrix of the `classes`
     """
     if classes:
         l_nc = [_normalize_class(c) for c in classes]
+        assert len(set(l_nc)) == len(classes), "`classes` has duplicates!"
         mat = df_weights_abbr.loc[l_nc,l_nc]
     else:
         mat = df_weights_abbr.copy()
     
     if return_fmt.lower() == 'np':
         mat = mat.values
+    elif return_fmt.lower() == 'pd':
+        mat.columns = list(map(str, classes))
+        mat.index = list(map(str, classes))
+    else:
+        raise ValueError(f"format of {return_fmt} is unsupported")
     
     return mat
 
 
 def _normalize_class(c:Union[str,int]) -> str:
-    """
+    """ finished, checked,
+
+    normalize the class name to its abbr.,
+    facilitating the computation of the `load_weights` function
+
+    Parameters:
+    -----------
+    c: str or int,
+        abbr. or SNOMED CT Code of the class
+
+    Returns:
+    --------
+    nc: str,
+        the abbr. of the class
     """
     try:
         nc = snomed_ct_code_to_abbr(c)
