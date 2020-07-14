@@ -13,6 +13,9 @@ from scipy.io import loadmat
 from easydict import EasyDict as ED
 
 from utils.misc import get_record_list_recursive
+from utils.scoring_aux_data import (
+    dx_mapping_all, dx_mapping_scored, dx_mapping_unscored,
+)
 
 
 __all__ = [
@@ -118,20 +121,7 @@ class CINC2020(PhysioNetDataBase):
 
         self.all_leads = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6',]
 
-        # TODO: update the following attr., from unofficial phase to official phase
-        self.all_diagnosis = ['N', 'AF', 'I-AVB', 'LBBB', 'RBBB', 'PAC', 'PVC', 'STD', 'STE',]
-        self.all_diagnosis_original = sorted(['Normal', 'AF', 'I-AVB', 'LBBB', 'RBBB', 'PAC', 'PVC', 'STD', 'STE',])
-        self.diagnosis_abbr_to_full = {  # to check
-            'N': 'Normal',
-            'AF': 'Atrial fibrillation',
-            'I-AVB': 'First-degree atrioventricular block',
-            'LBBB': 'Left bundle brunch block',
-            'RBBB': 'Right bundle brunch block',
-            'PAC': 'Premature atrial contraction',
-            'PVC': 'Premature ventricular contraction',
-            'STD': 'ST-segment depression',
-            'STE': 'ST-segment elevated',
-        }
+        self.df_ecg_arrhythmia = dx_mapping_all[['Dx','SNOMED CT Code','Abbreviation']]
 
 
     def get_patient_id(self, rec:str) -> int:
@@ -256,13 +246,13 @@ class CINC2020(PhysioNetDataBase):
         ann_dict['diagnosis_Dx'] = [l for l in header_data if l.startswith('#Dx')][0].split(": ")[-1].split(",")
         try:
             ann_dict['diagnosis_Dx'] = [int(item) for item in ann_dict['diagnosis_Dx']]
-            selection = Dx_map['SNOMED code'].isin(ann_dict['diagnosis_Dx'])
-            ann_dict['diagnosis'] = Dx_map[selection]['Abbreviation'].tolist()
-            ann_dict['diagnosis_fullname'] = Dx_map[selection]['dx'].tolist()
+            selection = dx_mapping_all['SNOMED CT code'].isin(ann_dict['diagnosis_Dx'])
+            ann_dict['diagnosis'] = dx_mapping_all[selection]['Abbreviation'].tolist()
+            ann_dict['diagnosis_fullname'] = dx_mapping_all[selection]['dx'].tolist()
         except:  # the old version, the Dx's are abbreviations
             ann_dict['diagnosis'] = ann_dict['diagnosis_Dx']
-            selection = Dx_map['Abbreviation'].isin(ann_dict['diagnosis'])
-            ann_dict['diagnosis_fullname'] = Dx_map[selection]['dx'].tolist()
+            selection = dx_mapping_all['Abbreviation'].isin(ann_dict['diagnosis'])
+            ann_dict['diagnosis_fullname'] = dx_mapping_all[selection]['dx'].tolist()
         # if not keep_original:
         #     for idx, d in enumerate(ann_dict['diagnosis']):
         #         if d in ['Normal', 'SNR']:

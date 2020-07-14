@@ -14,6 +14,7 @@ __all__ = [
     "df_weights_abbr",
     "dx_mapping_scored",
     "dx_mapping_unscored",
+    "dx_mapping_all",
     "load_weights",
 ]
 
