@@ -45,6 +45,7 @@ df_weights = pd.read_csv(StringIO(""",270492004,164889003,164890007,426627000,71
 164934002,0.3,0.5,0.5,0.3,0.4,0.3,0.35,0.35,0.475,0.425,0.35,0.375,0.3375,0.375,0.3,0.45,0.4,0.35,0.4,0.3,0.3,0.25,0.375,0.3375,1.0,0.5,0.375
 59931005,0.3,0.5,0.5,0.3,0.4,0.3,0.35,0.35,0.475,0.425,0.35,0.375,0.3375,0.375,0.3,0.45,0.4,0.35,0.4,0.3,0.3,0.25,0.375,0.3375,0.5,1.0,0.375
 17338001,0.425,0.375,0.375,0.425,0.475,0.425,0.475,0.475,0.4,0.45,0.475,0.5,0.4625,1.0,0.425,0.425,0.275,0.475,0.475,0.425,0.425,0.375,0.5,0.4625,0.375,0.375,1.0"""), index_col=0)
+df_weights.index = df_weights.index.map(str)
 
 
 dx_mapping_scored = pd.read_csv(StringIO("""Dx,SNOMED CT Code,Abbreviation,CPSC,CPSC-Extra,StPetersburg,PTB,PTB-XL,Georgia,Total,Notes
@@ -187,17 +188,22 @@ df_weights_abbr.index = \
     df_weights_abbr.index.map(lambda i: snomed_ct_code_to_abbr(i))
 
 
-def load_weights(classes:Sequence[Union[int,str]], return_fmt:str='np') -> Union[np.ndarray, pd.DataFrame]:
+def load_weights(classes:Sequence[Union[int,str]]=None, return_fmt:str='np') -> Union[np.ndarray, pd.DataFrame]:
     """
 
     Parameters:
     -----------
     to write
     """
-    l_nc = [_normalize_class(c) for c in classes]
-    mat = df_weights_abbr.loc[l_nc,l_nc]
+    if classes:
+        l_nc = [_normalize_class(c) for c in classes]
+        mat = df_weights_abbr.loc[l_nc,l_nc]
+    else:
+        mat = df_weights_abbr.copy()
+    
     if return_fmt.lower() == 'np':
         mat = mat.values
+    
     return mat
 
 
