@@ -1,8 +1,10 @@
 #!/usr/bin/env python
+import os, sys
 
-import numpy as np, os, sys
+import numpy as np
 from scipy.io import loadmat
 from run_12ECG_classifier import load_12ECG_model, run_12ECG_classifier
+
 
 def load_challenge_data(filename):
 
@@ -13,8 +15,7 @@ def load_challenge_data(filename):
     input_header_file = os.path.join(new_file)
 
     with open(input_header_file,'r') as f:
-        header_data=f.readlines()
-
+        header_data = f.readlines()
 
     return data, header_data
 
