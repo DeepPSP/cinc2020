@@ -4,12 +4,14 @@ from 3 files of the official evaluation repo:
     dx_mapping_scored.csv, dx_mapping_unscored.csv, weights.csv
 """
 from io import StringIO
+from typing import Union, Sequence
 
 import pandas as pd
 
 
 __all__ = [
     "df_weights",
+    "df_weights_abbr",
     "dx_mapping_scored",
     "dx_mapping_unscored",
 ]
@@ -44,6 +46,7 @@ df_weights = pd.read_csv(StringIO(""",270492004,164889003,164890007,426627000,71
 59931005,0.3,0.5,0.5,0.3,0.4,0.3,0.35,0.35,0.475,0.425,0.35,0.375,0.3375,0.375,0.3,0.45,0.4,0.35,0.4,0.3,0.3,0.25,0.375,0.3375,0.5,1.0,0.375
 17338001,0.425,0.375,0.375,0.425,0.475,0.425,0.475,0.475,0.4,0.45,0.475,0.5,0.4625,1.0,0.425,0.425,0.275,0.475,0.475,0.425,0.425,0.375,0.5,0.4625,0.375,0.375,1.0"""), index_col=0)
 
+
 dx_mapping_scored = pd.read_csv(StringIO("""Dx,SNOMED CT Code,Abbreviation,CPSC,CPSC-Extra,StPetersburg,PTB,PTB-XL,Georgia,Total,Notes
 1st degree av block,270492004,IAVB,722,106,0,0,797,769,2394,
 atrial fibrillation,164889003,AF,1221,153,2,15,1514,570,3475,
@@ -72,6 +75,7 @@ supraventricular premature beats,63593006,SVPB,0,53,4,0,157,1,215,We score 28447
 t wave abnormal,164934002,TAb,0,22,0,0,2345,2306,4673,
 t wave inversion,59931005,TInv,0,5,1,0,294,812,1112,
 ventricular premature beats,17338001,VPB,0,8,0,0,0,357,365,We score 427172004 and 17338001 as the same diagnosis."""))
+
 
 dx_mapping_unscored = pd.read_csv(StringIO("""Dx,SNOMED CT Code,Abbreviation,CPSC,CPSC-Extra,StPetersburg,PTB,PTB-XL,Georgia,Total
 2nd degree av block,195042002,IIAVB,0,21,0,0,14,23,58
@@ -158,3 +162,52 @@ ventricular tachycardia,164895002,VTach,0,1,1,10,0,0,12
 ventricular trigeminy,251180001,VTrig,0,4,4,0,20,1,29
 wandering atrial pacemaker,195101003,WAP,0,0,0,0,0,7,7
 wolff parkinson white pattern,74390002,WPW,0,0,4,2,80,2,88"""))
+
+
+dms = dx_mapping_scored.copy()
+dms['scored'] = True
+dmn = dx_mapping_unscored.copy()
+dmn['Notes'] = ''
+dmn['scored'] = False
+dx_mapping_all = pd.concat([dms, dmn], ignore_index=True).fillna('')
+
+
+df_weights_snomed = df_weights  # alias
+
+
+snomed_ct_code_to_abbr = \
+    lambda i: dx_mapping_all[dx_mapping_all["SNOMED CT Code"]==int(i)]["Abbreviation"].values[0]
+
+df_weights_abbr = df_weights.copy()
+
+df_weights_abbr.columns = \
+    df_weights_abbr.columns.map(lambda i: snomed_ct_code_to_abbr(i))
+
+df_weights_abbr.index = \
+    df_weights_abbr.index.map(lambda i: snomed_ct_code_to_abbr(i))
+
+
+def load_weights(classes:Sequence[Union[int,str]], return_fmt:str='np') -> Union[np.ndarray, pd.DataFrame]:
+    """
+
+    Parameters:
+    -----------
+    to write
+    """
+    l_nc = [_normalize_class(c) for c in classes]
+    mat = df_weights_abbr.loc[l_nc,l_nc]
+    if return_fmt.lower() == 'np':
+        mat = mat.values
+    return mat
+
+
+def _normalize_class(c:Union[str,int]) -> str:
+    """
+    """
+    try:
+        nc = snomed_ct_code_to_abbr(c)
+    except:
+        nc = c
+    if nc not in df_weights_abbr.columns:
+        raise ValueError(f"class {c} not among the scored classes")
+    return nc
