@@ -133,3 +133,7 @@ dmypy.json
 test/CPSC0223/
 test/CPSC0236/
 test/ati_cnn/ckpt/
+
+working_dir
+tmp
+temp
