@@ -2,6 +2,7 @@
 """
 import os, io, sys
 import re
+import time
 import logging
 from datetime import datetime
 from typing import Union, Optional, Any, List, Dict, NoReturn
@@ -47,7 +48,7 @@ class CINC2020(object):
         E: database_reader.physionet_databases.ptb_xl.PTB_XL
     the C tranche has folder name `Training_StPetersburg`, the D tranche has folder name `Training_PTB`, the F tranche has folder name `WFDB`
     3. the F tranche is entirely new, posted for this Challenge, and represents a unique demographic of the Southeastern United States. It has folder name `Training_E/WFDB`.
-    4. only a part of diagnosis (diseases that appear in the labels of the 6 tranches of training data) are used in the scoring function (ref. `dx_mapping_scored_cinc2020`), while others are ignored (ref. `dx_mapping_unscored_cinc2020`). The scored diagnoses were chosen based on prevalence of the diagnoses in the training data, the severity of the diagnoses, and the ability to determine the diagnoses from ECG recordings. The ignored diagnosis can be put in a a 'non-class' group.
+    4. only a part of diagnosis_abbr (diseases that appear in the labels of the 6 tranches of training data) are used in the scoring function (ref. `dx_mapping_scored_cinc2020`), while others are ignored (ref. `dx_mapping_unscored_cinc2020`). The scored diagnoses were chosen based on prevalence of the diagnoses in the training data, the severity of the diagnoses, and the ability to determine the diagnoses from ECG recordings. The ignored diagnosis_abbr can be put in a a 'non-class' group.
     5. the (updated) scoring function has a scoring matrix with nonzero off-diagonal elements. This scoring function reflects the clinical reality that some misdiagnoses are more harmful than others and should be scored accordingly. Moreover, it reflects the fact that confusing some classes is much less harmful than confusing other classes.
 
     NOTE:
@@ -102,9 +103,14 @@ class CINC2020(object):
             "E": os.path.join(self.db_dir_base, "WFDB"),
             "F": os.path.join(self.db_dir_base, "Training_E", "WFDB"),
         })
+        print("Please wait patiently to let the reader find all records of all the tranches...")
+        start = time.time()
         self.all_records = ED({
-            tranche: get_record_list_recursive(self.db_dirs[tranche], self.rec_ext) for tranche in "ABCDEF"
+            tranche: get_record_list_recursive(self.db_dirs[tranche], self.rec_ext) \
+                for tranche in "ABCDEF"
         })
+        print(f"Done in {time.time() - start} seconds!")
+
         self.rec_prefix = ED({
             "A": "A", "B": "Q", "C": "I", "D": "S", "E": "HR", "F": "E",
         })
@@ -138,8 +144,12 @@ class CINC2020(object):
         sid: int,
             the `get_subject_id` corr. to `rec`
         """
-        sid = 0
-        raise NotImplementedError
+        s2d = {"A":"11", "B":"12", "C":"21", "D":"31", "E":"32", "F":"41"}
+        s2d = {self.rec_prefix[k]:v for k,v in s2d.items()}
+        prefix = "".join(re.findall(r"[A-Z]", rec))
+        n = rec.replace(prefix,"")
+        sid = int(f"{s2d[prefix]}{'0'*(8-len(n))}{n}")
+        return sid
 
 
     def _set_logger(self, prefix:Optional[str]=None):
@@ -244,20 +254,20 @@ class CINC2020(object):
         except:
             ann_dict['age'] = np.nan
         ann_dict['sex'] = [l for l in header_data if l.startswith('#Sex')][0].split(": ")[-1]
-        ann_dict['diagnosis_Dx'] = [l for l in header_data if l.startswith('#Dx')][0].split(": ")[-1].split(",")
+        ann_dict['diagnosis_code'] = [l for l in header_data if l.startswith('#Dx')][0].split(": ")[-1].split(",")
         try:
-            ann_dict['diagnosis_Dx'] = [int(item) for item in ann_dict['diagnosis_Dx']]
-            selection = dx_mapping_all['SNOMED CT Code'].isin(ann_dict['diagnosis_Dx'])
-            ann_dict['diagnosis'] = dx_mapping_all[selection]['Abbreviation'].tolist()
+            ann_dict['diagnosis_code'] = [int(item) for item in ann_dict['diagnosis_code']]
+            selection = dx_mapping_all['SNOMED CT Code'].isin(ann_dict['diagnosis_code'])
+            ann_dict['diagnosis_abbr'] = dx_mapping_all[selection]['Abbreviation'].tolist()
             ann_dict['diagnosis_fullname'] = dx_mapping_all[selection]['Dx'].tolist()
         except:  # the old version, the Dx's are abbreviations
-            ann_dict['diagnosis'] = ann_dict['diagnosis_Dx']
-            selection = dx_mapping_all['Abbreviation'].isin(ann_dict['diagnosis'])
+            ann_dict['diagnosis_abbr'] = ann_dict['diagnosis_code']
+            selection = dx_mapping_all['Abbreviation'].isin(ann_dict['diagnosis_abbr'])
             ann_dict['diagnosis_fullname'] = dx_mapping_all[selection]['Dx'].tolist()
         # if not keep_original:
-        #     for idx, d in enumerate(ann_dict['diagnosis']):
+        #     for idx, d in enumerate(ann_dict['diagnosis_abbr']):
         #         if d in ['Normal', 'SNR']:
-        #             ann_dict['diagnosis'] = ['N']
+        #             ann_dict['diagnosis_abbr'] = ['N']
         ann_dict['medical_prescription'] = [l for l in header_data if l.startswith('#Rx')][0].split(": ")[-1]
         ann_dict['history'] = [l for l in header_data if l.startswith('#Hx')][0].split(": ")[-1]
         ann_dict['symptom_or_surgery'] = [l for l in header_data if l.startswith('#Sx')][0].split(": ")[-1]
@@ -285,13 +295,13 @@ class CINC2020(object):
         Returns:
         --------
         labels, list,
-            the list of labels (abbr. diagnosis)
+            the list of labels (abbr. diagnosis_abbr)
         """
         ann_dict = self.load_ann(rec)
         if fullname:
             labels = ann_dict['diagnosis_fullname']
         else:
-            labels = ann_dict['diagnosis']
+            labels = ann_dict['diagnosis_abbr']
         return labels
 
     
