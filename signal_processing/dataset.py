@@ -1,7 +1,8 @@
 """
 """
-import os
+import os, io, sys
 import re
+import logging
 from datetime import datetime
 from typing import Union, Optional, Any, List, Dict, NoReturn
 from numbers import Real
@@ -123,7 +124,7 @@ class CINC2020(object):
         self.df_ecg_arrhythmia = dx_mapping_all[['Dx','SNOMED CT Code','Abbreviation']]
 
 
-    def get_patient_id(self, rec:str) -> int:
+    def get_subject_id(self, rec:str) -> int:
         """ not finished,
 
         Parameters:
@@ -133,10 +134,10 @@ class CINC2020(object):
 
         Returns:
         --------
-        pid: int,
-            the `patient_id` corr. to `rec`
+        sid: int,
+            the `get_subject_id` corr. to `rec`
         """
-        pid = 0
+        sid = 0
         raise NotImplementedError
 
 
@@ -227,7 +228,7 @@ class CINC2020(object):
             the annotations with items: ref. self.ann_items
         """
         tranche = self._get_tranche(rec)
-        rec_fp = os.path.join(self.db_dirs[tranche], rec + self.rec_ext)
+        ann_fp = os.path.join(self.db_dirs[tranche], rec + self.ann_ext)
         with open(ann_fp, 'r') as f:
             header_data = f.read().splitlines()
 
