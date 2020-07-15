@@ -6,6 +6,7 @@ from 3 files of the official evaluation repo:
 from io import StringIO
 from typing import Union, Sequence
 
+import numpy as np
 import pandas as pd
 
 

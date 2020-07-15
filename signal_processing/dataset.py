@@ -23,7 +23,7 @@ __all__ = [
 ]
 
 
-class CINC2020(PhysioNetDataBase):
+class CINC2020(object):
     """ NOT Finished,
 
     Classification of 12-lead ECGs: the PhysioNet/Computing in Cardiology Challenge 2020
@@ -83,7 +83,6 @@ class CINC2020(PhysioNetDataBase):
             working directory, to store intermediate files and log file
         verbose: int, default 2,
         """
-        super().__init__(db_name='CINC2020', db_dir=db_dir, working_dir=working_dir, verbose=verbose, **kwargs)
         self.db_name = 'CINC2020'
         self.working_dir = working_dir or os.getcwd()
         self.verbose = verbose
