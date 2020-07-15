@@ -73,24 +73,24 @@ class CINC2020(object):
     [4] https://physionet.org/content/ptbdb/1.0.0/
     [5] https://physionet.org/content/ptb-xl/1.0.1/
     """
-    def __init__(self, db_dir:Optional[str]=None, working_dir:Optional[str]=None, verbose:int=2, **kwargs):
+    def __init__(self, db_dir:str, working_dir:Optional[str]=None, verbose:int=2, **kwargs):
         """
         Parameters:
         -----------
-        db_dir: str, optional,
+        db_dir: str,
             storage path of the database
-            if not specified, data will be fetched from Physionet
         working_dir: str, optional,
             working directory, to store intermediate files and log file
         verbose: int, default 2,
         """
         self.db_name = 'CINC2020'
         self.working_dir = working_dir or os.getcwd()
+        os.makedirs(self.working_dir, exist_ok=True)
         self.verbose = verbose
         self.logger = None
         self._set_logger(prefix=self.db_name)
 
-        self.db_dir_base = self.db_dir
+        self.db_dir_base = db_dir
         self.db_dirs = ED({
             "A": os.path.join(self.db_dir_base, "Training_WFDB"),
             "B": os.path.join(self.db_dir_base, "Training_2"),
