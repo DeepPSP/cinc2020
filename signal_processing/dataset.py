@@ -90,6 +90,9 @@ class CINC2020(object):
         self.logger = None
         self._set_logger(prefix=self.db_name)
 
+        self.rec_ext = '.mat'
+        self.ann_ext = '.hea'
+
         self.db_dir_base = db_dir
         self.db_dirs = ED({
             "A": os.path.join(self.db_dir_base, "Training_WFDB"),
@@ -100,7 +103,7 @@ class CINC2020(object):
             "F": os.path.join(self.db_dir_base, "Training_E", "WFDB"),
         })
         self.all_records = ED({
-            tranche: get_record_list_recursive(self.db_dirs[tranche]) for tranche in "ABCDEF"
+            tranche: get_record_list_recursive(self.db_dirs[tranche], self.rec_ext) for tranche in "ABCDEF"
         })
         self.rec_prefix = ED({
             "A": "A", "B": "Q", "C": "I", "D": "S", "E": "HR", "F": "E",
@@ -113,8 +116,6 @@ class CINC2020(object):
         >>>     for fn in af:
         >>>         pfs[k].add("".join(re.findall(r"[A-Z]", os.path.splitext(fn)[0])))
         """
-        self.rec_ext = '.mat'
-        self.ann_ext = '.hea'
 
         # self.freq = 500
         # self.spacing = 1000 / self.freq
@@ -185,7 +186,7 @@ class CINC2020(object):
     def _get_tranche(self, rec:str) -> str:
         """
         """
-        prefix = "".join(re.findall(r"[A-Z]", "rec"))
+        prefix = "".join(re.findall(r"[A-Z]", rec))
         return {v:k for k,v in self.rec_prefix.items()}[prefix]
 
 
@@ -246,13 +247,13 @@ class CINC2020(object):
         ann_dict['diagnosis_Dx'] = [l for l in header_data if l.startswith('#Dx')][0].split(": ")[-1].split(",")
         try:
             ann_dict['diagnosis_Dx'] = [int(item) for item in ann_dict['diagnosis_Dx']]
-            selection = dx_mapping_all['SNOMED CT code'].isin(ann_dict['diagnosis_Dx'])
+            selection = dx_mapping_all['SNOMED CT Code'].isin(ann_dict['diagnosis_Dx'])
             ann_dict['diagnosis'] = dx_mapping_all[selection]['Abbreviation'].tolist()
-            ann_dict['diagnosis_fullname'] = dx_mapping_all[selection]['dx'].tolist()
+            ann_dict['diagnosis_fullname'] = dx_mapping_all[selection]['Dx'].tolist()
         except:  # the old version, the Dx's are abbreviations
             ann_dict['diagnosis'] = ann_dict['diagnosis_Dx']
             selection = dx_mapping_all['Abbreviation'].isin(ann_dict['diagnosis'])
-            ann_dict['diagnosis_fullname'] = dx_mapping_all[selection]['dx'].tolist()
+            ann_dict['diagnosis_fullname'] = dx_mapping_all[selection]['Dx'].tolist()
         # if not keep_original:
         #     for idx, d in enumerate(ann_dict['diagnosis']):
         #         if d in ['Normal', 'SNR']:
