@@ -68,9 +68,14 @@ class CINC2020(object):
     3. Each sub-dataset might have its own organizing scheme of data, which should be carefully dealt with
     4. There are few 'absolute' diagnoses in 12 lead ECGs, where large discrepancies in the interpretation of the ECG can be found even inspected by experts. There is inevitably something lost in translation, especially when you do not have the context. This doesn't mean making an algorithm isn't important
     5. The labels are noisy, which one has to deal with in all real world data
+    6. each line of the following classes are considered the same (in the scoring matrix):
+        - RBBB, CRBBB (NOT including IRBBB)
+        - PAC, SVPB
+        - PVC, VPB
 
     ISSUES:
     -------
+    1.
 
     Usage:
     ------

@@ -4,7 +4,7 @@ from 3 files of the official evaluation repo:
     dx_mapping_scored.csv, dx_mapping_unscored.csv, weights.csv
 """
 from io import StringIO
-from typing import Union, Sequence
+from typing import Union, Sequence, Dict
 
 import numpy as np
 import pandas as pd
@@ -13,10 +13,12 @@ import pandas as pd
 __all__ = [
     "df_weights",
     "df_weights_abbr",
+    "df_weights_fullname",
     "dx_mapping_scored",
     "dx_mapping_unscored",
     "dx_mapping_all",
     "load_weights",
+    "get_class",
 ]
 
 
@@ -79,6 +81,7 @@ supraventricular premature beats,63593006,SVPB,0,53,4,0,157,1,215,We score 28447
 t wave abnormal,164934002,TAb,0,22,0,0,2345,2306,4673,
 t wave inversion,59931005,TInv,0,5,1,0,294,812,1112,
 ventricular premature beats,17338001,VPB,0,8,0,0,0,357,365,We score 427172004 and 17338001 as the same diagnosis."""))
+dx_mapping_scored = dx_mapping_scored.fill_na("")
 
 
 dx_mapping_unscored = pd.read_csv(StringIO("""Dx,SNOMED CT Code,Abbreviation,CPSC,CPSC-Extra,StPetersburg,PTB,PTB-XL,Georgia,Total
@@ -191,6 +194,18 @@ df_weights_abbr.index = \
     df_weights_abbr.index.map(lambda i: snomed_ct_code_to_abbr(i))
 
 
+snomed_ct_code_to_fullname = \
+    lambda i: dx_mapping_all[dx_mapping_all["SNOMED CT Code"]==int(i)]["Dx"].values[0]
+
+df_weights_fullname = df_weights.copy()
+
+df_weights_fullname.columns = \
+    df_weights_fullname.columns.map(lambda i: snomed_ct_code_to_fullname(i))
+
+df_weights_fullname.index = \
+    df_weights_fullname.index.map(lambda i: snomed_ct_code_to_fullname(i))
+
+
 
 def load_weights(classes:Sequence[Union[int,str]]=None, return_fmt:str='np') -> Union[np.ndarray, pd.DataFrame]:
     """ finished, checked,
@@ -251,3 +266,28 @@ def _normalize_class(c:Union[str,int]) -> str:
     if nc not in df_weights_abbr.columns:
         raise ValueError(f"class {c} not among the scored classes")
     return nc
+
+
+def get_class(snomed_ct_code:Union[str,int]) -> Dict[str,str]:
+    """ finished, checked,
+
+    look up the abbreviation and the full name of an ECG arrhythmia,
+    given its SNOMED CT Code
+
+    Parameters:
+    -----------
+    snomed_ct_code: str or int,
+        the SNOMED CT Code of the arrhythmia
+    
+    Returns:
+    --------
+    arrhythmia_class: dict,
+        containing `abbr` the abbreviation and `fullname` the full name of the arrhythmia
+    """
+    code = int(snomed_ct_code)
+    row = dx_mapping_all[dx_mapping_all["SNOMED CT Code"]==code].iloc[0]
+    arrhythmia_class = {
+        "abbr": row["Abbreviation"],
+        "fullname": row["Dx"],
+    }
+    return arrhythmia_class
