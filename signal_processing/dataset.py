@@ -277,9 +277,9 @@ class CINC2020(object):
             ann_dict['diagnosis']['diagnosis_abbr'] = dx_mapping_all[selection]['Abbreviation'].tolist()
             ann_dict['diagnosis']['diagnosis_fullname'] = dx_mapping_all[selection]['Dx'].tolist()
             scored_indices = np.isin(ann_dict['diagnosis']['diagnosis_code'], dx_mapping_scored['SNOMED CT Code'].values)
-            ann_dict['diagnosis_scored']['diagnosis_code'] = [item for idx, item in enumerate(ann_dict['diagnosis']['diagnosis_code']) if scored_indices[idx]]]
-            ann_dict['diagnosis_scored']['diagnosis_abbr'] = [item for idx, item in enumerate(ann_dict['diagnosis']['diagnosis_abbr']) if scored_indices[idx]]]
-            ann_dict['diagnosis_scored']['diagnosis_fullname'] = [item for idx, item in enumerate(ann_dict['diagnosis']['diagnosis_fullname']) if scored_indices[idx]]]
+            ann_dict['diagnosis_scored']['diagnosis_code'] = [item for idx, item in enumerate(ann_dict['diagnosis']['diagnosis_code']) if scored_indices[idx]]
+            ann_dict['diagnosis_scored']['diagnosis_abbr'] = [item for idx, item in enumerate(ann_dict['diagnosis']['diagnosis_abbr']) if scored_indices[idx]]
+            ann_dict['diagnosis_scored']['diagnosis_fullname'] = [item for idx, item in enumerate(ann_dict['diagnosis']['diagnosis_fullname']) if scored_indices[idx]]
         except:  # the old version, the Dx's are abbreviations
             ann_dict['diagnosis']['diagnosis_abbr'] = ann_dict['diagnosis']['diagnosis_code']
             selection = dx_mapping_all['Abbreviation'].isin(ann_dict['diagnosis']['diagnosis_abbr'])
@@ -288,7 +288,7 @@ class CINC2020(object):
         #     for idx, d in enumerate(ann_dict['diagnosis_abbr']):
         #         if d in ['Normal', 'SNR']:
         #             ann_dict['diagnosis_abbr'] = ['N']
-        
+
         ann_dict['medical_prescription'] = [l for l in header_data if l.startswith('#Rx')][0].split(": ")[-1]
         ann_dict['history'] = [l for l in header_data if l.startswith('#Hx')][0].split(": ")[-1]
         ann_dict['symptom_or_surgery'] = [l for l in header_data if l.startswith('#Sx')][0].split(": ")[-1]
