@@ -2,6 +2,7 @@
 """
 import os, io, sys
 import re
+import json
 import time
 import logging
 from datetime import datetime
@@ -14,6 +15,7 @@ import wfdb
 from scipy.io import loadmat
 from easydict import EasyDict as ED
 
+import utils
 from utils.misc import get_record_list_recursive
 from utils.scoring_aux_data import (
     dx_mapping_all, dx_mapping_scored, dx_mapping_unscored,
@@ -118,13 +120,17 @@ class CINC2020(object):
             "E": os.path.join(self.db_dir_base, "WFDB"),
             "F": os.path.join(self.db_dir_base, "Training_E", "WFDB"),
         })
-        print("Please wait patiently to let the reader find all records of all the tranches...")
-        start = time.time()
-        self.all_records = ED({
-            tranche: get_record_list_recursive(self.db_dirs[tranche], self.rec_ext) \
-                for tranche in "ABCDEF"
-        })
-        print(f"Done in {time.time() - start} seconds!")
+        if os.path.isfile(os.path.join(utils._BASE_DIR, "record_list.json")):
+            with open(os.path.join(utils._BASE_DIR, "record_list.json"), "r") as f:
+                self.all_records = json.load(f)
+        else:
+            print("Please wait patiently to let the reader find all records of all the tranches...")
+            start = time.time()
+            self.all_records = ED({
+                tranche: get_record_list_recursive(self.db_dirs[tranche], self.rec_ext) \
+                    for tranche in "ABCDEF"
+            })
+            print(f"Done in {time.time() - start} seconds!")
 
         self.rec_prefix = ED({
             "A": "A", "B": "Q", "C": "I", "D": "S", "E": "HR", "F": "E",

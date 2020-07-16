@@ -81,7 +81,7 @@ supraventricular premature beats,63593006,SVPB,0,53,4,0,157,1,215,We score 28447
 t wave abnormal,164934002,TAb,0,22,0,0,2345,2306,4673,
 t wave inversion,59931005,TInv,0,5,1,0,294,812,1112,
 ventricular premature beats,17338001,VPB,0,8,0,0,0,357,365,We score 427172004 and 17338001 as the same diagnosis."""))
-dx_mapping_scored = dx_mapping_scored.fill_na("")
+dx_mapping_scored = dx_mapping_scored.fillna("")
 
 
 dx_mapping_unscored = pd.read_csv(StringIO("""Dx,SNOMED CT Code,Abbreviation,CPSC,CPSC-Extra,StPetersburg,PTB,PTB-XL,Georgia,Total
