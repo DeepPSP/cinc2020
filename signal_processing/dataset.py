@@ -120,8 +120,9 @@ class CINC2020(object):
             "E": os.path.join(self.db_dir_base, "WFDB"),
             "F": os.path.join(self.db_dir_base, "Training_E", "WFDB"),
         })
-        if os.path.isfile(os.path.join(utils._BASE_DIR, "record_list.json")):
-            with open(os.path.join(utils._BASE_DIR, "record_list.json"), "r") as f:
+        record_list_fp = os.path.join(utils._BASE_DIR, "utils", "record_list.json")
+        if os.path.isfile(record_list_fp):
+            with open(record_list_fp, "r") as f:
                 self.all_records = json.load(f)
         else:
             print("Please wait patiently to let the reader find all records of all the tranches...")
