@@ -169,7 +169,7 @@ LAD = ED({  # morphology
     ],
 })
 
-LQRSV = ED({  # voltage
+LQRSV = ED({  # spatial (voltage)
     "fullname": "low qrs voltages",
     "url": [
         "https://litfl.com/low-qrs-voltage-ecg-library/",
@@ -179,7 +179,7 @@ LQRSV = ED({  # voltage
     ],
 })
 
-NSIVCB = ED({
+NSIVCB = ED({  # morphology
     "fullname": "nonspecific intraventricular conduction disorder",
     "url": [
         "https://ecgwaves.com/topic/nonspecific-intraventricular-conduction-delay-defect/"
@@ -190,20 +190,20 @@ NSIVCB = ED({
     ],
 })
 
-PR = ED({
+PR = ED({  # morphology
     "fullname": "pacing rhythm",
     "url": [
         "https://litfl.com/pacemaker-rhythms-normal-patterns/",
     ],
     "knowledge": [
         "morphology  is dependent on the pacing mode (AAI, VVI, DDD, Magnet) used",
-        "there are pacing spikes: vertical spikes of short duration, usually 2 ms",  # important
+        "there are pacing spikes: vertical spikes of short duration, usually 2 ms (500Hz)",  # important
         "AAI (atrial pacing): pacing spike precedes the p wave",
         "VVI (atrial pacing): pacing spike precedes the QRS complex; morphology similar to LBBB or RBBB",
     ],
 })
 
-PAC = ED({
+PAC = ED({  # morphology
     "fullname": "premature atrial contraction",
     "url": [
         "https://litfl.com/premature-atrial-complex-pac/",
@@ -217,7 +217,7 @@ PAC = ED({
     ],
 })
 
-PJC = ED({
+PJC = ED({  # morphology
     "fullname": "premature junctional contraction",
     "url": [
         "https://litfl.com/premature-junctional-complex-pjc/",
@@ -230,7 +230,7 @@ PJC = ED({
     ],
 })
 
-PVC = ED({
+PVC = ED({  # morphology
     "fullname": "premature ventricular contractions",
     "url": [
         "https://litfl.com/premature-ventricular-complex-pvc-ecg-library/",
