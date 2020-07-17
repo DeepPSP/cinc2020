@@ -35,13 +35,13 @@ AF = ED({  # rr, morphology
         "https://en.wikipedia.org/wiki/Atrial_fibrillation#Screening",
     ],
     "knowledge": [
-        "Irregularly irregular rhythm",
-        "No P waves",
-        "Absence of an isoelectric baseline",
-        "Variable ventricular rate",
+        "irregularly irregular rhythm",
+        "no P waves",
+        "absence of an isoelectric baseline",
+        "variable ventricular rate",
         "QRS complexes usually < 120 ms unless pre-existing bundle branch block, accessory pathway, or rate related aberrant conduction",
-        "Fibrillatory waves (f-wave) may be present and can be either fine (amplitude < 0.5mm) or coarse (amplitude >0.5mm)",
-        "Fibrillatory waves (f-wave) may mimic P waves leading to misdiagnosis",
+        "fibrillatory waves (f-wave) may be present and can be either fine (amplitude < 0.5mm) or coarse (amplitude >0.5mm)",
+        "fibrillatory waves (f-wave) may mimic P waves leading to misdiagnosis",
     ],
 })
 
@@ -82,7 +82,7 @@ IAVB = {  # morphology
         "PR interval > 200ms",
         "Marked’ first degree block if PR interval > 300ms",
         "P waves might be buried in the preceding T wave",
-        "There are no dropped, or skipped, beats"
+        "there are no dropped, or skipped, beats",
     ],
 }
 
@@ -93,12 +93,12 @@ LBBB = ED({  # morphology
         "https://en.wikipedia.org/wiki/Left_bundle_branch_block",
     ],
     "knowledge": [
-        "Heart rhythm must be supraventricular",
+        "heart rhythm must be supraventricular",
         "QRS duration of > 120 ms",
-        "Lead V1: Dominant S wave, with QS or rS complex",
-        "Lateral leads: M-shaped, or notched, or broad monophasic R wave or RS complex; absence of Q waves (small Q waves are still allowed in aVL)",
-        "Chest (precordial) leads: poor R wave progression",
-        "Left precordial leads (V5-6): prolonged R wave peak time > 60ms",
+        "lead V1: Dominant S wave, with QS or rS complex",
+        "lateral leads: M-shaped, or notched, or broad monophasic R wave or RS complex; absence of Q waves (small Q waves are still allowed in aVL)",
+        "chest (precordial) leads: poor R wave progression",
+        "left precordial leads (V5-6): prolonged R wave peak time > 60ms",
         "ST segments and T waves always go in the opposite direction to the main vector of the QRS complex",
     ],
 })
@@ -137,41 +137,66 @@ IRBBB = ED({  # morphology
     ],
     "knowledge": [
         "defined as an RSR’ pattern in V1-3 with QRS duration < 120ms (and > 100ms?)",
-        "normal variant, commonly seen in children (of no clinical significance)"
+        "normal variant, commonly seen in children (of no clinical significance)",
     ],
 })
 
-LAnFB = ED({
+LAnFB = ED({  # morphology
     "fullname": "left anterior fascicular block",
     "url": [
         "https://litfl.com/left-anterior-fascicular-block-lafb-ecg-library/",
         "https://en.wikipedia.org/wiki/Left_anterior_fascicular_block",
     ],
-    "knowledge": [],
+    "knowledge": [
+        "inferior leads (II, III, aVF): small R waves, large negative voltages (deep S waves), i.e. 'rS complexes'",
+        "left-sided leads (I, aVL): small Q waves, large positive voltages (tall R waves), i.e. 'qR complexes'",
+        "slight widening of the QRS",
+        "increased R wave peak time in aVL",
+        "LAD of degree (-45°, -90°)"
+    ],
 })
 
-LAD = ED({
+LAD = ED({  # morphology
     "fullname": "left axis deviation",
-    "url": [],
-    "knowledge": [],
+    "url": [
+        "https://litfl.com/left-axis-deviation-lad-ecg-library/",
+        "https://en.wikipedia.org/wiki/Left_axis_deviation",
+    ],
+    "knowledge": [
+        "QRS axis (-30°, -90°)",
+        "leads I and aVL are positive; leads II, III and aVF are negative",  # important
+        "LAnFB, LBBB, PR, ventricular ectopics are causes of LAD",
+    ],
 })
 
-LQRSV = ED({
+LQRSV = ED({  # voltage
     "fullname": "low qrs voltages",
-    "url": [],
-    "knowledge": [],
+    "url": [
+        "https://litfl.com/low-qrs-voltage-ecg-library/",
+    ],
+    "knowledge": [
+        "amplitudes of all the QRS complexes in the limb leads are < 5mm (0.5mV); or  amplitudes of all the QRS complexes in the precordial leads are < 10mm (1mV)",
+    ],
 })
 
 NSIVCB = ED({
     "fullname": "nonspecific intraventricular conduction disorder",
-    "url": [],
-    "knowledge": [],
+    "url": [
+
+    ],
+    "knowledge": [
+
+    ],
 })
 
 PR = ED({
     "fullname": "pacing rhythm",
-    "url": [],
-    "knowledge": [],
+    "url": [
+
+    ],
+    "knowledge": [
+
+    ],
 })
 
 PAC = ED({
@@ -218,50 +243,82 @@ PVC = ED({
 
 LPR = ED({
     "fullname": "prolonged pr interval",
-    "url": [],
-    "knowledge": [],
+    "url": [
+
+    ],
+    "knowledge": [
+
+    ],
 })
 
 LQT = ED({
     "fullname": "prolonged qt interval",
-    "url": [],
-    "knowledge": [],
+    "url": [
+
+    ],
+    "knowledge": [
+
+    ],
 })
 
 QAb = ED({
     "fullname": "qwave abnormal",
-    "url": [],
-    "knowledge": [],
+    "url": [
+
+    ],
+    "knowledge": [
+
+    ],
 })
 
 RAD = ED({
     "fullname": "right axis deviation",
-    "url": [],
-    "knowledge": [],
+    "url": [
+
+    ],
+    "knowledge": [
+
+    ],
 })
 
 SA = ED({
     "fullname": "sinus arrhythmia",
-    "url": [],
-    "knowledge": [],
+    "url": [
+
+    ],
+    "knowledge": [
+
+    ],
 })
 
 SB = ED({
     "fullname": "sinus bradycardia",
-    "url": [],
-    "knowledge": [],
+    "url": [
+
+    ],
+    "knowledge": [
+
+    ],
 })
 
 SNR = ED({
     "fullname": "sinus rhythm",  # the NORMAL rhythm
-    "url": [],
-    "knowledge": [],
+    "url": [
+
+    ],
+    "knowledge": [
+
+    ],
 })
 
 STach = ED({
     "fullname": "sinus tachycardia",
-    "url": [],
-    "knowledge": [],
+    "url": [
+
+    ],
+    "knowledge": [
+
+    ],
 })
 
 SVPB = ED({
@@ -274,40 +331,52 @@ SVPB = ED({
 
 TAb = ED({
     "fullname": "t wave abnormal",
-    "url": [],
-    "knowledge": [],
+    "url": [
+
+    ],
+    "knowledge": [
+
+    ],
 })
 
 TInv = ED({
     "fullname": "t wave inversion",
-    "url": [],
-    "knowledge": [],
+    "url": [
+
+    ],
+    "knowledge": [
+
+    ],
 })
 
 VPB = ED({
     "fullname": "ventricular premature beats",
-    "url": [],
-    "knowledge": [],
+    "url": [
+
+    ],
+    "knowledge": [
+
+    ],
 })
 
 SPB = SVPB  # alias
 
 STD = ED({
-    "fullname": "",
+    "fullname": "st depression",
     "url": [
         "",
     ],
     "knowledge": [
-        ""
+        "",
     ],
 })
 
 STE = ED({
-    "fullname": "",
+    "fullname": "st elevation",
     "url": [
         "",
     ],
     "knowledge": [
-        ""
+        "",
     ],
 })
