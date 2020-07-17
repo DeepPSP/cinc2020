@@ -16,15 +16,19 @@ from easydict import EasyDict as ED
 
 
 __all__ = [
-    "AF",
-    "IAVB",
-    "LBBB", "RBBB",
-    "PAC", "PJC", "PVC", "SPB",
-    "STD", "STE",
+    "AF", "AFL",  # atrial
+    "IAVB", "LBBB", "RBBB", "CRBBB", "IRBBB", "LAnFB", "NSIVCB",  # conduction block
+    "PAC", "PJC", "PVC", "SPB",  # premature: qrs, morphology
+    "LPR", "LQT", "QAb", "TAb", "TInv",  # wave morphology
+    "LAD", "RAD",  # axis
+    "Brady", "LQRSV",  # qrs (RR interval, amplitude)
+    "SA", "SB", "SNR", "STach",  # sinus
+    "PR",  # pacer
+    "STD", "STE",  # ST segments
 ]
 
 
-AF = ED({
+AF = ED({  # rr, morphology
     "fullname": "atrial fibrillation",
     "url": [
         "https://litfl.com/atrial-fibrillation-ecg-library/",
@@ -41,19 +45,34 @@ AF = ED({
     ],
 })
 
-AFL = ED({
+AFL = ED({  # rr, morphology
     "fullname": "atrial flutter",
-    "url": [],
-    "knowledge": [],
+    "url": [
+        "https://litfl.com/atrial-flutter-ecg-library/",
+        "https://en.wikipedia.org/wiki/Atrial_flutter",
+    ],
+    "knowledge": [
+        "a type of supraventricular tachycardia caused by a re-entry circuit within the right atrium",
+        "fairly predictable atrial rate (NOT equal to ventricular rate for AFL) of around 300 bpm (range 200-400)",
+        "fixed AV blocks, with ventricular rate a fraction (1/2,1/3,etc.) of atrial rate",
+        "narrow complex tachycardia (ref. supraventricular & ventricular rate)",
+        "flutter waves ('saw-tooth' pattern) best seen in leads II, III, aVF (may be more easily spotted by turning the ECG upside down), may resemble P waves in V1",
+        "loss of the isoelectric baseline",  # important
+    ],
 })
 
-Brady = ED({
+Brady = ED({  # rr
     "fullname": "bradycardia",
-    "url": [],
-    "knowledge": [],
+    "url": [
+        "https://litfl.com/bradycardia-ddx/",
+        "https://en.wikipedia.org/wiki/Bradycardia"
+    ],
+    "knowledge": [
+        "heart rate <60/min in an adult",
+    ],
 })
 
-IAVB = {
+IAVB = {  # morphology
     "fullname": "1st degree av block",
     "url": [
         "https://litfl.com/first-degree-heart-block-ecg-library/",
@@ -67,7 +86,7 @@ IAVB = {
     ],
 }
 
-LBBB = ED({
+LBBB = ED({  # morphology
     "fullname": "left bundle branch block",
     "url": [
         "https://litfl.com/left-bundle-branch-block-lbbb-ecg-library/",
@@ -84,34 +103,50 @@ LBBB = ED({
     ],
 })
 
-RBBB = ED({
+RBBB = ED({  # morphology
     "fullname": "right bundle branch block",
     "url": [
         "https://litfl.com/right-bundle-branch-block-rbbb-ecg-library/",
         "https://en.wikipedia.org/wiki/Right_bundle_branch_block",
     ],
     "knowledge": [
-        "Broad QRS > 100 ms (incomplete block) or > 120 ms (complete block)",
-        "Leads V1-3: RSR’ pattern (‘M-shaped’ QRS complex); sometimes a broad monophasic R wave or a qR complex in V1",
-        "Lateral leads: wide, slurred S wave",
+        "broad QRS > 100 ms (incomplete block) or > 120 ms (complete block)",
+        "leads V1-3: RSR’ pattern (‘M-shaped’ QRS complex); sometimes a broad monophasic R wave or a qR complex in V1",
+        "lateral leads: wide, slurred S wave",
     ],
 })
 
-CRBBB = ED({
+CRBBB = ED({  # morphology
     "fullname": "complete right bundle branch block",
-    "url": [],
-    "knowledge": [],
+    "url": [
+        "https://litfl.com/right-bundle-branch-block-rbbb-ecg-library/",
+        "https://en.wikipedia.org/wiki/Right_bundle_branch_block",
+    ],
+    "knowledge": [
+        "broad QRS > 120 ms",
+        "leads V1-3: RSR’ pattern (‘M-shaped’ QRS complex); sometimes a broad monophasic R wave or a qR complex in V1",
+        "lateral leads: wide, slurred S wave",
+    ],
 })
 
-IRBBB = ED({
+IRBBB = ED({  # morphology
     "fullname": "incomplete right bundle branch block",
-    "url": [],
-    "knowledge": [],
+    "url": [
+        "https://litfl.com/right-bundle-branch-block-rbbb-ecg-library/",
+        "https://en.wikipedia.org/wiki/Right_bundle_branch_block#Diagnosis",
+    ],
+    "knowledge": [
+        "defined as an RSR’ pattern in V1-3 with QRS duration < 120ms (and > 100ms?)",
+        "normal variant, commonly seen in children (of no clinical significance)"
+    ],
 })
 
 LAnFB = ED({
     "fullname": "left anterior fascicular block",
-    "url": [],
+    "url": [
+        "https://litfl.com/left-anterior-fascicular-block-lafb-ecg-library/",
+        "https://en.wikipedia.org/wiki/Left_anterior_fascicular_block",
+    ],
     "knowledge": [],
 })
 

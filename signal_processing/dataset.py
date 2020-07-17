@@ -132,6 +132,8 @@ class CINC2020(object):
                     for tranche in "ABCDEF"
             })
             print(f"Done in {time.time() - start} seconds!")
+            with open(record_list_fp, "w") as f:
+                json.dump(self.all_records, f)
 
         self.rec_prefix = ED({
             "A": "A", "B": "Q", "C": "I", "D": "S", "E": "HR", "F": "E",
