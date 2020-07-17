@@ -182,20 +182,24 @@ LQRSV = ED({  # voltage
 NSIVCB = ED({
     "fullname": "nonspecific intraventricular conduction disorder",
     "url": [
-
+        "https://ecgwaves.com/topic/nonspecific-intraventricular-conduction-delay-defect/"
     ],
     "knowledge": [
-
+        "widended (> 110ms) QRS complex, with morphology different from LBBB and RBBB",
+        ""
     ],
 })
 
 PR = ED({
     "fullname": "pacing rhythm",
     "url": [
-
+        "https://litfl.com/pacemaker-rhythms-normal-patterns/",
     ],
     "knowledge": [
-
+        "morphology  is dependent on the pacing mode (AAI, VVI, DDD, Magnet) used",
+        "there are pacing spikes: vertical spikes of short duration, usually 2 ms",  # important
+        "AAI (atrial pacing): pacing spike precedes the p wave",
+        "VVI (atrial pacing): pacing spike precedes the QRS complex; morphology similar to LBBB or RBBB",
     ],
 })
 
