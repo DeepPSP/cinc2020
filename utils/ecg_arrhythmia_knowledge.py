@@ -182,11 +182,13 @@ LQRSV = ED({  # voltage
 NSIVCB = ED({
     "fullname": "nonspecific intraventricular conduction disorder",
     "url": [
-        "https://ecgwaves.com/topic/nonspecific-intraventricular-conduction-delay-defect/"
+        "https://ecgwaves.com/topic/nonspecific-intraventricular-conduction-delay-defect/",
+        "https://www.dynamed.com/condition/intraventricular-conduction-disorders-including-left-and-right-bundle-branch-block-lbbb-and-rbbb",
+        "https://www.sciencedirect.com/science/article/pii/S0735109708041351",
+        "https://www.heartrhythmjournal.com/article/S1547-5271(15)00073-9/abstract",
     ],
     "knowledge": [
-        "widended (> 110ms) QRS complex, with morphology different from LBBB and RBBB",
-        ""
+        "widended (> 110ms) QRS complex, with not meeting the criteria (morphology different from) for LBBB and RBBB",
     ],
 })
 
@@ -197,7 +199,7 @@ PR = ED({
     ],
     "knowledge": [
         "morphology  is dependent on the pacing mode (AAI, VVI, DDD, Magnet) used",
-        "there are pacing spikes: vertical spikes of short duration, usually 2 ms",  # important
+        "there are pacing spikes: vertical spikes of short duration, usually 2 ms (500Hz)",  # important
         "AAI (atrial pacing): pacing spike precedes the p wave",
         "VVI (atrial pacing): pacing spike precedes the QRS complex; morphology similar to LBBB or RBBB",
     ],
@@ -248,80 +250,84 @@ PVC = ED({
 LPR = ED({
     "fullname": "prolonged pr interval",
     "url": [
-
+        "https://litfl.com/pr-interval-ecg-library/",
+        "https://en.wikipedia.org/wiki/PR_interval",
+        "https://www.healio.com/cardiology/learn-the-heart/ecg-review/ecg-interpretation-tutorial/pr-interval",
     ],
     "knowledge": [
-
+        "PR interval >200ms",
     ],
 })
 
 LQT = ED({
     "fullname": "prolonged qt interval",
     "url": [
-
+        "https://litfl.com/qt-interval-ecg-library/",
+        ""
     ],
     "knowledge": [
-
+        "LQT is measured by QTc (see ref url)"
+        "QTc is prolonged if > 440ms in men or > 460ms in women (or > 480ms?)",
     ],
 })
 
 QAb = ED({
     "fullname": "qwave abnormal",
     "url": [
-
+        "",
     ],
     "knowledge": [
-
+        "",
     ],
 })
 
 RAD = ED({
     "fullname": "right axis deviation",
     "url": [
-
+        "",
     ],
     "knowledge": [
-
+        "",
     ],
 })
 
 SA = ED({
     "fullname": "sinus arrhythmia",
     "url": [
-
+        "",
     ],
     "knowledge": [
-
+        "",
     ],
 })
 
 SB = ED({
     "fullname": "sinus bradycardia",
     "url": [
-
+        "",
     ],
     "knowledge": [
-
+        "",
     ],
 })
 
 SNR = ED({
     "fullname": "sinus rhythm",  # the NORMAL rhythm
     "url": [
-
+        "",
     ],
     "knowledge": [
-
+        "",
     ],
 })
 
 STach = ED({
     "fullname": "sinus tachycardia",
     "url": [
-
+        "",
     ],
     "knowledge": [
-
+        "",
     ],
 })
 
@@ -336,30 +342,30 @@ SVPB = ED({
 TAb = ED({
     "fullname": "t wave abnormal",
     "url": [
-
+        "",
     ],
     "knowledge": [
-
+        "",
     ],
 })
 
 TInv = ED({
     "fullname": "t wave inversion",
     "url": [
-
+        "",
     ],
     "knowledge": [
-
+        "",
     ],
 })
 
 VPB = ED({
     "fullname": "ventricular premature beats",
     "url": [
-
+        "",
     ],
     "knowledge": [
-
+        "",
     ],
 })
 
