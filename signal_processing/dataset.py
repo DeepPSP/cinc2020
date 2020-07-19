@@ -62,6 +62,17 @@ class CINC2020(object):
         F. (Georgia): 500 Hz
     7. all data are recorded in the leads ordering of
         ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6']
+        using for example the following code:
+        >>> db_dir = "/media/cfs/wenhao71/data/cinc2020_data/"
+        >>> working_dir = "./working_dir"
+        >>> data_gen = CINC2020(db_dir=db_dir,working_dir=working_dir)
+        >>> set_leads = []
+        >>> for tranche, l_rec in data_gen.all_records.items():
+        ...     for rec in l_rec:
+        ...         ann = data_gen.load_ann(rec)
+        ...         leads = ann['df_leads']['lead_name'].values.tolist()
+        ...     if leads not in set_leads:
+        ...         set_leads.append(leads)
 
     NOTE:
     -----
@@ -131,9 +142,9 @@ class CINC2020(object):
         prefixes can be obtained using the following code:
         >>> pfs = ED({k:set() for k in "ABCDEF"})
         >>> for k, p in db_dir.items():
-        >>>     af = os.listdir(p)
-        >>>     for fn in af:
-        >>>         pfs[k].add("".join(re.findall(r"[A-Z]", os.path.splitext(fn)[0])))
+        ...     af = os.listdir(p)
+        ...     for fn in af:
+        ...         pfs[k].add("".join(re.findall(r"[A-Z]", os.path.splitext(fn)[0])))
         """
 
         self.freq = {
