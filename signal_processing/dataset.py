@@ -5,6 +5,7 @@ import re
 import json
 import time
 import logging
+import pprint
 from datetime import datetime
 from typing import Union, Optional, Any, List, Dict, NoReturn
 from numbers import Real
@@ -20,6 +21,7 @@ from utils.misc import get_record_list_recursive
 from utils.scoring_aux_data import (
     dx_mapping_all, dx_mapping_scored, dx_mapping_unscored,
 )
+from utils import ecg_arrhythmia_knowledge as EAK
 
 
 __all__ = [
@@ -85,6 +87,7 @@ class CINC2020(object):
         - RBBB, CRBBB (NOT including IRBBB)
         - PAC, SVPB
         - PVC, VPB
+    7. unfortunately, the newly added tranches (C - F) have baseline drift and are much noisier. In contrast, CPSC data have had baseline removed and have higher SNR
 
     ISSUES:
     -------
@@ -464,7 +467,7 @@ class CINC2020(object):
             f.write("\n".join([recording_string, class_string, label_string, score_string, ""]))
 
 
-    def plot(self, rec:str, leads:Optional[Union[str, List[str]]]=None, **kwargs):
+    def plot(self, rec:str, leads:Optional[Union[str, List[str]]]=None, **kwargs) -> NoReturn:
         """ not finished, not checked,
 
         Parameters:
@@ -474,6 +477,8 @@ class CINC2020(object):
         leads: str or list of str, optional,
             the leads to 
         kwargs: dict,
+
+        TODO: slice too long records, and plot separately for each segment
         """
         tranche = self._get_tranche(rec)
         if tranche in "CDE":
@@ -532,3 +537,33 @@ class CINC2020(object):
             axes[idx].set_ylabel('Voltage [μV]')
         plt.subplots_adjust(hspace=0.2)
         plt.show()
+
+
+    @classmethod
+    def get_arrhythmia_knowledge(cls, arrhythmias:Union[str,List[str]], **kwargs) -> NoReturn:
+        """ finished, not checked,
+
+        knowledge about ECG features of specific arrhythmias,
+
+        Parameters:
+        -----------
+        arrhythmias: str, or list of str,
+            the arrhythmia(s) to check, in abbreviations
+
+        Returns:
+        --------
+        to write
+        """
+        if isinstance(arrhythmias, str):
+            d = [arrhythmias]
+        else:
+            d = arrhythmias
+        pp = pprint.PrettyPrinter(indent=4)
+        # unsupported = [item for item in d if item not in dx_mapping_all['Abbreviation']]
+        unsupported = [item for item in d if item not in dx_mapping_scored['Abbreviation']]
+        assert len(unsupported) == 0, \
+            f"{unsupported} {'is' if len(unsupported)==1 else 'are'} not supported!"
+        for idx, item in enumerate(d):
+            pp.print(eval(f"EAK.{item}"))
+            if idx < len(d)-1:
+                print("*"*110)

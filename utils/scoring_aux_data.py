@@ -217,7 +217,7 @@ def load_weights(classes:Sequence[Union[int,str]]=None, return_fmt:str='np') -> 
     Parameters:
     -----------
     classes: sequence of str or int, optional,
-        the classes to load their weights,
+        the classes (abbr. or SNOMED CT Code) to load their weights,
         if not given, weights of all classes in `dx_mapping_scored` will be loaded
     return_fmt: str, default 'np',
         'np' or 'pd', the values in the form of a 2d array or a DataFrame
@@ -237,10 +237,11 @@ def load_weights(classes:Sequence[Union[int,str]]=None, return_fmt:str='np') -> 
     if return_fmt.lower() == 'np':
         mat = mat.values
     elif return_fmt.lower() == 'pd':
+        # columns and indices back to the original input format
         mat.columns = list(map(str, classes))
         mat.index = list(map(str, classes))
     else:
-        raise ValueError(f"format of {return_fmt} is unsupported")
+        raise ValueError(f"format of {return_fmt} is not supported!")
     
     return mat
 
