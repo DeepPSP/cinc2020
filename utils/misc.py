@@ -84,10 +84,10 @@ def dict_to_str(d:Union[dict, list, tuple], current_depth:int=1, indent_spaces:i
                 s += f"{prefix}{val}\n"
     elif isinstance(d, dict):
         for k, v in d.items():
+            key = f'\042{k}\042' if isinstance(k, str) else k
             if isinstance(v, (dict, list, tuple)):
-                s += f"{prefix}{k}: {dict_to_str(v, current_depth+1)}\n"
+                s += f"{prefix}{key}: {dict_to_str(v, current_depth+1)}\n"
             else:
-                key = f'\042{k}\042' if isinstance(k, str) else k
                 val = f'\042{v}\042' if isinstance(v, str) else v
                 s += f"{prefix}{key}: {val}\n"
     s += unit_indent*(current_depth-1)

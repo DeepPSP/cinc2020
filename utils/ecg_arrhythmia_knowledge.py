@@ -40,7 +40,7 @@ AF = ED({  # rr, morphology
         "absence of an isoelectric baseline",
         "variable ventricular rate",
         "QRS complexes usually < 120 ms unless pre-existing bundle branch block, accessory pathway, or rate related aberrant conduction",
-        "fibrillatory waves (f-wave) may be present and can be either fine (amplitude < 0.5mm) or coarse (amplitude >0.5mm)",
+        "fibrillatory waves (f-wave) may be present and can be either fine (amplitude < 0.5mm) or coarse (amplitude > 0.5mm)",
         "fibrillatory waves (f-wave) may mimic P waves leading to misdiagnosis",
     ],
 })
@@ -68,7 +68,7 @@ Brady = ED({  # rr
         "https://en.wikipedia.org/wiki/Bradycardia"
     ],
     "knowledge": [
-        "heart rate (ventricular rate) <60/min in an adult",
+        "heart rate (ventricular rate) < 60/min in an adult",
     ],
 })
 
