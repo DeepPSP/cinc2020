@@ -120,20 +120,9 @@ class CINC2020(object):
             "E": os.path.join(self.db_dir_base, "WFDB"),
             "F": os.path.join(self.db_dir_base, "Training_E", "WFDB"),
         })
-        record_list_fp = os.path.join(utils._BASE_DIR, "utils", "record_list.json")
-        if os.path.isfile(record_list_fp):
-            with open(record_list_fp, "r") as f:
-                self.all_records = json.load(f)
-        else:
-            print("Please wait patiently to let the reader find all records of all the tranches...")
-            start = time.time()
-            self.all_records = ED({
-                tranche: get_record_list_recursive(self.db_dirs[tranche], self.rec_ext) \
-                    for tranche in "ABCDEF"
-            })
-            print(f"Done in {time.time() - start} seconds!")
-            with open(record_list_fp, "w") as f:
-                json.dump(self.all_records, f)
+
+        self.all_records = None
+        self._ls_rec()
 
         self.rec_prefix = ED({
             "A": "A", "B": "Q", "C": "I", "D": "S", "E": "HR", "F": "E",
@@ -176,6 +165,28 @@ class CINC2020(object):
         n = rec.replace(prefix,"")
         sid = int(f"{s2d[prefix]}{'0'*(8-len(n))}{n}")
         return sid
+
+    
+    def _ls_rec(self) -> NoReturn:
+        """ finished, checked,
+
+        list all the records and load into `self.all_records`,
+        facilitating further uses
+        """
+        record_list_fp = os.path.join(utils._BASE_DIR, "utils", "record_list.json")
+        if os.path.isfile(record_list_fp):
+            with open(record_list_fp, "r") as f:
+                self.all_records = json.load(f)
+        else:
+            print("Please wait patiently to let the reader find all records of all the tranches...")
+            start = time.time()
+            self.all_records = ED({
+                tranche: get_record_list_recursive(self.db_dirs[tranche], self.rec_ext) \
+                    for tranche in "ABCDEF"
+            })
+            print(f"Done in {time.time() - start} seconds!")
+            with open(record_list_fp, "w") as f:
+                json.dump(self.all_records, f)
 
 
     def _set_logger(self, prefix:Optional[str]=None):
