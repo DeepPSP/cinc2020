@@ -155,6 +155,11 @@ class CINC2020(object):
         self.all_leads = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6',]
 
         self.df_ecg_arrhythmia = dx_mapping_all[['Dx','SNOMED CT Code','Abbreviation']]
+        self.ann_items = [
+            'rec_name', 'nb_leads','freq','nb_samples','datetime','age','sex',
+            'diagnosis','df_leads',
+            'medical_prescription','history','symptom_or_surgery',
+        ]
 
 
     def get_subject_id(self, rec:str) -> int:
@@ -242,10 +247,23 @@ class CINC2020(object):
 
 
     def _get_tranche(self, rec:str) -> str:
-        """
+        """ finished, checked,
+
+        get the tranche's symbol (one of 'A','B','C','D','E','F') of a record via its name
+
+        Parameters:
+        -----------
+        rec: str,
+            name of the record
+
+        Returns:
+        --------
+        tranche, str,
+            symbol of the tranche, ref. `self.rec_prefix`
         """
         prefix = "".join(re.findall(r"[A-Z]", rec))
-        return {v:k for k,v in self.rec_prefix.items()}[prefix]
+        tranche = {v:k for k,v in self.rec_prefix.items()}[prefix]
+        return tranche
 
 
     def load_data(self, rec:str, data_format='channels_last') -> np.ndarray:
@@ -284,7 +302,7 @@ class CINC2020(object):
         Returns:
         --------
         ann_dict, dict,
-            the annotations with items: ref. self.ann_items
+            the annotations with items: ref. `self.ann_items`
         """
         tranche = self._get_tranche(rec)
         ann_fp = os.path.join(self.db_dirs[tranche], rec + self.ann_ext)
@@ -342,24 +360,32 @@ class CINC2020(object):
         return ann_dict
 
     
-    def get_labels(self, rec:str, fullname:bool=False) -> List[str]:
+    def get_labels(self, rec:str, scored_only:bool=True, abbr:bool=True) -> List[str]:
         """ finished, checked,
         
         Parameters:
         -----------
         rec: str,
             name of the record
+        scored_only: bool, default True,
+            only get the labels that are scored in the CINC2020 official phase
+        abbr: bool, default True,
+            labels in abbreviations or fullnames
         
         Returns:
         --------
         labels, list,
-            the list of labels (abbr. diagnosis_abbr)
+            the list of labels
         """
         ann_dict = self.load_ann(rec)
-        if fullname:
-            labels = ann_dict['diagnosis_fullname']
+        if scored_only:
+            labels = ann_dict['diagnosis_scored']
         else:
-            labels = ann_dict['diagnosis_abbr']
+            labels = ann_dict['diagnosis']
+        if abbr:
+            labels = labels['diagnosis_abbr']
+        else:
+            labels = labels['diagnosis_fullname']
         return labels
 
     
@@ -438,7 +464,7 @@ class CINC2020(object):
                 "E": "ptb-xl/1.0.1",
             })
             url = f"https://physionet.org/lightwave/?db={physionet_lightwave_suffix[tranche]}"
-            print("better view: {}\n"*3)
+            print(f"better view: {url}")
             
         if 'plt' not in dir():
             import matplotlib.pyplot as plt
@@ -446,12 +472,13 @@ class CINC2020(object):
             leads = self.all_leads
         assert all([l in self.all_leads for l in leads])
 
-        lead_list = self.load_ann(rec)['df_leads']['lead_name'].tolist()
-        lead_indices = [lead_list.index(l) for l in leads]
+        # lead_list = self.load_ann(rec)['df_leads']['lead_name'].tolist()
+        # lead_indices = [lead_list.index(l) for l in leads]
+        lead_indices = [self.all_leads.index(l) for l in leads]
         data = self.load_data(rec)[lead_indices]
         y_ranges = np.max(np.abs(data), axis=1) + 100
 
-        diag = self.get_diagnosis(rec, full_name=False)
+        diag = self.get_labels(rec, scored_only=True, abbr=True)
 
         nb_leads = len(leads)
 
