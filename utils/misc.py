@@ -7,6 +7,7 @@ from typing import Union, Optional, List
 
 __all__ = [
     "get_record_list_recursive",
+    "dict_to_str",
 ]
 
 
@@ -45,3 +46,50 @@ def get_record_list_recursive(db_dir:str, rec_ext:str) -> List[str]:
     res = sorted(res)
 
     return res
+
+
+def dict_to_str(d:Union[dict, list, tuple], current_depth:int=1, indent_spaces:int=4) -> str:
+    """ finished, checked,
+
+    convert a (possibly) nested dict into a `str` of json-like formatted form,
+    this nested dict might also contain lists or tuples of dict (and of str, int, etc.)
+
+    Parameters:
+    -----------
+    d: dict, or list, or tuple,
+        a (possibly) nested `dict`, or a list of `dict`
+    current_depth: int, default 1,
+        depth of `d` in the (possible) parent `dict` or `list`
+    indent_spaces: int, default 4,
+        the indent spaces of each depth
+
+    Returns:
+    --------
+    s: str,
+        the formatted string
+    """
+    assert isinstance(d, (dict, list, tuple))
+    if len(d) == 0:
+        s = f"{{}}" if isinstance(d, dict) else f"[]"
+        return s
+    s = "\n"
+    unit_indent = " "*indent_spaces
+    prefix = unit_indent*current_depth
+    if isinstance(d, (list, tuple)):
+        for v in d:
+            if isinstance(v, (dict, list, tuple)):
+                s += f"{prefix}{dict_to_str(v, current_depth+1)}\n"
+            else:
+                val = f'\042{v}\042' if isinstance(v, str) else v
+                s += f"{prefix}{val}\n"
+    elif isinstance(d, dict):
+        for k, v in d.items():
+            if isinstance(v, (dict, list, tuple)):
+                s += f"{prefix}{k}: {dict_to_str(v, current_depth+1)}\n"
+            else:
+                key = f'\042{k}\042' if isinstance(k, str) else k
+                val = f'\042{v}\042' if isinstance(v, str) else v
+                s += f"{prefix}{key}: {val}\n"
+    s += unit_indent*(current_depth-1)
+    s = f"{{{s}}}" if isinstance(d, dict) else f"[{s}]"
+    return s

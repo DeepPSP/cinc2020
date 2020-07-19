@@ -5,7 +5,7 @@ import re
 import json
 import time
 import logging
-import pprint
+# import pprint
 from datetime import datetime
 from typing import Union, Optional, Any, List, Dict, NoReturn
 from numbers import Real
@@ -17,7 +17,7 @@ from scipy.io import loadmat
 from easydict import EasyDict as ED
 
 import utils
-from utils.misc import get_record_list_recursive
+from utils.misc import get_record_list_recursive, dict_to_str
 from utils.scoring_aux_data import (
     dx_mapping_all, dx_mapping_scored, dx_mapping_unscored,
 )
@@ -558,12 +558,13 @@ class CINC2020(object):
             d = [arrhythmias]
         else:
             d = arrhythmias
-        pp = pprint.PrettyPrinter(indent=4)
+        # pp = pprint.PrettyPrinter(indent=4)
         # unsupported = [item for item in d if item not in dx_mapping_all['Abbreviation']]
-        unsupported = [item for item in d if item not in dx_mapping_scored['Abbreviation']]
+        unsupported = [item for item in d if item not in dx_mapping_scored['Abbreviation'].values]
         assert len(unsupported) == 0, \
             f"{unsupported} {'is' if len(unsupported)==1 else 'are'} not supported!"
         for idx, item in enumerate(d):
-            pp.print(eval(f"EAK.{item}"))
+            # pp.pprint(eval(f"EAK.{item}"))
+            print(dict_to_str(eval(f"EAK.{item}")))
             if idx < len(d)-1:
                 print("*"*110)
