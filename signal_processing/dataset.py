@@ -334,13 +334,25 @@ class CINC2020(object):
         ann_dict['diagnosis']['diagnosis_code'] = [l for l in header_data if l.startswith('#Dx')][0].split(": ")[-1].split(",")
         try:
             ann_dict['diagnosis']['diagnosis_code'] = [int(item) for item in ann_dict['diagnosis']['diagnosis_code']]
-            selection = dx_mapping_all['SNOMED CT Code'].isin(ann_dict['diagnosis']['diagnosis_code'])
-            ann_dict['diagnosis']['diagnosis_abbr'] = dx_mapping_all[selection]['Abbreviation'].tolist()
-            ann_dict['diagnosis']['diagnosis_fullname'] = dx_mapping_all[selection]['Dx'].tolist()
+            # selection = dx_mapping_all['SNOMED CT Code'].isin(ann_dict['diagnosis']['diagnosis_code'])
+            # ann_dict['diagnosis']['diagnosis_abbr'] = dx_mapping_all[selection]['Abbreviation'].tolist()
+            # ann_dict['diagnosis']['diagnosis_fullname'] = dx_mapping_all[selection]['Dx'].tolist()
+            ann_dict['diagnosis']['diagnosis_abbr'] = \
+                [ dx_mapping_all[dx_mapping_all['SNOMED CT Code']==dc]['Abbreviation'].values[0] \
+                    for dc in ann_dict['diagnosis']['diagnosis_code'] ]
+            ann_dict['diagnosis']['diagnosis_fullname'] = \
+                [ dx_mapping_all[dx_mapping_all['SNOMED CT Code']==dc]['Dx'].values[0] \
+                    for dc in ann_dict['diagnosis']['diagnosis_code'] ]
             scored_indices = np.isin(ann_dict['diagnosis']['diagnosis_code'], dx_mapping_scored['SNOMED CT Code'].values)
-            ann_dict['diagnosis_scored']['diagnosis_code'] = [item for idx, item in enumerate(ann_dict['diagnosis']['diagnosis_code']) if scored_indices[idx]]
-            ann_dict['diagnosis_scored']['diagnosis_abbr'] = [item for idx, item in enumerate(ann_dict['diagnosis']['diagnosis_abbr']) if scored_indices[idx]]
-            ann_dict['diagnosis_scored']['diagnosis_fullname'] = [item for idx, item in enumerate(ann_dict['diagnosis']['diagnosis_fullname']) if scored_indices[idx]]
+            ann_dict['diagnosis_scored']['diagnosis_code'] = \
+                [ item for idx, item in enumerate(ann_dict['diagnosis']['diagnosis_code']) \
+                    if scored_indices[idx] ]
+            ann_dict['diagnosis_scored']['diagnosis_abbr'] = \
+                [ item for idx, item in enumerate(ann_dict['diagnosis']['diagnosis_abbr']) \
+                    if scored_indices[idx] ]
+            ann_dict['diagnosis_scored']['diagnosis_fullname'] = \
+                [ item for idx, item in enumerate(ann_dict['diagnosis']['diagnosis_fullname']) \
+                    if scored_indices[idx] ]
         except:  # the old version, the Dx's are abbreviations
             ann_dict['diagnosis']['diagnosis_abbr'] = ann_dict['diagnosis']['diagnosis_code']
             selection = dx_mapping_all['Abbreviation'].isin(ann_dict['diagnosis']['diagnosis_abbr'])
@@ -485,7 +497,8 @@ class CINC2020(object):
         data = self.load_data(rec, data_format='channels_first')[lead_indices]
         y_ranges = np.max(np.abs(data), axis=1) + 100
 
-        diag = self.get_labels(rec, scored_only=True, abbr=True)
+        diag_scored = self.get_labels(rec, scored_only=True, abbr=True)
+        diag_all = self.get_labels(rec, scored_only=False, abbr=True)
 
         nb_leads = len(leads)
 
@@ -496,8 +509,9 @@ class CINC2020(object):
         nl = "\n"
         fig, axes = plt.subplots(nb_leads, 1, sharex=True, figsize=(fig_sz_w, np.sum(fig_sz_h)))
         for idx in range(nb_leads):
-            # axes[idx].plot(t, data[idx], label='lead - ' + leads[idx] + '\n' + 'labels - ' + ",".join(diag))
-            axes[idx].plot(t, data[idx], label=f'lead - {leads[idx]}{nl}labels - {",".join(diag)}')
+            # axes[idx].plot(t, data[idx], label='lead - ' + leads[idx] + '\n' + 'labels - ' + ",".join(diag_scored))
+            # axes[idx].plot(t, data[idx], label=f'lead - {leads[idx]}{nl}labels_s - {",".join(diag_scored)}{nl}labels_a - {",".join(diag_all)}')
+            axes[idx].plot(t, data[idx], label=f'lead - {leads[idx]}')
             axes[idx].axhline(y=0, linestyle='-', linewidth='1.0', color='red')
             axes[idx].xaxis.set_major_locator(plt.MultipleLocator(0.2))
             axes[idx].xaxis.set_minor_locator(plt.MultipleLocator(0.04))
@@ -507,6 +521,8 @@ class CINC2020(object):
             axes[idx].grid(which='minor', linestyle=':', linewidth='0.5', color='black')
             # add extra info. to legend
             # https://stackoverflow.com/questions/16826711/is-it-possible-to-add-a-string-as-a-legend-item-in-matplotlib
+            axes[idx].plot([], [], ' ', label=f"labels_s - {','.join(diag_scored)}")
+            axes[idx].plot([], [], ' ', label=f"labels_a - {','.join(diag_all)}")
             axes[idx].plot([], [], ' ', label=f"tranche - {self.tranche_names[tranche]}")
             axes[idx].plot([], [], ' ', label=f"freq - {self.freq[tranche]}")
             axes[idx].legend(loc='upper left')
