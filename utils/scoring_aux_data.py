@@ -19,8 +19,8 @@ __all__ = [
     "dx_mapping_all",
     "load_weights",
     "get_class",
-    "dx_cooccurence_all",
-    "dx_cooccurence_scored",
+    "dx_cooccurrence_all",
+    "dx_cooccurrence_scored",
 ]
 
 
@@ -296,7 +296,7 @@ def get_class(snomed_ct_code:Union[str,int]) -> Dict[str,str]:
     return arrhythmia_class
 
 
-dx_cooccurence_all = pd.read_csv(StringIO(""",IAVB,AF,AFL,Brady,CRBBB,IRBBB,LAnFB,LAD,LBBB,LQRSV,NSIVCB,PR,PAC,PVC,LPR,LQT,QAb,RAD,RBBB,SA,SB,SNR,STach,SVPB,TAb,TInv,VPB,IIAVB,abQRS,AJR,AMI,AMIs,AnMIs,AnMI,AB,AFAFL,AH,AP,ATach,AVJR,AVB,BPAC,BTS,BBB,CD,CAF,CMI,CHB,CIAHB,CHD,SQT,DIB,ERe,FB,HF,HVD,HTV,IR,ILBBB,ICA,IIs,ISTD,JE,JPC,JTach,LIs,LAA,LAE,LAH,LPFB,LVH,LVS,MoI,MI,MIs,NSSTTA,OldMI,VPVC,PAF,PSVT,PVT,RAb,RAF,RAAb,RAH,RVH,STC,SPRI,SAB,SND,STD,STE,STIAb,SVB,SVT,ALR,TIA,UAb,VBig,VEB,VEsB,VEsR,VF,VFL,VH,VPP,VPEx,VTach,VTrig,WAP,WPW
+dx_cooccurrence_all = pd.read_csv(StringIO(""",IAVB,AF,AFL,Brady,CRBBB,IRBBB,LAnFB,LAD,LBBB,LQRSV,NSIVCB,PR,PAC,PVC,LPR,LQT,QAb,RAD,RBBB,SA,SB,SNR,STach,SVPB,TAb,TInv,VPB,IIAVB,abQRS,AJR,AMI,AMIs,AnMIs,AnMI,AB,AFAFL,AH,AP,ATach,AVJR,AVB,BPAC,BTS,BBB,CD,CAF,CMI,CHB,CIAHB,CHD,SQT,DIB,ERe,FB,HF,HVD,HTV,IR,ILBBB,ICA,IIs,ISTD,JE,JPC,JTach,LIs,LAA,LAE,LAH,LPFB,LVH,LVS,MoI,MI,MIs,NSSTTA,OldMI,VPVC,PAF,PSVT,PVT,RAb,RAF,RAAb,RAH,RVH,STC,SPRI,SAB,SND,STD,STE,STIAb,SVB,SVT,ALR,TIA,UAb,VBig,VEB,VEsB,VEsR,VF,VFL,VH,VPP,VPEx,VTach,VTrig,WAP,WPW
 IAVB,2394,24,7,16,85,77,148,469,158,15,92,0,77,8,125,119,61,32,84,58,251,614,89,17,223,67,43,3,177,0,0,0,22,23,0,0,3,0,4,0,0,2,1,19,0,0,6,0,0,0,0,0,7,0,0,0,0,0,30,5,29,0,0,0,0,87,6,179,2,24,202,0,0,391,121,166,25,0,0,0,0,0,0,0,7,15,18,0,0,0,38,17,88,0,2,3,0,0,4,93,0,1,0,0,13,2,0,0,1,1,0
 AF,24,3475,32,4,104,139,148,528,124,36,102,4,20,19,0,102,68,70,244,2,17,37,13,4,455,110,20,6,313,2,0,0,17,32,0,16,0,3,10,4,9,0,0,11,8,1,10,4,0,3,0,0,3,0,1,0,0,0,29,12,92,0,1,0,1,103,1,7,0,40,355,0,0,606,452,330,79,0,0,1,0,0,0,0,0,10,217,0,0,0,252,10,79,0,1,2,0,0,9,215,0,0,4,0,8,9,0,1,0,1,2
 AFL,7,32,314,0,6,11,5,40,3,13,13,0,7,2,1,26,13,6,12,1,4,5,11,4,69,21,5,2,12,0,0,0,11,0,0,0,0,0,0,1,65,0,0,1,1,0,2,0,0,0,0,0,4,0,0,0,0,0,3,0,23,0,0,0,0,16,0,4,0,1,28,0,0,10,7,64,4,0,0,0,0,0,0,0,0,1,11,0,0,0,4,5,14,0,7,1,0,0,0,1,0,0,7,0,0,1,0,0,0,0,0
@@ -409,16 +409,16 @@ VTrig,1,0,0,0,0,1,2,4,0,0,0,0,5,0,2,1,1,0,0,0,0,11,6,2,4,0,0,0,3,0,0,0,0,0,0,0,0
 WAP,1,1,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,2,0,1,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0
 WPW,0,2,0,1,0,3,0,41,0,0,0,0,1,0,0,0,0,3,0,3,3,66,0,6,4,0,0,0,41,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,7,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,88
 """), index_col=0)
-dx_cooccurence_scored = dx_cooccurence_all.loc[dx_mapping_scored.Abbreviation, dx_mapping_scored.Abbreviation]
+dx_cooccurrence_scored = dx_cooccurrence_all.loc[dx_mapping_scored.Abbreviation, dx_mapping_scored.Abbreviation]
 
 """
-dx_cooccurence_all is obtained via the following code
+dx_cooccurrence_all is obtained via the following code
 
 >>> db_dir = "/media/cfs/wenhao71/data/cinc2020_data/"
 >>> working_dir = "./working_dir"
 >>> data_gen = CINC2020(db_dir=db_dir,working_dir=working_dir)
->>> dx_cooccurence_all = pd.DataFrame(np.zeros((len(dx_mapping_all.Abbreviation), len(dx_mapping_all.Abbreviation)),dtype=int), columns=dx_mapping_all.Abbreviation.values)
->>> dx_cooccurence_all.index = dx_mapping_all.Abbreviation.values
+>>> dx_cooccurrence_all = pd.DataFrame(np.zeros((len(dx_mapping_all.Abbreviation), len(dx_mapping_all.Abbreviation)),dtype=int), columns=dx_mapping_all.Abbreviation.values)
+>>> dx_cooccurrence_all.index = dx_mapping_all.Abbreviation.values
 >>> for tranche, l_rec in data_gen.all_records.items():
 ...     for rec in l_rec:
 ...         ann = data_gen.load_ann(rec)
@@ -430,5 +430,5 @@ dx_cooccurence_all is obtained via the following code
 ...                 mat_cooccurance.loc[d[i],d[j]] += 1
 ...                 mat_cooccurance.loc[d[j],d[i]] += 1
 
-the diagonal entries are total occurence of corresponding arrhythmias in the dataset
+the diagonal entries are total occurrence of corresponding arrhythmias in the dataset
 """
