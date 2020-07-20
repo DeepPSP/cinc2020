@@ -95,7 +95,7 @@ def find_challenge_files(label_directory, output_directory):
                 label_files.append(F)
                 output_files.append(G)
             else:
-                raise IOError('Output file {} not found for label file {}.'.format(g, f))
+                raise IOError(f'Output file {g} not found for label file {f}.')
 
     if label_files and output_files:
         return label_files, output_files
@@ -123,7 +123,7 @@ def load_labels(label_files, normal_class, equivalent_classes_collection):
     classes = set.union(*map(set, tmp_labels))
     if normal_class not in classes:
         classes.add(normal_class)
-        print('- The normal class {} is not one of the label classes, so it has been automatically added, but please check that you chose the correct normal class.'.format(normal_class))
+        print(f'- The normal class {normal_class} is not one of the label classes, so it has been automatically added, but please check that you chose the correct normal class.')
     classes = sorted(classes)
     num_classes = len(classes)
 
@@ -202,7 +202,7 @@ def load_outputs(output_files, normal_class, equivalent_classes_collection):
     classes = set.union(*map(set, tmp_labels))
     if normal_class not in classes:
         classes.add(normal_class)
-        print('- The normal class {} is not one of the output classes, so it has been automatically added, but please check that you identified the correct normal class.'.format(normal_class))
+        print(f'- The normal class {normal_class} is not one of the output classes, so it has been automatically added, but please check that you identified the correct normal class.')
     classes = sorted(classes)
     num_classes = len(classes)
 
@@ -296,14 +296,14 @@ def load_table(table_file):
     # Define the numbers of rows and columns and check for errors.
     num_rows = len(table)-1
     if num_rows<1:
-        raise Exception('The table {} is empty.'.format(table_file))
+        raise Exception(f'The table {table_file} is empty.')
 
     num_cols = set(len(table[i])-1 for i in range(num_rows))
     if len(num_cols)!=1:
-        raise Exception('The table {} has rows with different lengths.'.format(table_file))
+        raise Exception(f'The table {table_file} has rows with different lengths.')
     num_cols = min(num_cols)
     if num_cols<1:
-        raise Exception('The table {} is empty.'.format(table_file))
+        raise Exception(f'The table {table_file} is empty.')
 
     # Find the row and column labels.
     rows = [table[0][j+1] for j in range(num_rows)]
@@ -568,7 +568,8 @@ def compute_challenge_metric(weights, labels, outputs, classes, normal_class):
 if __name__ == '__main__':
     auroc, auprc, accuracy, f_measure, f_beta_measure, g_beta_measure, challenge_metric = evaluate_12ECG_score(sys.argv[1], sys.argv[2])
 
-    output_string = 'AUROC,AUPRC,Accuracy,F-measure,Fbeta-measure,Gbeta-measure,Challenge metric\n{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f}'.format(auroc, auprc, accuracy, f_measure, f_beta_measure, g_beta_measure, challenge_metric)
+    nl = "\n"
+    output_string = f'AUROC,AUPRC,Accuracy,F-measure,Fbeta-measure,Gbeta-measure,Challenge metric{nl}{auroc:.3f},{auprc:.3f},{accuracy:.3f},{f_measure:.3f},{f_beta_measure:.3f},{g_beta_measure:.3f},{challenge_metric:.3f}'
     if len(sys.argv) > 3:
         with open(sys.argv[3], 'w') as f:
             f.write(output_string)

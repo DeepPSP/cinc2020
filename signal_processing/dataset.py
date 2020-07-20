@@ -224,9 +224,9 @@ class CINC2020(object):
             prefix (for each line) of the logger, and its file name
         """
         _prefix = prefix+"-" if prefix else ""
-        self.logger = logging.getLogger('{}-{}-logger'.format(_prefix, self.db_name))
-        log_filepath = os.path.join(self.working_dir, "{}{}.log".format(_prefix, self.db_name))
-        print("log file path is set {}".format(log_filepath))
+        self.logger = logging.getLogger(f'{_prefix}-{self.db_name}-logger')
+        log_filepath = os.path.join(self.working_dir, f"{_prefix}{self.db_name}.log")
+        print(f"log file path is set {log_filepath}")
 
         c_handler = logging.StreamHandler(sys.stdout)
         f_handler = logging.FileHandler(log_filepath)
@@ -453,11 +453,11 @@ class CINC2020(object):
         classes: list of str,
             ...
         """
-        new_file = rec + '.csv'
+        new_file = f'{rec}.csv'
         output_file = os.path.join(output_dir, new_file)
 
         # Include the filename as the recording number
-        recording_string = '#{}'.format(rec)
+        recording_string = f'#{rec}'
         class_string = ','.join(classes)
         label_string = ','.join(str(i) for i in labels)
         score_string = ','.join(str(i) for i in scores)
