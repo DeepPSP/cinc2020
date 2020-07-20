@@ -479,6 +479,8 @@ class CINC2020(object):
         kwargs: dict,
 
         TODO: slice too long records, and plot separately for each segment
+
+        Contributors: Jeethan, and WEN Hao
         """
         tranche = self._get_tranche(rec)
         if tranche in "CDE":
@@ -506,6 +508,9 @@ class CINC2020(object):
         diag_all = self.get_labels(rec, scored_only=False, abbr=True)
 
         nb_leads = len(leads)
+
+        seg_len = self.freq[tranche] * 25  # 25 seconds
+        nb_segs = len(data.shape[1]) // seg_len
 
         t = np.arange(data.shape[1]) / self.freq[tranche]
         duration = len(t) / self.freq[tranche]
