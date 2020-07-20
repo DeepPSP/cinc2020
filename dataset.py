@@ -510,7 +510,7 @@ class CINC2020(object):
         nb_leads = len(leads)
 
         seg_len = self.freq[tranche] * 25  # 25 seconds
-        nb_segs = len(data.shape[1]) // seg_len
+        nb_segs = data.shape[1] // seg_len
 
         t = np.arange(data.shape[1]) / self.freq[tranche]
         duration = len(t) / self.freq[tranche]
