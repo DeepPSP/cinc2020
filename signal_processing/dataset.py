@@ -438,7 +438,7 @@ class CINC2020(object):
 
 
     def save_challenge_predictions(self, rec:str, output_dir:str, scores:List[Real], labels:List[int], classes:List[str]) -> NoReturn:
-        """ finished, checked,
+        """ finished, checked, to update for the official phase
 
         Parameters:
         -----------
@@ -468,7 +468,7 @@ class CINC2020(object):
 
 
     def plot(self, rec:str, leads:Optional[Union[str, List[str]]]=None, **kwargs) -> NoReturn:
-        """ not finished, not checked,
+        """ finished, checked, to improve
 
         Parameters:
         -----------

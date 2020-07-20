@@ -11,6 +11,22 @@ Standard_12Leads_ECG:
     -----------------------------------
     Chest (precordial) leads: V1-6
     Limb leads: I, II, III, aVF, aVR, aVL
+
+ECG rhythm:
+-----------
+1. On a 12 lead ECG, ECG rhythm is usually a 10 second recording from Lead II
+2. 7 steps to analyze:
+    2.1. rate (brady < 60 bpm; 60 bpm <= normal <= 100 bpm; tachy > 100 bpm)
+    2.2. pattern (temporal) of QRS complex (regular or irregular; if irregular, regularly irregular or irregularly irregular)
+    2.3. morphology (spatial) of QRS complex (narrow <= 120 ms; wide > 120 ms)
+    2.4. P waves (absent or present; morphology; PR interval)
+    2.5. relation of P waves and QRS complexes (atrial rate and ventricular rate, AV association or AV disassociation)
+    2.6. onset and termination (abrupt or gradual)
+    (2.7. response to vagal manoeuvres)
+
+References:
+-----------
+[1] https://litfl.com/ecg-rhythm-evaluation/
 """
 from easydict import EasyDict as ED
 
