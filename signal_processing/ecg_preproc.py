@@ -28,7 +28,7 @@ from .ecg_rpeaks import (
 
 
 __all__ = [
-    "preprocess_signal",
+    "preprocess_single_lead_signal",
 ]
 
 
@@ -44,7 +44,62 @@ QRS_DETECTORS = {
 }
 
 
-def preprocess_signal(raw_sig:np.ndarray, fs:Real, bl_win:Optional[list]=None, band_fs:Optional[list]=None, rpeak_fn:Optional[Callable[[np.ndarray,Real], np.ndarray]]=None) -> Dict[str, np.ndarray]:
+def preprocess_12_lead_signal(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", bl_win:Optional[list]=None, band_fs:Optional[list]=None, rpeak_fn:Optional[Callable[[np.ndarray,Real], np.ndarray]]=None) -> Dict[str, np.ndarray]:
+    """ finished, checked,
+
+    Parameters:
+    -----------
+    raw_sig: ndarray,
+        the raw ecg signal
+    fs: real number,
+        sampling frequency of `raw_sig`
+    sig_fmt: str, default "channel_first",
+        format of the 12 lead ecg signal,
+        'channel_last' (alias 'lead_last'), or
+        'channel_first' (alias 'lead_first', original)
+    bl_win: list (of 2 real numbers), optional,
+        window of baseline removal using `median_filter`
+        if is None or empty, baseline removal will not be performed
+    band_fs: list (of 2 real numbers), optional,
+        frequency band of the bandpass filter,
+        if is None or empty, bandpass filtering will not be performed
+    rpeak_fn: callable, optional,
+        the function detecting rpeaks,
+        whose first parameter is the signal, second parameter the sampling frequency
+
+    Returns:
+    --------
+    retval: dict,
+        with items
+        - 'filtered_ecg': the array of the processed ecg signal
+        - 'rpeaks': the array of indices of rpeaks; empty if `rpeak_fn` is not given
+    """
+    assert sig_fmt.lower() in ['channel_first', 'lead_first', 'channel_last', 'lead_last']
+    if sig_fmt.lower() in ['channel_last', 'lead_last']:
+        filtered_ecg = raw_sig.T
+    else:
+        filtered_ecg = raw_sig.copy()
+    rpeaks_candidates = []
+    for lead in range(filtered_ecg.shape[0]):
+        filtered_metadata = preprocess_single_lead_signal(
+            raw_sig=filtered_ecg[lead,...],
+            fs=fs,
+            bl_win=bl_win,
+            band_fs=band_fs,
+            rpeak_fn=rpeak_fn
+        )
+        filtered_ecg[lead,...] = filtered_metadata["filtered_ecg"]
+        rpeaks_candidates.append(filtered_metadata["rpeaks"])
+    # TODO: merge rpeaks detected in different leads
+    rpeaks = np.array([], dtype=int)
+    retval = ED({
+        "filtered_ecg": filtered_ecg,
+        "rpeaks": rpeaks,
+    })
+    return retval
+
+
+def preprocess_single_lead_signal(raw_sig:np.ndarray, fs:Real, bl_win:Optional[list]=None, band_fs:Optional[list]=None, rpeak_fn:Optional[Callable[[np.ndarray,Real], np.ndarray]]=None) -> Dict[str, np.ndarray]:
     """ finished, checked,
 
     Parameters:
@@ -68,7 +123,7 @@ def preprocess_signal(raw_sig:np.ndarray, fs:Real, bl_win:Optional[list]=None, b
     retval: dict,
         with items
         - 'filtered_ecg': the array of the processed ecg signal
-        - 'rpeaks': the array of indices of rpeaks; empty if 'rpeaks' in `config` is not set
+        - 'rpeaks': the array of indices of rpeaks; empty if `rpeak_fn` is not given
     """
     filtered_ecg = raw_sig.copy()
 
