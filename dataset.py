@@ -381,6 +381,8 @@ class CINC2020(object):
         df_leads['resolution(mV)'] = df_leads['resolution(mV)'].apply(lambda s: s.split('/')[0])
         for k in ['resolution(bits)', 'offset', 'resolution(mV)', 'ADC', 'baseline', 'first_value', 'checksum']:
             df_leads[k] = df_leads[k].apply(lambda s: int(s))
+        df_leads.index = df_leads['lead_name']
+        df_leads.index.name = None
         ann_dict['df_leads'] = df_leads
 
         return ann_dict
