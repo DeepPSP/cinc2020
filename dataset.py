@@ -5,6 +5,7 @@ import re
 import json
 import time
 import logging
+# import pprint
 from datetime import datetime
 from typing import Union, Optional, Any, List, Dict, NoReturn
 from numbers import Real
@@ -16,10 +17,12 @@ from scipy.io import loadmat
 from easydict import EasyDict as ED
 
 import utils
-from utils.misc import get_record_list_recursive
+from utils.misc import get_record_list_recursive, dict_to_str
 from utils.scoring_aux_data import (
     dx_mapping_all, dx_mapping_scored, dx_mapping_unscored,
+    normalize_class,
 )
+from utils import ecg_arrhythmia_knowledge as EAK
 
 
 __all__ = [
@@ -62,6 +65,17 @@ class CINC2020(object):
         F. (Georgia): 500 Hz
     7. all data are recorded in the leads ordering of
         ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6']
+        using for example the following code:
+        >>> db_dir = "/media/cfs/wenhao71/data/cinc2020_data/"
+        >>> working_dir = "./working_dir"
+        >>> data_gen = CINC2020(db_dir=db_dir,working_dir=working_dir)
+        >>> set_leads = []
+        >>> for tranche, l_rec in data_gen.all_records.items():
+        ...     for rec in l_rec:
+        ...         ann = data_gen.load_ann(rec)
+        ...         leads = ann['df_leads']['lead_name'].values.tolist()
+        ...     if leads not in set_leads:
+        ...         set_leads.append(leads)
 
     NOTE:
     -----
@@ -74,10 +88,11 @@ class CINC2020(object):
         - RBBB, CRBBB (NOT including IRBBB)
         - PAC, SVPB
         - PVC, VPB
+    7. unfortunately, the newly added tranches (C - F) have baseline drift and are much noisier. In contrast, CPSC data have had baseline removed and have higher SNR
 
     ISSUES:
     -------
-    1.
+    1. reading the .hea files, baselines of all records are 0, however it is not the case if one plot the signal
 
     Usage:
     ------
@@ -108,8 +123,8 @@ class CINC2020(object):
         self.logger = None
         self._set_logger(prefix=self.db_name)
 
-        self.rec_ext = '.mat'
-        self.ann_ext = '.hea'
+        self.rec_ext = 'mat'
+        self.ann_ext = 'hea'
 
         self.db_dir_base = db_dir
         self.db_dirs = ED({
@@ -120,20 +135,9 @@ class CINC2020(object):
             "E": os.path.join(self.db_dir_base, "WFDB"),
             "F": os.path.join(self.db_dir_base, "Training_E", "WFDB"),
         })
-        record_list_fp = os.path.join(utils._BASE_DIR, "utils", "record_list.json")
-        if os.path.isfile(record_list_fp):
-            with open(record_list_fp, "r") as f:
-                self.all_records = json.load(f)
-        else:
-            print("Please wait patiently to let the reader find all records of all the tranches...")
-            start = time.time()
-            self.all_records = ED({
-                tranche: get_record_list_recursive(self.db_dirs[tranche], self.rec_ext) \
-                    for tranche in "ABCDEF"
-            })
-            print(f"Done in {time.time() - start} seconds!")
-            with open(record_list_fp, "w") as f:
-                json.dump(self.all_records, f)
+
+        self.all_records = None
+        self._ls_rec()
 
         self.rec_prefix = ED({
             "A": "A", "B": "Q", "C": "I", "D": "S", "E": "HR", "F": "E",
@@ -142,11 +146,18 @@ class CINC2020(object):
         prefixes can be obtained using the following code:
         >>> pfs = ED({k:set() for k in "ABCDEF"})
         >>> for k, p in db_dir.items():
-        >>>     af = os.listdir(p)
-        >>>     for fn in af:
-        >>>         pfs[k].add("".join(re.findall(r"[A-Z]", os.path.splitext(fn)[0])))
+        ...     af = os.listdir(p)
+        ...     for fn in af:
+        ...         pfs[k].add("".join(re.findall(r"[A-Z]", os.path.splitext(fn)[0])))
         """
-
+        self.tranche_names = ED({
+            "A": "CPSC",
+            "B": "CPSC-Extra",
+            "C": "StPetersburg",
+            "D": "PTB",
+            "E": "PTB-XL",
+            "F": "Georgia",
+        })
         self.freq = {
             "A": 500, "B": 500, "C": 257, "D": 1000, "E": 500, "F": 500,
         }
@@ -155,6 +166,11 @@ class CINC2020(object):
         self.all_leads = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6',]
 
         self.df_ecg_arrhythmia = dx_mapping_all[['Dx','SNOMED CT Code','Abbreviation']]
+        self.ann_items = [
+            'rec_name', 'nb_leads','freq','nb_samples','datetime','age','sex',
+            'diagnosis','df_leads',
+            'medical_prescription','history','symptom_or_surgery',
+        ]
 
 
     def get_subject_id(self, rec:str) -> int:
@@ -177,6 +193,29 @@ class CINC2020(object):
         sid = int(f"{s2d[prefix]}{'0'*(8-len(n))}{n}")
         return sid
 
+    
+    def _ls_rec(self) -> NoReturn:
+        """ finished, checked,
+
+        list all the records and load into `self.all_records`,
+        facilitating further uses
+        """
+        # record_list_fp = os.path.join(utils._BASE_DIR, "utils", "record_list.json")
+        record_list_fp = os.path.join(self.db_dir_base, "record_list.json")
+        if os.path.isfile(record_list_fp):
+            with open(record_list_fp, "r") as f:
+                self.all_records = json.load(f)
+        else:
+            print("Please wait patiently to let the reader find all records of all the tranches...")
+            start = time.time()
+            self.all_records = ED({
+                tranche: get_record_list_recursive(self.db_dirs[tranche], self.rec_ext) \
+                    for tranche in "ABCDEF"
+            })
+            print(f"Done in {time.time() - start} seconds!")
+            with open(record_list_fp, "w") as f:
+                json.dump(self.all_records, f)
+
 
     def _set_logger(self, prefix:Optional[str]=None):
         """
@@ -187,9 +226,9 @@ class CINC2020(object):
             prefix (for each line) of the logger, and its file name
         """
         _prefix = prefix+"-" if prefix else ""
-        self.logger = logging.getLogger('{}-{}-logger'.format(_prefix, self.db_name))
-        log_filepath = os.path.join(self.working_dir, "{}{}.log".format(_prefix, self.db_name))
-        print("log file path is set {}".format(log_filepath))
+        self.logger = logging.getLogger(f'{_prefix}-{self.db_name}-logger')
+        log_filepath = os.path.join(self.working_dir, f"{_prefix}{self.db_name}.log")
+        print(f"log file path is set {log_filepath}")
 
         c_handler = logging.StreamHandler(sys.stdout)
         f_handler = logging.FileHandler(log_filepath)
@@ -220,32 +259,48 @@ class CINC2020(object):
 
 
     def _get_tranche(self, rec:str) -> str:
-        """
+        """ finished, checked,
+
+        get the tranche's symbol (one of 'A','B','C','D','E','F') of a record via its name
+
+        Parameters:
+        -----------
+        rec: str,
+            name of the record
+
+        Returns:
+        --------
+        tranche, str,
+            symbol of the tranche, ref. `self.rec_prefix`
         """
         prefix = "".join(re.findall(r"[A-Z]", rec))
-        return {v:k for k,v in self.rec_prefix.items()}[prefix]
+        tranche = {v:k for k,v in self.rec_prefix.items()}[prefix]
+        return tranche
 
 
-    def load_data(self, rec:str, data_format='channels_last') -> np.ndarray:
+    def load_data(self, rec:str, data_format='channel_first') -> np.ndarray:
         """ finished, checked,
 
         Parameters:
         -----------
         rec: str,
             name of the record
-        data_format: str, default 'channels_last',
-            format of the ecg data, 'channels_last' or 'channels_first' (original)
+        data_format: str, default 'channel_first',
+            format of the ecg data,
+            'channel_last' (alias 'lead_last'), or
+            'channel_first' (alias 'lead_first', original)
         
         Returns:
         --------
         data: ndarray,
             the ecg data
         """
+        assert data_format.lower() in ['channel_first', 'lead_first', 'channel_last', 'lead_last']
         tranche = self._get_tranche(rec)
-        rec_fp = os.path.join(self.db_dirs[tranche], rec + self.rec_ext)
+        rec_fp = os.path.join(self.db_dirs[tranche], f'{rec}.{self.rec_ext}')
         data = loadmat(rec_fp)
         data = np.asarray(data['val'], dtype=np.float64)
-        if data_format == 'channels_last':
+        if data_format.lower() in ['channel_last', 'lead_last']:
             data = data.T
         
         return data
@@ -262,10 +317,10 @@ class CINC2020(object):
         Returns:
         --------
         ann_dict, dict,
-            the annotations with items: ref. self.ann_items
+            the annotations with items: ref. `self.ann_items`
         """
         tranche = self._get_tranche(rec)
-        ann_fp = os.path.join(self.db_dirs[tranche], rec + self.ann_ext)
+        ann_fp = os.path.join(self.db_dirs[tranche], f'{rec}.{self.ann_ext}')
         with open(ann_fp, 'r') as f:
             header_data = f.read().splitlines()
 
@@ -287,13 +342,25 @@ class CINC2020(object):
         ann_dict['diagnosis']['diagnosis_code'] = [l for l in header_data if l.startswith('#Dx')][0].split(": ")[-1].split(",")
         try:
             ann_dict['diagnosis']['diagnosis_code'] = [int(item) for item in ann_dict['diagnosis']['diagnosis_code']]
-            selection = dx_mapping_all['SNOMED CT Code'].isin(ann_dict['diagnosis']['diagnosis_code'])
-            ann_dict['diagnosis']['diagnosis_abbr'] = dx_mapping_all[selection]['Abbreviation'].tolist()
-            ann_dict['diagnosis']['diagnosis_fullname'] = dx_mapping_all[selection]['Dx'].tolist()
+            # selection = dx_mapping_all['SNOMED CT Code'].isin(ann_dict['diagnosis']['diagnosis_code'])
+            # ann_dict['diagnosis']['diagnosis_abbr'] = dx_mapping_all[selection]['Abbreviation'].tolist()
+            # ann_dict['diagnosis']['diagnosis_fullname'] = dx_mapping_all[selection]['Dx'].tolist()
+            ann_dict['diagnosis']['diagnosis_abbr'] = \
+                [ dx_mapping_all[dx_mapping_all['SNOMED CT Code']==dc]['Abbreviation'].values[0] \
+                    for dc in ann_dict['diagnosis']['diagnosis_code'] ]
+            ann_dict['diagnosis']['diagnosis_fullname'] = \
+                [ dx_mapping_all[dx_mapping_all['SNOMED CT Code']==dc]['Dx'].values[0] \
+                    for dc in ann_dict['diagnosis']['diagnosis_code'] ]
             scored_indices = np.isin(ann_dict['diagnosis']['diagnosis_code'], dx_mapping_scored['SNOMED CT Code'].values)
-            ann_dict['diagnosis_scored']['diagnosis_code'] = [item for idx, item in enumerate(ann_dict['diagnosis']['diagnosis_code']) if scored_indices[idx]]
-            ann_dict['diagnosis_scored']['diagnosis_abbr'] = [item for idx, item in enumerate(ann_dict['diagnosis']['diagnosis_abbr']) if scored_indices[idx]]
-            ann_dict['diagnosis_scored']['diagnosis_fullname'] = [item for idx, item in enumerate(ann_dict['diagnosis']['diagnosis_fullname']) if scored_indices[idx]]
+            ann_dict['diagnosis_scored']['diagnosis_code'] = \
+                [ item for idx, item in enumerate(ann_dict['diagnosis']['diagnosis_code']) \
+                    if scored_indices[idx] ]
+            ann_dict['diagnosis_scored']['diagnosis_abbr'] = \
+                [ item for idx, item in enumerate(ann_dict['diagnosis']['diagnosis_abbr']) \
+                    if scored_indices[idx] ]
+            ann_dict['diagnosis_scored']['diagnosis_fullname'] = \
+                [ item for idx, item in enumerate(ann_dict['diagnosis']['diagnosis_fullname']) \
+                    if scored_indices[idx] ]
         except:  # the old version, the Dx's are abbreviations
             ann_dict['diagnosis']['diagnosis_abbr'] = ann_dict['diagnosis']['diagnosis_code']
             selection = dx_mapping_all['Abbreviation'].isin(ann_dict['diagnosis']['diagnosis_abbr'])
@@ -315,29 +382,39 @@ class CINC2020(object):
         df_leads['resolution(mV)'] = df_leads['resolution(mV)'].apply(lambda s: s.split('/')[0])
         for k in ['resolution(bits)', 'offset', 'resolution(mV)', 'ADC', 'baseline', 'first_value', 'checksum']:
             df_leads[k] = df_leads[k].apply(lambda s: int(s))
+        df_leads.index = df_leads['lead_name']
+        df_leads.index.name = None
         ann_dict['df_leads'] = df_leads
 
         return ann_dict
 
     
-    def get_labels(self, rec:str, fullname:bool=False) -> List[str]:
+    def get_labels(self, rec:str, scored_only:bool=True, abbr:bool=True) -> List[str]:
         """ finished, checked,
         
         Parameters:
         -----------
         rec: str,
             name of the record
+        scored_only: bool, default True,
+            only get the labels that are scored in the CINC2020 official phase
+        abbr: bool, default True,
+            labels in abbreviations or fullnames
         
         Returns:
         --------
         labels, list,
-            the list of labels (abbr. diagnosis_abbr)
+            the list of labels
         """
         ann_dict = self.load_ann(rec)
-        if fullname:
-            labels = ann_dict['diagnosis_fullname']
+        if scored_only:
+            labels = ann_dict['diagnosis_scored']
         else:
-            labels = ann_dict['diagnosis_abbr']
+            labels = ann_dict['diagnosis']
+        if abbr:
+            labels = labels['diagnosis_abbr']
+        else:
+            labels = labels['diagnosis_fullname']
         return labels
 
     
@@ -368,7 +445,7 @@ class CINC2020(object):
 
 
     def save_challenge_predictions(self, rec:str, output_dir:str, scores:List[Real], labels:List[int], classes:List[str]) -> NoReturn:
-        """ finished, checked,
+        """ finished, checked, to update for the official phase
 
         Parameters:
         -----------
@@ -383,11 +460,11 @@ class CINC2020(object):
         classes: list of str,
             ...
         """
-        new_file = rec + '.csv'
+        new_file = f'{rec}.csv'
         output_file = os.path.join(output_dir, new_file)
 
         # Include the filename as the recording number
-        recording_string = '#{}'.format(rec)
+        recording_string = f'#{rec}'
         class_string = ','.join(classes)
         label_string = ','.join(str(i) for i in labels)
         score_string = ','.join(str(i) for i in scores)
@@ -397,16 +474,32 @@ class CINC2020(object):
             f.write("\n".join([recording_string, class_string, label_string, score_string, ""]))
 
 
-    def plot(self, rec:str, leads:Optional[Union[str, List[str]]]=None, **kwargs):
-        """ not finished, not checked,
+    def plot(self, rec:str, data:Optional[np.ndarray]=None, leads:Optional[Union[str, List[str]]]=None, ticks_granularity:int=0, **kwargs) -> NoReturn:
+        """ finished, checked, to improve
 
         Parameters:
         -----------
         rec: str,
             name of the record
+        data: ndarray, optional,
+            12-lead ecg signal to plot,
+            if given, data of `rec` will not be used
         leads: str or list of str, optional,
-            the leads to 
+            the leads to plot
+        ticks_granularity: int, default 0,
+            the granularity to plot axis ticks, the higher the more
         kwargs: dict,
+
+        TODO:
+        -----
+        slice too long records, and plot separately for each segment
+
+        NOTE:
+        -----
+        `Locator` of `plt` has default `MAXTICKS` equal to 1000,
+        if not modifying this number, at most 40 seconds of signal could be plotted once
+
+        Contributors: Jeethan, and WEN Hao
         """
         tranche = self._get_tranche(rec)
         if tranche in "CDE":
@@ -416,41 +509,91 @@ class CINC2020(object):
                 "E": "ptb-xl/1.0.1",
             })
             url = f"https://physionet.org/lightwave/?db={physionet_lightwave_suffix[tranche]}"
-            print("better view: {}\n"*3)
+            print(f"better view: {url}")
             
         if 'plt' not in dir():
             import matplotlib.pyplot as plt
+            plt.MultipleLocator.MAXTICKS = 3000
         if leads is None or leads == 'all':
             leads = self.all_leads
         assert all([l in self.all_leads for l in leads])
 
-        lead_list = self.load_ann(rec)['df_leads']['lead_name'].tolist()
-        lead_indices = [lead_list.index(l) for l in leads]
-        data = self.load_data(rec)[lead_indices]
+        # lead_list = self.load_ann(rec)['df_leads']['lead_name'].tolist()
+        # lead_indices = [lead_list.index(l) for l in leads]
+        lead_indices = [self.all_leads.index(l) for l in leads]
+        if data is None:
+            data = self.load_data(rec, data_format='channel_first')[lead_indices]
         y_ranges = np.max(np.abs(data), axis=1) + 100
 
-        diag = self.get_diagnosis(rec, full_name=False)
+        diag_scored = self.get_labels(rec, scored_only=True, abbr=True)
+        diag_all = self.get_labels(rec, scored_only=False, abbr=True)
 
         nb_leads = len(leads)
 
-        t = np.arange(data.shape[1]) / self.freq
-        duration = len(t) / self.freq
+        seg_len = self.freq[tranche] * 25  # 25 seconds
+        nb_segs = data.shape[1] // seg_len
+
+        t = np.arange(data.shape[1]) / self.freq[tranche]
+        duration = len(t) / self.freq[tranche]
         fig_sz_w = int(round(4.8 * duration))
         fig_sz_h = 6 * y_ranges / 1500
+        nl = "\n"
         fig, axes = plt.subplots(nb_leads, 1, sharex=True, figsize=(fig_sz_w, np.sum(fig_sz_h)))
         for idx in range(nb_leads):
-            axes[idx].plot(t, data[idx], label='lead - ' + leads[idx] + '\n' + 'labels - ' + ",".join(diag))
+            # axes[idx].plot(t, data[idx], label='lead - ' + leads[idx] + '\n' + 'labels - ' + ",".join(diag_scored))
+            # axes[idx].plot(t, data[idx], label=f'lead - {leads[idx]}{nl}labels_s - {",".join(diag_scored)}{nl}labels_a - {",".join(diag_all)}')
+            axes[idx].plot(t, data[idx], label=f'lead - {leads[idx]}')
             axes[idx].axhline(y=0, linestyle='-', linewidth='1.0', color='red')
-            axes[idx].xaxis.set_major_locator(plt.MultipleLocator(0.2))
-            axes[idx].xaxis.set_minor_locator(plt.MultipleLocator(0.04))
-            axes[idx].yaxis.set_major_locator(plt.MultipleLocator(500))
-            axes[idx].yaxis.set_minor_locator(plt.MultipleLocator(100))
-            axes[idx].grid(which='major', linestyle='-', linewidth='0.5', color='red')
-            axes[idx].grid(which='minor', linestyle=':', linewidth='0.5', color='black')
-            axes[idx].legend(loc='best')
+            # NOTE that `Locator` has default `MAXTICKS` equal to 1000
+            if ticks_granularity >= 1:
+                axes[idx].xaxis.set_major_locator(plt.MultipleLocator(0.2))
+                axes[idx].yaxis.set_major_locator(plt.MultipleLocator(500))
+                axes[idx].grid(which='major', linestyle='-', linewidth='0.5', color='red')
+            if ticks_granularity >= 2:
+                axes[idx].xaxis.set_minor_locator(plt.MultipleLocator(0.04))
+                axes[idx].yaxis.set_minor_locator(plt.MultipleLocator(100))
+                axes[idx].grid(which='minor', linestyle=':', linewidth='0.5', color='black')
+            # add extra info. to legend
+            # https://stackoverflow.com/questions/16826711/is-it-possible-to-add-a-string-as-a-legend-item-in-matplotlib
+            axes[idx].plot([], [], ' ', label=f"labels_s - {','.join(diag_scored)}")
+            axes[idx].plot([], [], ' ', label=f"labels_a - {','.join(diag_all)}")
+            axes[idx].plot([], [], ' ', label=f"tranche - {self.tranche_names[tranche]}")
+            axes[idx].plot([], [], ' ', label=f"freq - {self.freq[tranche]}")
+            axes[idx].legend(loc='upper left')
             axes[idx].set_xlim(t[0], t[-1])
             axes[idx].set_ylim(-y_ranges[idx], y_ranges[idx])
             axes[idx].set_xlabel('Time [s]')
             axes[idx].set_ylabel('Voltage [μV]')
         plt.subplots_adjust(hspace=0.2)
         plt.show()
+
+
+    @classmethod
+    def get_arrhythmia_knowledge(cls, arrhythmias:Union[str,List[str]], **kwargs) -> NoReturn:
+        """ finished, checked,
+
+        knowledge about ECG features of specific arrhythmias,
+
+        Parameters:
+        -----------
+        arrhythmias: str, or list of str,
+            the arrhythmia(s) to check, in abbreviations or in SNOMED CT Code
+
+        Returns:
+        --------
+        to write
+        """
+        if isinstance(arrhythmias, str):
+            d = [normalize_class(arrhythmias)]
+        else:
+            d = [normalize_class(c) for c in arrhythmias]
+        # pp = pprint.PrettyPrinter(indent=4)
+        # unsupported = [item for item in d if item not in dx_mapping_all['Abbreviation']]
+        unsupported = [item for item in d if item not in dx_mapping_scored['Abbreviation'].values]
+        assert len(unsupported) == 0, \
+            f"{unsupported} {'is' if len(unsupported)==1 else 'are'} not supported!"
+        for idx, item in enumerate(d):
+            # pp.pprint(eval(f"EAK.{item}"))
+            print(dict_to_str(eval(f"EAK.{item}")))
+            if idx < len(d)-1:
+                print("*"*110)

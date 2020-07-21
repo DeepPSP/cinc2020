@@ -7,3 +7,4 @@ scikit-learn==0.20.3
 tensorflow==1.13.1
 keras==2.3.1
 easydict
+biosppy

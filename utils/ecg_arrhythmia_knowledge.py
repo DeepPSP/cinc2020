@@ -11,6 +11,22 @@ Standard_12Leads_ECG:
     -----------------------------------
     Chest (precordial) leads: V1-6
     Limb leads: I, II, III, aVF, aVR, aVL
+
+ECG rhythm:
+-----------
+1. On a 12 lead ECG, ECG rhythm is usually a 10 second recording from Lead II
+2. 7 steps to analyze:
+    2.1. rate (brady < 60 bpm; 60 bpm <= normal <= 100 bpm; tachy > 100 bpm)
+    2.2. pattern (temporal) of QRS complex (regular or irregular; if irregular, regularly irregular or irregularly irregular)
+    2.3. morphology (spatial) of QRS complex (narrow <= 120 ms; wide > 120 ms)
+    2.4. P waves (absent or present; morphology; PR interval)
+    2.5. relation of P waves and QRS complexes (atrial rate and ventricular rate, AV association or AV disassociation)
+    2.6. onset and termination (abrupt or gradual)
+    (2.7. response to vagal manoeuvres)
+
+References:
+-----------
+[1] https://litfl.com/ecg-rhythm-evaluation/
 """
 from easydict import EasyDict as ED
 
@@ -40,7 +56,7 @@ AF = ED({  # rr, morphology
         "absence of an isoelectric baseline",
         "variable ventricular rate",
         "QRS complexes usually < 120 ms unless pre-existing bundle branch block, accessory pathway, or rate related aberrant conduction",
-        "fibrillatory waves (f-wave) may be present and can be either fine (amplitude < 0.5mm) or coarse (amplitude >0.5mm)",
+        "fibrillatory waves (f-wave) may be present and can be either fine (amplitude < 0.5mm) or coarse (amplitude > 0.5mm)",
         "fibrillatory waves (f-wave) may mimic P waves leading to misdiagnosis",
     ],
 })
@@ -68,7 +84,7 @@ Brady = ED({  # rr
         "https://en.wikipedia.org/wiki/Bradycardia"
     ],
     "knowledge": [
-        "heart rate <60/min in an adult",
+        "heart rate (ventricular rate) < 60/min in an adult",
     ],
 })
 
@@ -156,20 +172,7 @@ LAnFB = ED({  # morphology
     ],
 })
 
-LAD = ED({  # morphology
-    "fullname": "left axis deviation",
-    "url": [
-        "https://litfl.com/left-axis-deviation-lad-ecg-library/",
-        "https://en.wikipedia.org/wiki/Left_axis_deviation",
-    ],
-    "knowledge": [
-        "QRS axis (-30°, -90°)",
-        "leads I and aVL are positive; leads II, III and aVF are negative",  # important
-        "LAnFB, LBBB, PR, ventricular ectopics are causes of LAD",
-    ],
-})
-
-LQRSV = ED({  # spatial (voltage)
+LQRSV = ED({  # voltage
     "fullname": "low qrs voltages",
     "url": [
         "https://litfl.com/low-qrs-voltage-ecg-library/",
@@ -179,14 +182,16 @@ LQRSV = ED({  # spatial (voltage)
     ],
 })
 
-NSIVCB = ED({  # morphology
+NSIVCB = ED({  # mophology
     "fullname": "nonspecific intraventricular conduction disorder",
     "url": [
-        "https://ecgwaves.com/topic/nonspecific-intraventricular-conduction-delay-defect/"
+        "https://ecgwaves.com/topic/nonspecific-intraventricular-conduction-delay-defect/",
+        "https://www.dynamed.com/condition/intraventricular-conduction-disorders-including-left-and-right-bundle-branch-block-lbbb-and-rbbb",
+        "https://www.sciencedirect.com/science/article/pii/S0735109708041351",
+        "https://www.heartrhythmjournal.com/article/S1547-5271(15)00073-9/abstract",
     ],
     "knowledge": [
-        "widended (> 110ms) QRS complex, with morphology different from LBBB and RBBB",
-        ""
+        "widended (> 110ms) QRS complex, with not meeting the criteria (morphology different from) for LBBB and RBBB",
     ],
 })
 
@@ -199,20 +204,20 @@ PR = ED({  # morphology
         "morphology  is dependent on the pacing mode (AAI, VVI, DDD, Magnet) used",
         "there are pacing spikes: vertical spikes of short duration, usually 2 ms (500Hz)",  # important
         "AAI (atrial pacing): pacing spike precedes the p wave",
-        "VVI (atrial pacing): pacing spike precedes the QRS complex; morphology similar to LBBB or RBBB",
+        "VVI (ventricle pacing): pacing spike precedes the QRS complex; morphology similar to LBBB or RBBB (depending on lead placement)",
     ],
 })
 
-PAC = ED({  # morphology
+PAC = ED({  # morphology, very complicated
     "fullname": "premature atrial contraction",
     "url": [
         "https://litfl.com/premature-atrial-complex-pac/",
         "https://en.wikipedia.org/wiki/Premature_atrial_contraction",
     ],
     "knowledge": [
-        "An abnormal (non-sinus) P wave is followed by a QRS complex",
+        "an abnormal (non-sinus) P wave is followed by a QRS complex",
         "P wave typically has a different morphology and axis to the sinus P waves",
-        "Abnormal P wave may be hidden in the preceding T wave, producing a “peaked” or “camel hump” appearance",
+        "abnormal P wave may be hidden in the preceding T wave, producing a “peaked” or “camel hump” appearance",
         # to add more
     ],
 })
@@ -224,9 +229,9 @@ PJC = ED({  # morphology
         "https://en.wikipedia.org/wiki/Premature_junctional_contraction",
     ],
     "knowledge": [
-        "Narrow QRS complex, either (1) without a preceding P wave or (2) with a retrograde P wave which may appear before, during, or after the QRS complex. If before, there is a short PR interval of < 120 ms and the  “retrograde” P waves are usually inverted in leads II, III and aVF",
-        "Occurs sooner than would be expected for the next sinus impulse",
-        "Followed by a compensatory pause",
+        "narrow QRS complex, either (1) without a preceding P wave or (2) with a retrograde P wave which may appear before, during, or after the QRS complex. If before, there is a short PR interval of < 120 ms and the  “retrograde” P waves are usually inverted in leads II, III and aVF",
+        "occurs sooner than would be expected for the next sinus impulse",
+        "followed by a compensatory pause",
     ],
 })
 
@@ -237,95 +242,127 @@ PVC = ED({  # morphology
         "https://en.wikipedia.org/wiki/Premature_ventricular_contraction",
     ],
     "knowledge": [
-        "Broad QRS complex (≥ 120 ms) with abnormal morphology",
-        "Premature — i.e. occurs earlier than would be expected for the next sinus impulse",
-        "Discordant ST segment and T wave changes",
-        "Usually followed by a full compensatory pause",
-        "Retrograde capture of the atria may or may not occur",
+        "broad QRS complex (≥ 120 ms) with abnormal morphology",
+        "premature — i.e. occurs earlier than would be expected for the next sinus impulse",
+        "discordant ST segment and T wave changes",
+        "usually followed by a full compensatory pause",
+        "retrograde capture of the atria may or may not occur",
     ],
 })
 
-LPR = ED({
+LPR = ED({  # morphology
     "fullname": "prolonged pr interval",
     "url": [
-
+        "https://litfl.com/pr-interval-ecg-library/",
+        "https://en.wikipedia.org/wiki/PR_interval",
+        "https://www.healio.com/cardiology/learn-the-heart/ecg-review/ecg-interpretation-tutorial/pr-interval",
     ],
     "knowledge": [
-
+        "PR interval >200ms",
     ],
 })
 
-LQT = ED({
+LQT = ED({  # morphology
     "fullname": "prolonged qt interval",
     "url": [
-
+        "https://litfl.com/qt-interval-ecg-library/",
+        "https://en.wikipedia.org/wiki/Long_QT_syndrome",
     ],
     "knowledge": [
-
+        "LQT is measured by QTc (see ref url)"
+        "QTc is prolonged if > 440ms in men or > 460ms in women (or > 480ms?)",
     ],
 })
 
-QAb = ED({
+QAb = ED({   # morphology
     "fullname": "qwave abnormal",
     "url": [
-
+        "https://litfl.com/q-wave-ecg-library/",
+        "https://en.ecgpedia.org/wiki/Pathologic_Q_Waves",
+        "https://wikem.org/wiki/Pathologic_Q_waves",
     ],
     "knowledge": [
-
+        "> 40 ms (1 mm) wide; > 2 mm deep; > 1/4 of depth of QRS complex in ANY TWO leads of a contiguous lead grouping: I, aVL,V6; V4–V6; II, III, aVF",
+        "seen (≥ 0.02 s or QS complex) in leads V1-3",
     ],
 })
 
-RAD = ED({
+RAD = ED({  # morphology
     "fullname": "right axis deviation",
     "url": [
-
+        "https://litfl.com/right-axis-deviation-rad-ecg-library/",
+        "https://en.wikipedia.org/wiki/Right_axis_deviation",
     ],
     "knowledge": [
-
+        "QRS axis greater than +90°",
+        "POSITIVE (dominant R wave) in lead II, III and aVF; NEGATIVE (dominant S wave) in lead I",
     ],
 })
 
-SA = ED({
+LAD = ED({  # morphology
+    "fullname": "left axis deviation",
+    "url": [
+        "https://litfl.com/left-axis-deviation-lad-ecg-library/",
+        "https://en.wikipedia.org/wiki/Left_axis_deviation",
+    ],
+    "knowledge": [
+        "QRS axis (-30°, -90°)",
+        "POSITIVE (dominant R wave) in leads I and aVL; NEGATIVE in leads II, III and aVF",  # important
+        "LAnFB, LBBB, PR, ventricular ectopics are causes of LAD",
+    ],
+})
+
+SA = ED({  # morphology
     "fullname": "sinus arrhythmia",
     "url": [
-
+        "https://litfl.com/sinus-arrhythmia-ecg-library/",
+        "https://www.healthline.com/health/sinus-arrhythmia",
     ],
     "knowledge": [
-
+        "sinus rhythm (SNR), with a beat-to-beat variation (more than 120 ms) in the PP interval, producing an irregular ventricular rate",
+        "PP interval gradually lengthens and shortens in a cyclical fashion, usually corresponding to the phases of the respiratory cycle",
+        "normal sinus P waves (upright in leads I and II) with a constant morphology (i.e. not PAC)",
+        "constant PR interval (i.e. not Mobitz I AV block)",
     ],
 })
 
-SB = ED({
+SB = ED({  # rr, morphology
     "fullname": "sinus bradycardia",
     "url": [
-
+        "https://litfl.com/sinus-bradycardia-ecg-library/",
+        "https://en.wikipedia.org/wiki/Sinus_bradycardia",
     ],
     "knowledge": [
-
+        "sinus rhythm (SNR); with a resting heart rate of < 60 bpm in adults (Brady)",
     ],
 })
 
-SNR = ED({
+SNR = ED({  # rr, morphology
     "fullname": "sinus rhythm",  # the NORMAL rhythm
     "url": [
-
+        "https://litfl.com/normal-sinus-rhythm-ecg-library/",
+        "https://en.wikipedia.org/wiki/Sinus_rhythm",
     ],
     "knowledge": [
-
+        "regular rhythm (< 0.16 s variation in the shortest and longest durations between successive P waves) at a rate of 60-100 bpm",
+        "each QRS complex is preceded by a normal P wave (positive in lead I, lead II, and aVF; negative in lead aVR; any of biphasic (-/+), positive or negative in lead aVL; positive in all chest leads, except for V1 which may be biphasic (+/-))",
+        "normal PR interval, QRS complex and QT interval",  # normal
     ],
 })
 
-STach = ED({
+STach = ED({  # rr, morphology,
     "fullname": "sinus tachycardia",
     "url": [
-
+        "https://litfl.com/sinus-tachycardia-ecg-library/",
+        "https://litfl.com/tachycardia-ddx/",
+        "https://en.wikipedia.org/wiki/Sinus_tachycardia",
     ],
     "knowledge": [
-
+        "sinus rhythm (SNR), with a resting heart rate of > 100 bpm in adults",
     ],
 })
 
-SVPB = ED({
+SVPB = ED({  # morphology, equiv. to PAC for CINC2020
     "fullname": "supraventricular premature beats",
     "url": [
         "https://en.wikipedia.org/wiki/Premature_atrial_contraction#Supraventricular_extrasystole",
@@ -333,34 +370,33 @@ SVPB = ED({
     "knowledge": PAC["knowledge"] + PJC["knowledge"],
 })
 
-TAb = ED({
+TAb = ED({  # morphology
     "fullname": "t wave abnormal",
     "url": [
-
+        "https://litfl.com/t-wave-ecg-library/",
+        "https://en.wikipedia.org/wiki/T_wave",
     ],
     "knowledge": [
-
+        "normal T wave: upright in all leads, except aVR, aVL, III and V1; amplitude < 5mm in limb leads, < 10mm in precordial leads; asymmetrical with a rounded peak",
+        "abnormalities: peaked (amplitude) T waves; hyperacute T waves (broad, symmetrical, usually with increased amplitude); inverted T waves (TInv); biphasic T waves; ‘camel hump’ T waves; flattened T waves (± 0.1mV)"
     ],
 })
 
-TInv = ED({
+TInv = ED({  # morphology
     "fullname": "t wave inversion",
     "url": [
-
+        "https://en.wikipedia.org/wiki/T_wave#Inverted_T_wave",
+        "https://litfl.com/t-wave-ecg-library/",
     ],
     "knowledge": [
-
+        "normal T wave should be upright (positive peak amplitude) in all leads, except aVR, aVL, III and V1",
     ],
 })
 
 VPB = ED({
     "fullname": "ventricular premature beats",
-    "url": [
-
-    ],
-    "knowledge": [
-
-    ],
+    "url": PVC["url"],
+    "knowledge": PVC["knowledge"],
 })
 
 SPB = SVPB  # alias
