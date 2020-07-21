@@ -19,6 +19,7 @@ __all__ = [
     "dx_mapping_all",
     "load_weights",
     "get_class",
+    "normalize_class",
     "dx_cooccurrence_all",
     "dx_cooccurrence_scored",
 ]
@@ -228,7 +229,7 @@ def load_weights(classes:Sequence[Union[int,str]]=None, return_fmt:str='np') -> 
         the weight matrix of the `classes`
     """
     if classes:
-        l_nc = [_normalize_class(c) for c in classes]
+        l_nc = [normalize_class(c) for c in classes]
         assert len(set(l_nc)) == len(classes), "`classes` has duplicates!"
         mat = df_weights_abbr.loc[l_nc,l_nc]
     else:
@@ -246,7 +247,7 @@ def load_weights(classes:Sequence[Union[int,str]]=None, return_fmt:str='np') -> 
     return mat
 
 
-def _normalize_class(c:Union[str,int]) -> str:
+def normalize_class(c:Union[str,int]) -> str:
     """ finished, checked,
 
     normalize the class name to its abbr.,

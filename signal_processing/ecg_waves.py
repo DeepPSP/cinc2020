@@ -1,5 +1,5 @@
 """
-detection of T, U, P waves of ECG,
+detection of T, U, P waves of single lead ECG,
 under the assumption that onsets and offset of the QRS complexes are already detected
 
 TODO:
@@ -25,7 +25,7 @@ import warnings
 
 import numpy as np
 
-from utils.utils_misc import smooth
+from utils.misc import smooth
 
 
 ##################################
@@ -177,7 +177,7 @@ def ecg_tup_wave(ecg_curve:np.ndarray, rpeaks:Sequence[int], l_ecg_beats:list, f
 
     for idx, r in enumerate(beat_r_peak_indices[:-1]):
         if verbose >= 1:
-            print(f"{'*'*20}  start detecting t, u, p waves of the {idx}-th beat...  {'*'*20"})
+            print(f"{'*'*20}  start detecting t, u, p waves of the {idx}-th beat...  {'*'*20}")
         qrs_offset_idx = l_ecg_beats[idx].qrs_offset_idx + r - l_ecg_beats[idx].r_peak_idx
         next_r = beat_r_peak_indices[idx+1]  # absolute index in ecg_curve
         qrs_onset_idx = l_ecg_beats[idx+1].qrs_onset_idx + next_r - l_ecg_beats[idx+1].r_peak_idx  # absolute index in self.ecg_curve

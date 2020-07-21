@@ -20,6 +20,7 @@ import utils
 from utils.misc import get_record_list_recursive, dict_to_str
 from utils.scoring_aux_data import (
     dx_mapping_all, dx_mapping_scored, dx_mapping_unscored,
+    normalize_class,
 )
 from utils import ecg_arrhythmia_knowledge as EAK
 
@@ -546,23 +547,23 @@ class CINC2020(object):
 
     @classmethod
     def get_arrhythmia_knowledge(cls, arrhythmias:Union[str,List[str]], **kwargs) -> NoReturn:
-        """ finished, not checked,
+        """ finished, checked,
 
         knowledge about ECG features of specific arrhythmias,
 
         Parameters:
         -----------
         arrhythmias: str, or list of str,
-            the arrhythmia(s) to check, in abbreviations
+            the arrhythmia(s) to check, in abbreviations or in SNOMED CT Code
 
         Returns:
         --------
         to write
         """
         if isinstance(arrhythmias, str):
-            d = [arrhythmias]
+            d = [normalize_class(arrhythmias)]
         else:
-            d = arrhythmias
+            d = [normalize_class(c) for c in arrhythmias]
         # pp = pprint.PrettyPrinter(indent=4)
         # unsupported = [item for item in d if item not in dx_mapping_all['Abbreviation']]
         unsupported = [item for item in d if item not in dx_mapping_scored['Abbreviation'].values]
