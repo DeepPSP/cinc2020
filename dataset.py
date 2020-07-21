@@ -468,7 +468,7 @@ class CINC2020(object):
             f.write("\n".join([recording_string, class_string, label_string, score_string, ""]))
 
 
-    def plot(self, rec:str, leads:Optional[Union[str, List[str]]]=None, **kwargs) -> NoReturn:
+    def plot(self, rec:str, leads:Optional[Union[str, List[str]]]=None, granularity:int=2, **kwargs) -> NoReturn:
         """ finished, checked, to improve
 
         Parameters:
@@ -476,10 +476,19 @@ class CINC2020(object):
         rec: str,
             name of the record
         leads: str or list of str, optional,
-            the leads to 
+            the leads to plot
+        granularity: int, default 2,
+            the granularity to plot axis ticks, the higher the more
         kwargs: dict,
 
-        TODO: slice too long records, and plot separately for each segment
+        TODO:
+        -----
+        slice too long records, and plot separately for each segment
+
+        NOTE:
+        -----
+        `Locator` of `plt` has default `MAXTICKS` equal to 1000,
+        if not modifying this number, at most 40 seconds of signal could be plotted once
 
         Contributors: Jeethan, and WEN Hao
         """
@@ -495,6 +504,7 @@ class CINC2020(object):
             
         if 'plt' not in dir():
             import matplotlib.pyplot as plt
+            plt.MultipleLocator.MAXTICKS = 3000
         if leads is None or leads == 'all':
             leads = self.all_leads
         assert all([l in self.all_leads for l in leads])
@@ -524,12 +534,15 @@ class CINC2020(object):
             # axes[idx].plot(t, data[idx], label=f'lead - {leads[idx]}{nl}labels_s - {",".join(diag_scored)}{nl}labels_a - {",".join(diag_all)}')
             axes[idx].plot(t, data[idx], label=f'lead - {leads[idx]}')
             axes[idx].axhline(y=0, linestyle='-', linewidth='1.0', color='red')
-            axes[idx].xaxis.set_major_locator(plt.MultipleLocator(0.2))
-            axes[idx].xaxis.set_minor_locator(plt.MultipleLocator(0.04))
-            axes[idx].yaxis.set_major_locator(plt.MultipleLocator(500))
-            axes[idx].yaxis.set_minor_locator(plt.MultipleLocator(100))
-            axes[idx].grid(which='major', linestyle='-', linewidth='0.5', color='red')
-            axes[idx].grid(which='minor', linestyle=':', linewidth='0.5', color='black')
+            # NOTE that `Locator` has default `MAXTICKS` equal to 1000
+            if granularity >= 1:
+                axes[idx].xaxis.set_major_locator(plt.MultipleLocator(0.2))
+                axes[idx].yaxis.set_major_locator(plt.MultipleLocator(500))
+                axes[idx].grid(which='major', linestyle='-', linewidth='0.5', color='red')
+            if granularity >= 2:
+                axes[idx].xaxis.set_minor_locator(plt.MultipleLocator(0.04))
+                axes[idx].yaxis.set_minor_locator(plt.MultipleLocator(100))
+                axes[idx].grid(which='minor', linestyle=':', linewidth='0.5', color='black')
             # add extra info. to legend
             # https://stackoverflow.com/questions/16826711/is-it-possible-to-add-a-string-as-a-legend-item-in-matplotlib
             axes[idx].plot([], [], ' ', label=f"labels_s - {','.join(diag_scored)}")
