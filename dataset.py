@@ -92,7 +92,7 @@ class CINC2020(object):
 
     ISSUES:
     -------
-    1.
+    1. reading the .hea files, baselines of all records are 0, however it is not the case if one plot the signal
 
     Usage:
     ------
@@ -123,8 +123,8 @@ class CINC2020(object):
         self.logger = None
         self._set_logger(prefix=self.db_name)
 
-        self.rec_ext = '.mat'
-        self.ann_ext = '.hea'
+        self.rec_ext = 'mat'
+        self.ann_ext = 'hea'
 
         self.db_dir_base = db_dir
         self.db_dirs = ED({
@@ -296,7 +296,7 @@ class CINC2020(object):
         """
         assert data_format.lower() in ['channel_first', 'lead_first', 'channel_last', 'lead_last']
         tranche = self._get_tranche(rec)
-        rec_fp = os.path.join(self.db_dirs[tranche], rec + self.rec_ext)
+        rec_fp = os.path.join(self.db_dirs[tranche], f'{rec}.{self.rec_ext}')
         data = loadmat(rec_fp)
         data = np.asarray(data['val'], dtype=np.float64)
         if data_format.lower() in ['channel_last', 'lead_last']:
@@ -319,7 +319,7 @@ class CINC2020(object):
             the annotations with items: ref. `self.ann_items`
         """
         tranche = self._get_tranche(rec)
-        ann_fp = os.path.join(self.db_dirs[tranche], rec + self.ann_ext)
+        ann_fp = os.path.join(self.db_dirs[tranche], f'{rec}.{self.ann_ext}')
         with open(ann_fp, 'r') as f:
             header_data = f.read().splitlines()
 
@@ -473,13 +473,16 @@ class CINC2020(object):
             f.write("\n".join([recording_string, class_string, label_string, score_string, ""]))
 
 
-    def plot(self, rec:str, leads:Optional[Union[str, List[str]]]=None, ticks_granularity:int=0, **kwargs) -> NoReturn:
+    def plot(self, rec:str, data:Optional[np.ndarray]=None, leads:Optional[Union[str, List[str]]]=None, ticks_granularity:int=0, **kwargs) -> NoReturn:
         """ finished, checked, to improve
 
         Parameters:
         -----------
         rec: str,
             name of the record
+        data: ndarray, optional,
+            12-lead ecg signal to plot,
+            if given, data of `rec` will not be used
         leads: str or list of str, optional,
             the leads to plot
         ticks_granularity: int, default 0,
@@ -517,7 +520,8 @@ class CINC2020(object):
         # lead_list = self.load_ann(rec)['df_leads']['lead_name'].tolist()
         # lead_indices = [lead_list.index(l) for l in leads]
         lead_indices = [self.all_leads.index(l) for l in leads]
-        data = self.load_data(rec, data_format='channel_first')[lead_indices]
+        if data is None:
+            data = self.load_data(rec, data_format='channel_first')[lead_indices]
         y_ranges = np.max(np.abs(data), axis=1) + 100
 
         diag_scored = self.get_labels(rec, scored_only=True, abbr=True)
