@@ -29,6 +29,7 @@ from .ecg_rpeaks import (
 
 __all__ = [
     "preprocess_single_lead_signal",
+    "preprocess_12_lead_signal",
 ]
 
 
@@ -44,7 +45,7 @@ QRS_DETECTORS = {
 }
 
 
-def preprocess_12_lead_signal(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", bl_win:Optional[list]=None, band_fs:Optional[list]=None, rpeak_fn:Optional[Callable[[np.ndarray,Real], np.ndarray]]=None) -> Dict[str, np.ndarray]:
+def preprocess_12_lead_signal(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", bl_win:Optional[List[Real]]=None, band_fs:Optional[List[Real]]=None, rpeak_fn:Optional[Callable[[np.ndarray,Real], np.ndarray]]=None) -> Dict[str, np.ndarray]:
     """ finished, checked,
 
     Parameters:
@@ -58,10 +59,14 @@ def preprocess_12_lead_signal(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_
         'channel_last' (alias 'lead_last'), or
         'channel_first' (alias 'lead_first', original)
     bl_win: list (of 2 real numbers), optional,
-        window of baseline removal using `median_filter`
+        window (units in second) of baseline removal using `median_filter`,
+        the first is the shorter one, the second the longer one,
+        a typical pair is [0.2, 0.6],
         if is None or empty, baseline removal will not be performed
     band_fs: list (of 2 real numbers), optional,
         frequency band of the bandpass filter,
+        a typical pair is [0.5, 45],
+        be careful when detecting paced rhythm,
         if is None or empty, bandpass filtering will not be performed
     rpeak_fn: callable, optional,
         the function detecting rpeaks,
@@ -99,7 +104,7 @@ def preprocess_12_lead_signal(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_
     return retval
 
 
-def preprocess_single_lead_signal(raw_sig:np.ndarray, fs:Real, bl_win:Optional[list]=None, band_fs:Optional[list]=None, rpeak_fn:Optional[Callable[[np.ndarray,Real], np.ndarray]]=None) -> Dict[str, np.ndarray]:
+def preprocess_single_lead_signal(raw_sig:np.ndarray, fs:Real, bl_win:Optional[List[Real]]=None, band_fs:Optional[List[Real]]=None, rpeak_fn:Optional[Callable[[np.ndarray,Real], np.ndarray]]=None) -> Dict[str, np.ndarray]:
     """ finished, checked,
 
     Parameters:
@@ -109,10 +114,14 @@ def preprocess_single_lead_signal(raw_sig:np.ndarray, fs:Real, bl_win:Optional[l
     fs: real number,
         sampling frequency of `raw_sig`
     bl_win: list (of 2 real numbers), optional,
-        window of baseline removal using `median_filter`
+        window (units in second) of baseline removal using `median_filter`,
+        the first is the shorter one, the second the longer one,
+        a typical pair is [0.2, 0.6],
         if is None or empty, baseline removal will not be performed
     band_fs: list (of 2 real numbers), optional,
         frequency band of the bandpass filter,
+        a typical pair is [0.5, 45],
+        be careful when detecting paced rhythm,
         if is None or empty, bandpass filtering will not be performed
     rpeak_fn: callable, optional,
         the function detecting rpeaks,
@@ -129,8 +138,8 @@ def preprocess_single_lead_signal(raw_sig:np.ndarray, fs:Real, bl_win:Optional[l
 
     # remove baseline
     if baseline:
-        window1 = 2 * (bl_win[0] // 2) + 1  # window size must be odd
-        window2 = 2 * (bl_win[1] // 2) + 1
+        window1 = 2 * (int(bl_win[0] * fs) // 2) + 1  # window size must be odd
+        window2 = 2 * (int(bl_win[1] * fs) // 2) + 1
         baseline = median_filter(filtered_ecg, size=window1, mode='nearest')
         baseline = median_filter(baseline, size=window2, mode='nearest')
         filtered_ecg = filtered_ecg - baseline
