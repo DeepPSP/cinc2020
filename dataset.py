@@ -277,26 +277,29 @@ class CINC2020(object):
         return tranche
 
 
-    def load_data(self, rec:str, data_format='channels_last') -> np.ndarray:
+    def load_data(self, rec:str, data_format='channel_first') -> np.ndarray:
         """ finished, checked,
 
         Parameters:
         -----------
         rec: str,
             name of the record
-        data_format: str, default 'channels_last',
-            format of the ecg data, 'channels_last' or 'channels_first' (original)
+        data_format: str, default 'channel_first',
+            format of the ecg data,
+            'channel_last' (alias 'lead_last'), or
+            'channel_first' (alias 'lead_first', original)
         
         Returns:
         --------
         data: ndarray,
             the ecg data
         """
+        assert data_format.lower() in ['channel_first', 'lead_first', 'channel_last', 'lead_last']
         tranche = self._get_tranche(rec)
         rec_fp = os.path.join(self.db_dirs[tranche], rec + self.rec_ext)
         data = loadmat(rec_fp)
         data = np.asarray(data['val'], dtype=np.float64)
-        if data_format == 'channels_last':
+        if data_format.lower() in ['channel_last', 'lead_last']:
             data = data.T
         
         return data
@@ -468,7 +471,7 @@ class CINC2020(object):
             f.write("\n".join([recording_string, class_string, label_string, score_string, ""]))
 
 
-    def plot(self, rec:str, leads:Optional[Union[str, List[str]]]=None, granularity:int=0, **kwargs) -> NoReturn:
+    def plot(self, rec:str, leads:Optional[Union[str, List[str]]]=None, ticks_granularity:int=0, **kwargs) -> NoReturn:
         """ finished, checked, to improve
 
         Parameters:
@@ -477,7 +480,7 @@ class CINC2020(object):
             name of the record
         leads: str or list of str, optional,
             the leads to plot
-        granularity: int, default 0,
+        ticks_granularity: int, default 0,
             the granularity to plot axis ticks, the higher the more
         kwargs: dict,
 
@@ -512,7 +515,7 @@ class CINC2020(object):
         # lead_list = self.load_ann(rec)['df_leads']['lead_name'].tolist()
         # lead_indices = [lead_list.index(l) for l in leads]
         lead_indices = [self.all_leads.index(l) for l in leads]
-        data = self.load_data(rec, data_format='channels_first')[lead_indices]
+        data = self.load_data(rec, data_format='channel_first')[lead_indices]
         y_ranges = np.max(np.abs(data), axis=1) + 100
 
         diag_scored = self.get_labels(rec, scored_only=True, abbr=True)
@@ -535,11 +538,11 @@ class CINC2020(object):
             axes[idx].plot(t, data[idx], label=f'lead - {leads[idx]}')
             axes[idx].axhline(y=0, linestyle='-', linewidth='1.0', color='red')
             # NOTE that `Locator` has default `MAXTICKS` equal to 1000
-            if granularity >= 1:
+            if ticks_granularity >= 1:
                 axes[idx].xaxis.set_major_locator(plt.MultipleLocator(0.2))
                 axes[idx].yaxis.set_major_locator(plt.MultipleLocator(500))
                 axes[idx].grid(which='major', linestyle='-', linewidth='0.5', color='red')
-            if granularity >= 2:
+            if ticks_granularity >= 2:
                 axes[idx].xaxis.set_minor_locator(plt.MultipleLocator(0.04))
                 axes[idx].yaxis.set_minor_locator(plt.MultipleLocator(100))
                 axes[idx].grid(which='minor', linestyle=':', linewidth='0.5', color='black')
