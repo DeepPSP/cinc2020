@@ -137,7 +137,7 @@ def preprocess_single_lead_signal(raw_sig:np.ndarray, fs:Real, bl_win:Optional[L
     filtered_ecg = raw_sig.copy()
 
     # remove baseline
-    if baseline:
+    if bl_win:
         window1 = 2 * (int(bl_win[0] * fs) // 2) + 1  # window size must be odd
         window2 = 2 * (int(bl_win[1] * fs) // 2) + 1
         baseline = median_filter(filtered_ecg, size=window1, mode='nearest')

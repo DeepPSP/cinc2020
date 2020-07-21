@@ -200,7 +200,8 @@ class CINC2020(object):
         list all the records and load into `self.all_records`,
         facilitating further uses
         """
-        record_list_fp = os.path.join(utils._BASE_DIR, "utils", "record_list.json")
+        # record_list_fp = os.path.join(utils._BASE_DIR, "utils", "record_list.json")
+        record_list_fp = os.path.join(self.db_dir_base, "record_list.json")
         if os.path.isfile(record_list_fp):
             with open(record_list_fp, "r") as f:
                 self.all_records = json.load(f)
