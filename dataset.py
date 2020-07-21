@@ -468,7 +468,7 @@ class CINC2020(object):
             f.write("\n".join([recording_string, class_string, label_string, score_string, ""]))
 
 
-    def plot(self, rec:str, leads:Optional[Union[str, List[str]]]=None, granularity:int=2, **kwargs) -> NoReturn:
+    def plot(self, rec:str, leads:Optional[Union[str, List[str]]]=None, granularity:int=0, **kwargs) -> NoReturn:
         """ finished, checked, to improve
 
         Parameters:
@@ -477,7 +477,7 @@ class CINC2020(object):
             name of the record
         leads: str or list of str, optional,
             the leads to plot
-        granularity: int, default 2,
+        granularity: int, default 0,
             the granularity to plot axis ticks, the higher the more
         kwargs: dict,
 
