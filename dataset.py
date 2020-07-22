@@ -353,23 +353,29 @@ class CINC2020(object):
         return data
 
     
-    def load_ann(self, rec:str) -> dict:
+    def load_ann(self, rec:str, raw:bool=False) -> Union[dict,str]:
         """ finished, checked,
         
         Parameters:
         -----------
         rec: str,
             name of the record
+        raw: bool, default False,
+            if True, the raw annotations without parsing will be returned
         
         Returns:
         --------
-        ann_dict, dict,
+        ann_dict, dict or str,
             the annotations with items: ref. `self.ann_items`
         """
         tranche = self._get_tranche(rec)
         ann_fp = os.path.join(self.db_dirs[tranche], f'{rec}.{self.ann_ext}')
         with open(ann_fp, 'r') as f:
             header_data = f.read().splitlines()
+        
+        if raw:
+            ann_dict = '\n'.join(header_data)
+            return ann_dict
 
         ann_dict = {}
         ann_dict['rec_name'], ann_dict['nb_leads'], ann_dict['freq'], ann_dict['nb_samples'], ann_dict['datetime'], daytime = header_data[0].split(' ')
