@@ -292,10 +292,13 @@ RAD = ED({  # morphology
     "url": [
         "https://litfl.com/right-axis-deviation-rad-ecg-library/",
         "https://en.wikipedia.org/wiki/Right_axis_deviation",
+        "https://www.ncbi.nlm.nih.gov/books/NBK470532/",
+        "https://ecglibrary.com/axis.html",
     ],
-    "knowledge": [
+    "knowledge": [  # should combine with LAD to study
         "QRS axis greater than +90°",
-        "POSITIVE (dominant R wave) in lead II, III and aVF; NEGATIVE (dominant S wave) in lead I",
+        "2-lead method: lead I is NEGATIVE; lead aVF is POSITIVE",  # important, ref LAD
+        "3-lead method: lead I is NEGATIVE; lead aVF is POSITIVE (and II, III)",  # important, ref LAD
     ],
 })
 
@@ -304,10 +307,13 @@ LAD = ED({  # morphology
     "url": [
         "https://litfl.com/left-axis-deviation-lad-ecg-library/",
         "https://en.wikipedia.org/wiki/Left_axis_deviation",
+        "https://www.ncbi.nlm.nih.gov/books/NBK470532/",
+        "https://ecglibrary.com/axis.html",
     ],
-    "knowledge": [
+    "knowledge": [  # should combine with RAD to study
         "QRS axis (-30°, -90°)",
-        "POSITIVE (dominant R wave) in leads I and aVL; NEGATIVE in leads II, III and aVF",  # important
+        "2-lead method: lead I is POSITIVE; lead aVF is NEGATIVE",  # important, ref RAD
+        "3-lead method: POSITIVE in leads I (and aVL?); NEGATIVE in leads II, aVF, (and III?)",  # important, ref RAD
         "LAnFB, LBBB, PR, ventricular ectopics are causes of LAD",
     ],
 })
