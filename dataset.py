@@ -136,8 +136,10 @@ class CINC2020(object):
             "F": os.path.join(self.db_dir_base, "Training_E", "WFDB"),
         })
 
-        self.all_records = None
+        self._all_records = None
         self._ls_rec()
+        self._diagnoses_records_list = None
+        self._ls_diagnoses_records()
 
         self.rec_prefix = ED({
             "A": "A", "B": "Q", "C": "I", "D": "S", "E": "HR", "F": "E",
@@ -197,24 +199,69 @@ class CINC2020(object):
     def _ls_rec(self) -> NoReturn:
         """ finished, checked,
 
-        list all the records and load into `self.all_records`,
+        list all the records and load into `self._all_records`,
         facilitating further uses
         """
-        # record_list_fp = os.path.join(utils._BASE_DIR, "utils", "record_list.json")
-        record_list_fp = os.path.join(self.db_dir_base, "record_list.json")
+        fn = "record_list.json"
+        record_list_fp = os.path.join(self.db_dir_base, fn)
+        if not os.path.isfile(record_list_fp):
+            record_list_fp = os.path.join(utils._BASE_DIR, "utils", fn)
         if os.path.isfile(record_list_fp):
             with open(record_list_fp, "r") as f:
-                self.all_records = json.load(f)
+                self._all_records = json.load(f)
         else:
             print("Please wait patiently to let the reader find all records of all the tranches...")
             start = time.time()
-            self.all_records = ED({
+            self._all_records = ED({
                 tranche: get_record_list_recursive(self.db_dirs[tranche], self.rec_ext) \
                     for tranche in "ABCDEF"
             })
             print(f"Done in {time.time() - start} seconds!")
             with open(record_list_fp, "w") as f:
-                json.dump(self.all_records, f)
+                json.dump(self._all_records, f)
+
+
+    @property
+    def all_records(self):
+        """
+        """
+        if self._all_records is None:
+            self._ls_rec()
+        return self._all_records
+
+
+    def _ls_diagnoses_records(self) -> NoReturn:
+        """ finished, checked,
+
+        list all the records for all diagnoses
+        """
+        fn = "diagnoses_records_list.json"
+        dr_fp = os.path.join(self.db_dir_base, fn)
+        if not os.path.isfile(dr_fp):
+            dr_fp = os.path.join(utils._BASE_DIR, "utils", fn)
+        if os.path.isfile(dr_fp):
+            with open(dr_fp, "r") as f:
+                self._diagnoses_records_list = json.load(f)
+        else:
+            print("Please wait patiently to let the reader list records for each diagnosis...")
+            start = time.time()
+            self._diagnoses_records_list = {d: [] for d in df_weights_abbr.columns.values.tolist()}
+            for tranche, l_rec in self.all_records.items():
+                for rec in l_rec:
+                    ann = self.load_ann(rec)
+                    ld = ann["diagnosis_scored"]['diagnosis_abbr']
+                    for d in ld:
+                        self._diagnoses_records_list[d].append(rec)
+            print(f"Done in {time.time() - start} seconds!")
+
+
+    @property
+    def diagnoses_records_list(self):
+        """
+        """
+        if self._diagnoses_records_list is None:
+            self._ls_diagnoses_records()
+        return self._diagnoses_records_list
 
 
     def _set_logger(self, prefix:Optional[str]=None):
