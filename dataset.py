@@ -325,13 +325,15 @@ class CINC2020(object):
         return tranche
 
 
-    def load_data(self, rec:str, data_format='channel_first') -> np.ndarray:
+    def load_data(self, rec:str, leads:Optional[Union[str, List[str]]=None, data_format='channel_first') -> np.ndarray:
         """ finished, checked,
 
         Parameters:
         -----------
         rec: str,
             name of the record
+        leads: str or list of str, optional,
+            the leads to load
         data_format: str, default 'channel_first',
             format of the ecg data,
             'channel_last' (alias 'lead_last'), or
@@ -347,6 +349,12 @@ class CINC2020(object):
         rec_fp = os.path.join(self.db_dirs[tranche], f'{rec}.{self.rec_ext}')
         data = loadmat(rec_fp)
         data = np.asarray(data['val'], dtype=np.float64)
+
+        if isinstance(leads, str):
+            leads_ind = [self.all_leads.index(leads)]
+        else:
+            leads_ind = [self.all_leads.index(item) for item in leads]
+
         if data_format.lower() in ['channel_last', 'lead_last']:
             data = data.T
         
