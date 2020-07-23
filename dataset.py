@@ -508,7 +508,9 @@ class CINC2020(object):
 
 
     def save_challenge_predictions(self, rec:str, output_dir:str, scores:List[Real], labels:List[int], classes:List[str]) -> NoReturn:
-        """ finished, checked, to update for the official phase
+        """ finished, checked, 
+        
+        TODO: update for the official phase
 
         Parameters:
         -----------
@@ -538,7 +540,7 @@ class CINC2020(object):
 
 
     def plot(self, rec:str, data:Optional[np.ndarray]=None, leads:Optional[Union[str, List[str]]]=None, ticks_granularity:int=0, **kwargs) -> NoReturn:
-        """ finished, checked, to improve
+        """ finished, checked, to improve,
 
         Parameters:
         -----------
@@ -641,10 +643,6 @@ class CINC2020(object):
         -----------
         arrhythmias: str, or list of str,
             the arrhythmia(s) to check, in abbreviations or in SNOMED CT Code
-
-        Returns:
-        --------
-        to write
         """
         if isinstance(arrhythmias, str):
             d = [normalize_class(arrhythmias)]
