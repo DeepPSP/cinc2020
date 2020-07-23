@@ -350,10 +350,12 @@ class CINC2020(object):
         data = loadmat(rec_fp)
         data = np.asarray(data['val'], dtype=np.float64)
 
-        if isinstance(leads, str):
+        if leads and isinstance(leads, str):
             leads_ind = [self.all_leads.index(leads)]
-        else:
+            data = data[leads_ind,:]
+        elif leads:
             leads_ind = [self.all_leads.index(item) for item in leads]
+            data = data[leads_ind,:]
 
         if data_format.lower() in ['channel_last', 'lead_last']:
             data = data.T
