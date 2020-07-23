@@ -41,11 +41,11 @@ class ATI_CNN(Sequential):
         """
         """
         self.add(
-        Conv1D(
-            input_shape = (self.input_len, nb_leads),
-            filters=64, kernel_size=3, strides=1, padding='same',
-            kernel_initializer=he_normal(SEED),
-            name='conv1_1',
+            Conv1D(
+                input_shape = (self.input_len, nb_leads),
+                filters=64, kernel_size=3, strides=1, padding='same',
+                kernel_initializer=he_normal(SEED),
+                name='conv1_1',
             )
         )
         self.add(
@@ -59,7 +59,7 @@ class ATI_CNN(Sequential):
                 filters=64, kernel_size=3, strides=1, padding='same',
                 kernel_initializer=he_normal(SEED),
                 name='conv1_2',
-                )
+            )
         )
         self.add(
             BatchNormalization(name='bn1_2',)
@@ -78,7 +78,7 @@ class ATI_CNN(Sequential):
                 filters=128, kernel_size=3, strides=1, padding='same',
                 kernel_initializer=he_normal(SEED),
                 name='conv2_1',
-                )
+            )
         )
         self.add(
             BatchNormalization(name='bn2_1',)
@@ -91,7 +91,7 @@ class ATI_CNN(Sequential):
                 filters=128, kernel_size=3, strides=1, padding='same',
                 kernel_initializer=he_normal(SEED),
                 name='conv2_2',
-                )
+            )
         )
         self.add(
             BatchNormalization(name='conv2_2',)
@@ -110,7 +110,7 @@ class ATI_CNN(Sequential):
                 filters=256, kernel_size=3, strides=1, padding='same',
                 kernel_initializer=he_normal(SEED),
                 name='conv3_1',
-                )
+            )
         )
         self.add(
             BatchNormalization(name='bn3_1',)
@@ -123,7 +123,7 @@ class ATI_CNN(Sequential):
                 filters=256, kernel_size=3, strides=1, padding='same',
                 kernel_initializer=he_normal(SEED),
                 name='conv3_2',
-                )
+            )
         )
 
         self.add(
@@ -137,7 +137,7 @@ class ATI_CNN(Sequential):
                 filters=256, kernel_size=3, strides=1, padding='same',
                 kernel_initializer=he_normal(SEED),
                 name='conv3_3',
-                )
+            )
         )
         self.add(
             BatchNormalization(name='bn3_3',)
@@ -156,7 +156,7 @@ class ATI_CNN(Sequential):
                 filters=512, kernel_size=3, strides=1, padding='same',
                 kernel_initializer=he_normal(SEED),
                 name='conv4_1',
-                )
+            )
         )
         self.add(
             BatchNormalization(name='bn4_1',)
@@ -169,7 +169,7 @@ class ATI_CNN(Sequential):
                 filters=512, kernel_size=3, strides=1, padding='same',
                 kernel_initializer=he_normal(SEED),
                 name='conv4_2',
-                )
+            )
         )
 
         self.add(
@@ -183,7 +183,7 @@ class ATI_CNN(Sequential):
                 filters=512, kernel_size=3, strides=1, padding='same',
                 kernel_initializer=he_normal(SEED),
                 name='conv4_3',
-                )
+            )
         )
         self.add(
             BatchNormalization(name='bn4_3',)
@@ -202,7 +202,7 @@ class ATI_CNN(Sequential):
                 filters=512, kernel_size=3, strides=1, padding='same',
                 kernel_initializer=he_normal(SEED),
                 name='conv5_1',
-                )
+            )
         )
         self.add(
             BatchNormalization(name='bn5_1',)
@@ -215,7 +215,7 @@ class ATI_CNN(Sequential):
                 filters=512, kernel_size=3, strides=1, padding='same',
                 kernel_initializer=he_normal(SEED),
                 name='conv5_2',
-                )
+            )
         )
 
         self.add(
@@ -229,7 +229,7 @@ class ATI_CNN(Sequential):
                 filters=512, kernel_size=3, strides=1, padding='same',
                 kernel_initializer=he_normal(SEED),
                 name='conv5_3',
-                )
+            )
         )
         self.add(
             BatchNormalization(name='bn5_3',)
