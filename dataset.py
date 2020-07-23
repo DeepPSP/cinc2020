@@ -325,7 +325,7 @@ class CINC2020(object):
         return tranche
 
 
-    def load_data(self, rec:str, leads:Optional[Union[str, List[str]]=None, data_format='channel_first') -> np.ndarray:
+    def load_data(self, rec:str, leads:Optional[Union[str, List[str]]]=None, data_format='channel_first') -> np.ndarray:
         """ finished, checked,
 
         Parameters:
