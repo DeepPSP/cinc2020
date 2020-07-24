@@ -199,7 +199,7 @@ class Attention(nn.Module):
 class GatedAttention(nn.Module):
     """
 
-    TODO: adjust for 1D
+    TODO: adjust for 1D, compare with `nn.MultiheadAttention`
 
     References:
     -----------
