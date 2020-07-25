@@ -45,6 +45,22 @@ class Swish(torch.nn.Module):
         return x
 
 
+# initializers
+Initializers = {
+    'he_normal': nn.init.kaiming_normal_,
+    'kaiming_normal': nn.init.kaiming_normal_,
+    'he_uniform': nn.init.kaiming_uniform_,
+    'kaiming_uniform': nn.init.kaiming_uniform_,
+    'xavier_normal': nn.init.xavier_normal_,
+    'glorot_normal': nn.init.xavier_normal_,
+    'xavier_uniform': nn.init.xavier_uniform_,
+    'glorot_uniform': nn.init.xavier_uniform_,
+    'normal': nn.init.normal_,
+    'uniform': nn.init.uniform_,
+    'orthogonal': nn.init.orthogonal_,
+}
+
+
 # basic building blocks of CNN
 class Conv_Bn_Activation(nn.Sequential):
     """
@@ -63,20 +79,8 @@ class Conv_Bn_Activation(nn.Sequential):
         if kernel_initializer:
             if callable(kernel_initializer):
                 kernel_initializer(conv_layer.weight)
-            elif kernel_initializer.lower() in ['he_normal', 'kaiming_normal']:
-                nn.init.kaiming_normal_(conv_layer.weight)
-            elif kernel_initializer.lower() in ['he_uniform', 'kaiming_uniform']:
-                nn.init.kaiming_uniform_(conv_layer.weight)
-            elif kernel_initializer.lower() in ['xavier_normal', 'glorot_normal']:
-                nn.init.xavier_normal_(conv_layer.weight)
-            elif kernel_initializer.lower() in ['xavier_uniform', 'glorot_uniform']:
-                nn.init.xavier_uniform_(conv_layer.weight)
-            elif kernel_initializer.lower() == 'normal':
-                nn.init.normal_(conv_layer.weight)
-            elif kernel_initializer.lower() == 'uniform':
-                nn.init.uniform_(conv_layer.weight)
-            elif kernel_initializer.lower() == 'orthogonal':
-                nn.init.orthogonal_(conv_layer.weight)
+            elif isinstance(kernel_initializer, str) and kernel_initializer.lower() in Initializers.keys():
+                Initializers[kernel_initializer.lower()](conv_layer.weight)
             else:  # TODO: add more activations
                 raise ValueError(f"initializer {kernel_initializer} not supported")
         self.add_module("conv1d", conv_layer)
@@ -114,9 +118,10 @@ class Conv_Bn_Activation(nn.Sequential):
 
 # attention
 class Attention(nn.Module):
-    """
+    """ NOT checked,
 
-    TODO: adjust for 1D
+    the feature extraction part is eliminated,
+    with only the attention left,
 
     References:
     -----------
@@ -130,20 +135,6 @@ class Attention(nn.Module):
         self.D = 128
         self.K = 1
 
-        self.feature_extractor_part1 = nn.Sequential(
-            nn.Conv2d(1, 20, kernel_size=5),
-            nn.ReLU(),
-            nn.MaxPool2d(2, stride=2),
-            nn.Conv2d(20, 50, kernel_size=5),
-            nn.ReLU(),
-            nn.MaxPool2d(2, stride=2)
-        )
-
-        self.feature_extractor_part2 = nn.Sequential(
-            nn.Linear(50 * 4 * 4, self.L),
-            nn.ReLU(),
-        )
-
         self.attention = nn.Sequential(
             nn.Linear(self.L, self.D),
             nn.Tanh(),
@@ -155,20 +146,14 @@ class Attention(nn.Module):
             nn.Sigmoid()
         )
 
-    def forward(self, x):
+    def forward(self, input):
         """
         """
-        x = x.squeeze(0)
-
-        H = self.feature_extractor_part1(x)
-        H = H.view(-1, 50 * 4 * 4)
-        H = self.feature_extractor_part2(H)  # NxL
-
-        A = self.attention(H)  # NxK
+        A = self.attention(input)  # NxK
         A = torch.transpose(A, 1, 0)  # KxN
         A = F.softmax(A, dim=1)  # softmax over N
 
-        M = torch.mm(A, H)  # KxL
+        M = torch.mm(A, input)  # KxL
 
         Y_prob = self.classifier(M)
         Y_hat = torch.ge(Y_prob, 0.5).float()
@@ -197,9 +182,12 @@ class Attention(nn.Module):
 
 
 class GatedAttention(nn.Module):
-    """
+    """ NOT checked,
 
-    TODO: adjust for 1D, compare with `nn.MultiheadAttention`
+    the feature extraction part is eliminated,
+    with only the attention left,
+
+    TODO: compare with `nn.MultiheadAttention`
 
     References:
     -----------
@@ -212,20 +200,6 @@ class GatedAttention(nn.Module):
         self.L = 500
         self.D = 128
         self.K = 1
-
-        self.feature_extractor_part1 = nn.Sequential(
-            nn.Conv2d(1, 20, kernel_size=5),
-            nn.ReLU(),
-            nn.MaxPool2d(2, stride=2),
-            nn.Conv2d(20, 50, kernel_size=5),
-            nn.ReLU(),
-            nn.MaxPool2d(2, stride=2)
-        )
-
-        self.feature_extractor_part2 = nn.Sequential(
-            nn.Linear(50 * 4 * 4, self.L),
-            nn.ReLU(),
-        )
 
         self.attention_V = nn.Sequential(
             nn.Linear(self.L, self.D),
@@ -244,17 +218,11 @@ class GatedAttention(nn.Module):
             nn.Sigmoid()
         )
 
-    def forward(self, x):
+    def forward(self, input):
         """
         """
-        x = x.squeeze(0)
-
-        H = self.feature_extractor_part1(x)
-        H = H.view(-1, 50 * 4 * 4)
-        H = self.feature_extractor_part2(H)  # NxL
-
-        A_V = self.attention_V(H)  # NxD
-        A_U = self.attention_U(H)  # NxD
+        A_V = self.attention_V(input)  # NxD
+        A_U = self.attention_U(input)  # NxD
         A = self.attention_weights(A_V * A_U) # element wise multiplication # NxK
         A = torch.transpose(A, 1, 0)  # KxN
         A = F.softmax(A, dim=1)  # softmax over N
@@ -285,3 +253,32 @@ class GatedAttention(nn.Module):
         neg_log_likelihood = -1. * (Y * torch.log(Y_prob) + (1. - Y) * torch.log(1. - Y_prob))  # negative log bernoulli
 
         return neg_log_likelihood, A
+
+
+class AttentionWithContext(nn.Module):
+    """
+    from CPSC0236
+    """
+    def __init__(self, bias:bool=True, initializer:str='glorot_uniform', **kwargs):
+        super().__init__()
+        self.supports_masking = True
+        self.init = Initializers[initializer.lower()]
+        self.bias = bias
+
+
+    def compute_mask(self, input, input_mask=None):
+        return None
+
+    def forward(self, x, mask=None):
+        # uit = self.dot_product(x, self.W)
+        # if self.bias:
+        #     uit += self.b
+        # uit = K.tanh(uit)
+        # ait = self.dot_product(uit, self.u)
+        # a = K.exp(ait)
+        # if mask is not None:
+        #     a *= K.cast(mask, K.floatx())
+        # a /= K.cast(K.sum(a, axis=1, keepdims=True) + K.epsilon(), K.floatx())
+        # a = K.expand_dims(a)
+        # weighted_input = x * a
+        # return K.sum(weighted_input, axis=1)
