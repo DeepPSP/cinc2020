@@ -9,6 +9,8 @@ mainly for model development
 [5] Hong, Shenda, et al. "ENCASE: An ENsemble ClASsifiEr for ECG classification using expert features and deep neural networks." 2017 Computing in cardiology (cinc). IEEE, 2017.
 [6] Ilse, Maximilian, Jakub M. Tomczak, and Max Welling. "Attention-based deep multiple instance learning." arXiv preprint arXiv:1802.04712 (2018).
 [7] https://github.com/AMLab-Amsterdam/AttentionDeepMIL
+[8] CPSC0236 from CPSC2018 challenge
+[9] CPSC0223 from CPSC2018 challenge
 
 to add more...
 """
