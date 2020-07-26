@@ -13,6 +13,7 @@ __all__ = [
     "diff_with_step",
     "smooth",
     "MovingAverage",
+    "resample_irregular_timeseries",
 ]
 
 
@@ -328,3 +329,74 @@ class MovingAverage(object):
         deno = np.sum(conv)
         smoothed = np.convolve(conv, self.data, mode='same') / deno
         return smoothed
+
+
+def resample_irregular_timeseries(s:np.ndarray, output_fs:Real=2, method:str="spline", return_with_time:bool=False, tnew:Optional[np.ndarray]=None, interp_kw:dict={}, verbose:int=0) -> np.ndarray:
+    """ finished, checked,
+
+    resample the 2d irregular timeseries `s` into a 1d or 2d regular time series with frequency `output_fs`,
+    elements of `s` are in the form [time, value], where the unit of `time` is ms
+
+    Parameters:
+    -----------
+    s: array_like,
+        the 2d irregular timeseries
+    output_fs: Real, default 2,
+        the frequency of the output 1d regular timeseries
+    method: str, default "spline"
+        interpolation method, can be 'spline' or 'interp1d'
+    return_with_time: bool, default False,
+        return a 2d array, with the 0-th coordinate being time
+    tnew: array_like, optional,
+        the array of time of the output array
+    interp_kw: dict, default {},
+        additional options for the corresponding methods in scipy.interpolate
+
+    Returns:
+    --------
+    np.ndarray, a 1d or 2d regular time series with frequency `output_freq`
+
+    NOTE:
+    pandas also has the function to regularly resample irregular timeseries
+    """
+    if method.lower() not in ["spline", "interp1d"]:
+        raise ValueError("method {} not implemented".format(method))
+
+    if verbose >= 1:
+        print("len(s) = {}".format(len(s)))
+
+    if len(s) == 0:
+        return np.array([])
+    
+    time_series = np.atleast_2d(s)
+    step_ts = 1000 / output_fs
+    tot_len = int((time_series[-1][0]-time_series[0][0]) / step_ts) + 1
+    if tnew is None:
+        xnew = time_series[0][0] + np.arange(0, tot_len*step_ts, step_ts)
+    else:
+        xnew = np.array(tnew)
+
+    if verbose >= 1:
+        print(f'time_series start ts = {time_series[0][0]}, end ts = {time_series[-1][0]}')
+        print(f'tot_len = {tot_len}')
+        print(f'xnew start = {xnew[0]}, end = {xnew[-1]}')
+
+    if method.lower() == "spline":
+        m = len(time_series)
+        w = interp_kw.get("w", np.ones(shape=(m,)))
+        # s = interp_kw.get("s", np.random.uniform(m-np.sqrt(2*m),m+np.sqrt(2*m)))
+        s = interp_kw.get("s", m-np.sqrt(2*m))
+        interp_kw.update(w=w, s=s)
+
+        tck = interpolate.splrep(time_series[:,0],time_series[:,1],**interp_kw)
+
+        regular_timeseries = interpolate.splev(xnew, tck)
+    elif method.lower() == "interp1d":
+        f = interpolate.interp1d(time_series[:,0],time_series[:,1],**interp_kw)
+
+        regular_timeseries = f(xnew)
+    
+    if return_with_time:
+        return np.column_stack((xnew, regular_timeseries))
+    else:
+        return regular_timeseries

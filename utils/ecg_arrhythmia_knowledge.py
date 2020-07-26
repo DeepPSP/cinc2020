@@ -201,7 +201,7 @@ PR = ED({  # morphology
         "https://litfl.com/pacemaker-rhythms-normal-patterns/",
     ],
     "knowledge": [
-        "morphology  is dependent on the pacing mode (AAI, VVI, DDD, Magnet) used",
+        "morphology is dependent on the pacing mode (AAI, VVI, DDD, Magnet) used",
         "there are pacing spikes: vertical spikes of short duration, usually 2 ms (500Hz)",  # important
         "AAI (atrial pacing): pacing spike precedes the p wave",
         "VVI (ventricle pacing): pacing spike precedes the QRS complex; morphology similar to LBBB or RBBB (depending on lead placement)",
