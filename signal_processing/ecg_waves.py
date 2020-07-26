@@ -25,7 +25,7 @@ import warnings
 
 import numpy as np
 
-from utils.misc import smooth
+from utils.misc import smooth, detect_peaks
 
 
 ##################################
@@ -439,7 +439,7 @@ def ecg_tup_wave(ecg_curve:np.ndarray, rpeaks:Sequence[int], l_ecg_beats:list, f
 
 
 def delineate_t_wave(t_data:np.ndarray, freq:int, t_val_mean:Real, flattened_t:Real, signal_ratio:Real, verbose:int=0, **kwargs) -> dict:
-    """ 已完成，持续优化
+    """ finished, needs enhancement,
 
     delineate t wave, detecting t onset, t peaks (possibly 2), t offset,
     and possibly an additional camel peak
@@ -773,7 +773,7 @@ def delineate_t_wave(t_data:np.ndarray, freq:int, t_val_mean:Real, flattened_t:R
 
 
 def delineate_p_wave(p_data:np.ndarray, freq:int, p_val_mean:Real, flattened_p:Real, signal_ratio:Real, verbose:int=0, **kwargs) -> dict:
-    """ 已完成，持续优化
+    """ finished, needs enhancement,
 
     delineate p wave, detecting p onset, p peaks (possibly 2), p offset
     """
@@ -979,7 +979,7 @@ def delineate_p_wave(p_data:np.ndarray, freq:int, p_val_mean:Real, flattened_p:R
 
 
 def delineate_u_wave(u_data:np.ndarray, freq:int, u_val_mean:Real, flattened_u:Real, signal_ratio:Real, verbose:int=0, **kwargs) -> dict:
-    """ 未完成
+    """ NOT finished,
 
     delineate U wave, the peak and onset, offset
     """
