@@ -1,4 +1,10 @@
 """
+
+References:
+-----------
+wfdb
+biosppy
+
 """
 
 from .ecg_preproc import *
