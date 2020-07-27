@@ -1,9 +1,11 @@
 """
 """
+import tensorflow as tf
+import keras
 from keras import layers
 from keras import Input
 from keras import initializers, regularizers, constraints
-from keras.models import Sequential, Model,
+from keras.models import Sequential, Model
 from keras.layers import (
     Layer,
     LSTM, GRU,
@@ -23,6 +25,12 @@ from keras.initializers import he_normal, he_uniform, Orthogonal
 __all__ = [
     "AttentionWithContext",
 ]
+
+
+def Mish(x:tf.Tensor) -> tf.Tensor:
+    """
+    """
+    raise NotImplementedError
 
 
 class AttentionWithContext(Layer):

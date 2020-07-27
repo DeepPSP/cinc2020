@@ -1,6 +1,7 @@
 """
 """
 import sys
+from collections import OrderedDict
 from typing import Union, NoReturn, Optional
 
 import torch
@@ -121,7 +122,7 @@ class ResNet(nn.Module):
         raise NotImplementedError
 
 
-class ATI_CNN(nn.Module):
+class TI_CNN(nn.Module):
     """
     """
     def __init__(self, classes:list, input_len:int, cnn:str='vgg', bidirectional:bool=True):
@@ -134,6 +135,47 @@ class ATI_CNN(nn.Module):
         self.input_len = input_len
         cnn_choice = cnn.lower()
         self.bidirectional = bidirectional
+
+        if cnn_choice == 'vgg':
+            self.cnn = VGG6(self.nb_leads)
+        elif cnn_choice == 'resnet':
+            raise NotImplementedError
+        
+        self.lstm_1 = nn.LSTM(input_size=512,hidden_size=128,bidirectional=True)
+        self.lstm_2 = nn.LSTM(input_size=128,hidden_size=32,bidirectional=True)
+        self.lstm_3 = nn.LSTM(input_size=32,hidden_size=9,bidirectional=True)
+
+        self.clf = nn.Linear()
+
+
+    def forward(self, input):
+        """
+        """
+        x = self.cnn(input)  # batch_size, channel, seq_len
+        # input shape of lstm: (seq_len, batch, input_size)
+        x = x.permute(2,0,1)  # seq_len, batch_size, channel
+        x,_ = self.lstm_1(x)
+        # the directions can be separated using 
+        # output.view(seq_len, batch, num_directions, hidden_size), 
+        # with forward and backward being direction 0 and 1 respectively
+        seq_len, batch_size, double_channels = x.shape
+        x = x.view(seq_len, batch_size, 2, double_channels//2)[:,:,]
+        x,_ = self.lstm_2(x)
+        x,_ = self.lstm_3(x)
+
+
+class ATI_CNN(nn.Module):
+    """
+    """
+    def __init__(self, classes:list, input_len:int, cnn:str='vgg'):
+        """
+        """
+        super().__init__()
+        self.classes = classes
+        self.nb_classes = len(classes)
+        self.nb_leads = 12
+        self.input_len = input_len
+        cnn_choice = cnn.lower()
 
         if cnn_choice == 'vgg':
             self.cnn = VGG6(self.nb_leads)

@@ -3,6 +3,7 @@
 import sys
 from typing import Union, NoReturn, Optional
 
+from packaging import version
 import torch
 from torch import nn
 from torch import Tensor
@@ -13,8 +14,18 @@ import torch.nn.functional as F
 __all__ = [
     "Mish", "Swish",
     "Conv_Bn_Activation",
-    "Attention", "GatedAttention",
+    "AML_Attention", "AML_GatedAttention",
+    "AttentionWithContext",
+    "MultiheadAttention",
 ]
+
+
+if version.parse(torch.__version__) >= version.parse('1.5.0'):
+    def _true_divide(dividend, divisor):
+        return torch.true_divide(dividend, divisor)
+else:
+    def _true_divide(dividend, divisor):
+        return dividend / divisor
 
 
 # activations
@@ -59,6 +70,9 @@ Initializers = {
     'normal': nn.init.normal_,
     'uniform': nn.init.uniform_,
     'orthogonal': nn.init.orthogonal_,
+    'zeros': nn.init.zeros_,
+    'ones': nn.init.ones_,
+    'constant': nn.init.constant_,
 }
 
 
@@ -118,7 +132,7 @@ class Conv_Bn_Activation(nn.Sequential):
 
 
 # attention
-class Attention(nn.Module):
+class AML_Attention(nn.Module):
     """ NOT checked,
 
     the feature extraction part is eliminated,
@@ -148,7 +162,7 @@ class Attention(nn.Module):
         A = self.attention(input)  # NxK
         return A
 
-class GatedAttention(nn.Module):
+class AML_GatedAttention(nn.Module):
     """ NOT checked,
 
     the feature extraction part is eliminated,
@@ -191,7 +205,7 @@ class AttentionWithContext(nn.Module):
     """
     from CPSC0236
     """
-    def __init__(self, bias:bool=True, initializer:str='glorot_uniform', **kwargs):
+    def __init__(self, in_channels:int, out_channels:int, bias:bool=True, initializer:str='glorot_uniform'):
         """
         """
         super().__init__()
@@ -199,27 +213,38 @@ class AttentionWithContext(nn.Module):
         self.init = Initializers[initializer.lower()]
         self.bias = bias
 
+        self.W = Parameter(torch.Tensor(out_channels, out_channels))
+        self.init(self.W)
+
+        if self.bias:
+            self.b = Parameter(torch.Tensor(out_channels))
+            # Initializers['zeros'](self.b)
+            self.u = Parameter(torch.Tensor(out_channels))
+            # self.init(self.u)
+        else:
+            self.register_parameter('b', None)
+            self.register_parameter('u', None)
+
     def compute_mask(self, input, input_mask=None):
         """
         """
         return None
 
-    def forward(self, x, mask=None):
+    def forward(self, input, mask=None):
         """
         """
-        # uit = self.dot_product(x, self.W)
-        # if self.bias:
-        #     uit += self.b
-        # uit = K.tanh(uit)
-        # ait = self.dot_product(uit, self.u)
-        # a = K.exp(ait)
-        # if mask is not None:
-        #     a *= K.cast(mask, K.floatx())
-        # a /= K.cast(K.sum(a, axis=1, keepdims=True) + K.epsilon(), K.floatx())
-        # a = K.expand_dims(a)
-        # weighted_input = x * a
-        # return K.sum(weighted_input, axis=1)
-
+        uit = torch.tensordot(input, self.W, dims=1)
+        if self.bias:
+            uit += self.b
+        uit = torch.tanh(uit)
+        ait = torch.tensordot(uit, self.u, dims=1)
+        a = torch.exp(ait)
+        if mask is not None:
+            a = a * mask
+        a = _true_divide(a, torch.sum(a, dim=1) + torch.finfo(torch.float).eps)
+        weighted_input = input * a[...,np.newaxis]
+        ret_tensor = torch.sum(weighted_input, axis=1)
+        return ret_tensor
 
 
 # nn.MultiheadAttention,
@@ -261,7 +286,7 @@ class MultiheadAttention(nn.Module):
     def __init__(self, embed_dim:int, num_heads:int, dropout:float=0., bias:bool=True, add_bias_kv:bool=False, add_zero_attn:bool=False, kdim:Optional[int]=None, vdim:Optional[int]=None):
         """
         """
-        super(MultiheadAttention, self).__init__()
+        super().__init__()
         self.embed_dim = embed_dim
         self.kdim = kdim or embed_dim
         self.vdim = vdim or embed_dim

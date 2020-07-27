@@ -16,7 +16,7 @@ from tensorflow.python.client import device_lib
 import keras
 from keras.models import Sequential, load_model
 from keras.layers import LSTM, GRU, TimeDistributed, Bidirectional, LeakyReLU
-from keras.layers import Dense, Dropout, Activation, Flatten,  Input, Reshape, GRU, CuDNNGRU
+from keras.layers import Dense, Dropout, Activation, Flatten, Input, Reshape, GRU, CuDNNGRU
 from keras.layers import Convolution1D, MaxPool1D, GlobalAveragePooling1D,concatenate,AveragePooling1D
 from keras.utils import multi_gpu_model
 from keras.callbacks import ModelCheckpoint, LearningRateScheduler, EarlyStopping
@@ -58,18 +58,18 @@ class AttentionWithContext(Layer):
 
     def build(self, input_shape):
         assert len(input_shape) == 3
-        self.W = self.add_weight((input_shape[-1], input_shape[-1],),
+        self.W = self.add_weight(shape=(input_shape[-1], input_shape[-1],),
                                  initializer=self.init,
                                  name='{}_W'.format(self.name),
                                  regularizer=self.W_regularizer,
                                  constraint=self.W_constraint)
         if self.bias:
-            self.b = self.add_weight((input_shape[-1],),
+            self.b = self.add_weight(shape=(input_shape[-1],),
                                      initializer='zero',
                                      name='{}_b'.format(self.name),
                                      regularizer=self.b_regularizer,
                                      constraint=self.b_constraint)
-            self.u = self.add_weight((input_shape[-1],),
+            self.u = self.add_weight(shape=(input_shape[-1],),
                                  initializer=self.init,
                                  name='{}_u'.format(self.name),
                                  regularizer=self.u_regularizer,
