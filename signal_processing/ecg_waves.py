@@ -1,6 +1,7 @@
 """
-detection of T, U, P waves of single lead ECG,
-under the assumption that onsets and offset of the QRS complexes are already detected
+delineation of T, U, P waves of single lead ECG,
+under the assumption that onsets and offset of the QRS complexes are already detected,
+mainly relying on (spatial) peak detection algorithms
 
 TODO:
 -----
