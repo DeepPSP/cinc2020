@@ -11,7 +11,7 @@ import scipy.signal as SS
 from utils.misc import resample_irregular_timeseries
 
 
-__all__ [
+__all__ = [
     "spectral_heart_rate",
 ]
 

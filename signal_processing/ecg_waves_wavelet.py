@@ -18,6 +18,11 @@ import numpy as np
 from pywt import cwt
 
 
+__all__ = [
+    "continuous_daubechies",
+]
+
+
 def continuous_daubechies():
     """
     """

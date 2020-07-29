@@ -29,6 +29,11 @@ import numpy as np
 from utils.misc import smooth, detect_peaks
 
 
+__all__ = [
+    "ecg_tup_wave",
+]
+
+
 ##################################
 # constants for wave delineation
 ##################################

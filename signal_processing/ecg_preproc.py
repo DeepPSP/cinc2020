@@ -33,6 +33,7 @@ from cfg import PreprocCfg
 __all__ = [
     "preprocess_single_lead_signal",
     "preprocess_12_lead_signal",
+    "merge_rpeaks",
 ]
 
 
