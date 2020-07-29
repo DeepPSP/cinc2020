@@ -3,7 +3,7 @@
 12-lead ECG wave delineation, using algorithms proposed in ref. [1]
 
 Update:
-no existing implementation of daubechies cwt, hence time consuming.
+no existing implementation of daubechies cwt,
 priority of implementation of this algorithm is set LOW
 
 References:

@@ -96,7 +96,7 @@ def preprocess_12_lead_signal(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_
         filtered_ecg[lead,...] = filtered_metadata["filtered_ecg"]
         rpeaks_candidates.append(filtered_metadata["rpeaks"])
     # TODO: merge rpeaks detected in different leads
-    rpeaks = np.array([], dtype=int)
+    rpeaks = merge_rpeaks(raw_sig, rpeaks_candidates)
     retval = ED({
         "filtered_ecg": filtered_ecg,
         "rpeaks": rpeaks,
@@ -166,3 +166,19 @@ def preprocess_single_lead_signal(raw_sig:np.ndarray, fs:Real, bl_win:Optional[L
     })
     
     return retval
+
+
+def merge_rpeaks(sig:np.ndarray, rpeaks_candidates:list[np.ndarray]) -> np.ndarray:
+    """
+
+    Parameters:
+    -----------
+    to write
+
+    Returns:
+    --------
+    to write
+    """
+    rpeak_masks = np.zeros_like(sig, dtype=int)
+    for lead in sig.shape[0]:
+        pass
