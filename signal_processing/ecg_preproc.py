@@ -9,6 +9,8 @@ References:
 """
 import os
 import multiprocessing as mp
+from collections import Counter
+from functools import reduce
 from copy import deepcopy
 from numbers import Real
 from typing import Union, Optional, Any, List, Dict, Callable
@@ -25,6 +27,7 @@ from .ecg_rpeaks import (
     xqrs_detect, gqrs_detect, pantompkins,
     hamilton_detect, ssf_detect, christov_detect, engzee_detect, gamboa_detect,
 )
+from cfg import PreprocCfg
 
 
 __all__ = [
@@ -85,18 +88,25 @@ def preprocess_12_lead_signal(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_
     else:
         filtered_ecg = raw_sig.copy()
     rpeaks_candidates = []
-    for lead in range(filtered_ecg.shape[0]):
-        filtered_metadata = preprocess_single_lead_signal(
-            raw_sig=filtered_ecg[lead,...],
-            fs=fs,
-            bl_win=bl_win,
-            band_fs=band_fs,
-            rpeak_fn=rpeak_fn
+    cpu_num = max(1, mp.cpu_count()-3)
+    with mp.Pool(processes=cpu_num) as pool:
+        results = pool.starmap(
+            func=preprocess_single_lead_signal,
+            iterable=[(filtered_ecg[lead,...], fs, bl_win, band_fs, rpeak_fn) for lead in range(filtered_ecg.shape[0])]
         )
+    for lead in range(filtered_ecg.shape[0]):
+        # filtered_metadata = preprocess_single_lead_signal(
+        #     raw_sig=filtered_ecg[lead,...],
+        #     fs=fs,
+        #     bl_win=bl_win,
+        #     band_fs=band_fs,
+        #     rpeak_fn=rpeak_fn
+        # )
+        filtered_metadata = results[lead]
         filtered_ecg[lead,...] = filtered_metadata["filtered_ecg"]
         rpeaks_candidates.append(filtered_metadata["rpeaks"])
-    # TODO: merge rpeaks detected in different leads
-    rpeaks = merge_rpeaks(raw_sig, rpeaks_candidates)
+
+    rpeaks = merge_rpeaks(rpeaks_candidates, raw_sig, fs)
     retval = ED({
         "filtered_ecg": filtered_ecg,
         "rpeaks": rpeaks,
@@ -168,17 +178,53 @@ def preprocess_single_lead_signal(raw_sig:np.ndarray, fs:Real, bl_win:Optional[L
     return retval
 
 
-def merge_rpeaks(sig:np.ndarray, rpeaks_candidates:list[np.ndarray]) -> np.ndarray:
+def merge_rpeaks(rpeaks_candidates:List[np.ndarray], sig:np.ndarray, fs:Real, verbose:int=0) -> np.ndarray:
     """
 
     Parameters:
     -----------
-    to write
+    rpeaks_candidates: list of ndarray,
+        each element (ndarray) is the array of indices of rpeaks of corr. lead
+    sig: ndarray,
+        the 12-lead ecg signal
+    fs: real number,
+        sampling frequency of `sig`
+    verbose: int, default 0,
+        print verbosity
 
     Returns:
     --------
-    to write
+    final_rpeaks: np.ndarray
     """
     rpeak_masks = np.zeros_like(sig, dtype=int)
-    for lead in sig.shape[0]:
-        pass
+    sig_len = sig.shape[1]
+    bias = int(PreprocCfg.rpeak_mask_bias * fs / 1000)
+    if verbose >= 1:
+        print(f"sig_len = {sig_len}, bias = {bias}")
+    for lead in range(sig.shape[0]):
+        for r in rpeaks_candidates[lead]:
+            rpeak_masks[lead,max(0,r-bias):min(sig_len-1,r+bias)] = 1
+    rpeak_masks = (rpeak_masks.sum(axis=0) >= PreprocCfg.rpeak_threshold).astype(int)
+    rpeak_masks[0], rpeak_masks[-1] = 0, 0
+    split_indices = np.where(np.diff(rpeak_masks) != 0)[0]
+    if verbose >= 1:
+        print(f"split_indices = {split_indices}")
+
+    final_rpeaks = []
+    for idx in range(len(split_indices)//2):
+        start_idx = split_indices[2*idx]
+        end_idx = split_indices[2*idx + 1]
+        rc = reduce(
+            lambda a,b:a+b,
+            [lr[np.where((lr>=start_idx)&(lr<=end_idx))].tolist() for lr in rpeaks_candidates]
+        )
+        if verbose >= 2:
+            print(f"at the {idx}-th interval, start_idx = {start_idx}, end_idx = {end_idx}")
+            print(f"rc = {rc}")
+        counter = Counter(rc).most_common()
+        if counter[0][1] >= len(rc)//2+1:
+            final_rpeaks.append(counter[0][0])
+        else:
+            final_rpeaks.append(int(np.mean(rc)))
+    final_rpeaks = np.array(final_rpeaks)
+    return final_rpeaks
