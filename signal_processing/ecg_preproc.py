@@ -48,8 +48,11 @@ QRS_DETECTORS = {
 }
 
 
-def preprocess_12_lead_signal(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", bl_win:Optional[List[Real]]=None, band_fs:Optional[List[Real]]=None, rpeak_fn:Optional[Callable[[np.ndarray,Real], np.ndarray]]=None) -> Dict[str, np.ndarray]:
+def preprocess_12_lead_signal(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", bl_win:Optional[List[Real]]=None, band_fs:Optional[List[Real]]=None, rpeak_fn:Optional[Callable[[np.ndarray,Real], np.ndarray]]=None, verbose:int=0) -> Dict[str, np.ndarray]:
     """ finished, checked,
+
+    perform preprocessing for 12-lead ecg signal,
+    preprocessing may include median filter, bandpass filter, and rpeaks detection, etc.
 
     Parameters:
     -----------
@@ -74,6 +77,8 @@ def preprocess_12_lead_signal(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_
     rpeak_fn: callable, optional,
         the function detecting rpeaks,
         whose first parameter is the signal, second parameter the sampling frequency
+    verbose: int, default 0,
+        print verbosity
 
     Returns:
     --------
@@ -116,6 +121,9 @@ def preprocess_12_lead_signal(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_
 
 def preprocess_single_lead_signal(raw_sig:np.ndarray, fs:Real, bl_win:Optional[List[Real]]=None, band_fs:Optional[List[Real]]=None, rpeak_fn:Optional[Callable[[np.ndarray,Real], np.ndarray]]=None) -> Dict[str, np.ndarray]:
     """ finished, checked,
+
+    perform preprocessing for single lead ecg signal,
+    preprocessing may include median filter, bandpass filter, and rpeaks detection, etc.
 
     Parameters:
     -----------
@@ -179,7 +187,9 @@ def preprocess_single_lead_signal(raw_sig:np.ndarray, fs:Real, bl_win:Optional[L
 
 
 def merge_rpeaks(rpeaks_candidates:List[np.ndarray], sig:np.ndarray, fs:Real, verbose:int=0) -> np.ndarray:
-    """
+    """ finished, checked,
+
+    merge rpeaks that are detected from each of the 12 leads
 
     Parameters:
     -----------
