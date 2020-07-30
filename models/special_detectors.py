@@ -53,7 +53,7 @@ def pace_rhythm_detector(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first
 
 
 def electrical_axis_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real, sig_fmt:str="channel_first", method:Optional[str]=None, verbose:int=0) -> str:
-    """ finished, not checked,
+    """ finished, checked,
 
     detector of the heart electrical axis by means of '2-lead' method or '3-lead' method,
     NOTE that the extreme axis is not checked and treated as 'normal'
@@ -79,11 +79,12 @@ def electrical_axis_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real
     Returns:
     --------
     axis: str,
-        one of 'normal', 'LAD', 'RAD'
+        one of 'normal', 'LAD', 'RAD',
+        the heart electrical axis
     """
     decision_method = method or FeatureCfg.axis_method
     decision_method = decision_method.lower()
-    assert decision_method in ['2-lead', '3-lead',]
+    assert decision_method in ['2-lead', '3-lead',], f"Method {decision_method} not supported!"
 
     if sig_fmt.lower() in ['channel_first', 'lead_first']:
         s = filtered_sig.copy()
@@ -137,4 +138,5 @@ def electrical_axis_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real
             axis = 'RAD'
         else:
             axis = 'normal'  # might also include extreme axis
+
     return axis
