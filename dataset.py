@@ -93,6 +93,7 @@ class CINC2020(object):
     ISSUES:
     -------
     1. reading the .hea files, baselines of all records are 0, however it is not the case if one plot the signal
+    2. about half of the LAD records satisfy the '2-lead' criteria, but fail for the '3-lead' criteria, which means that their axis is (-30°, 0°) which is not truely LAD
 
     Usage:
     ------
@@ -264,7 +265,7 @@ class CINC2020(object):
         return self._diagnoses_records_list
 
 
-    def _set_logger(self, prefix:Optional[str]=None):
+    def _set_logger(self, prefix:Optional[str]=None) -> NoReturn:
         """
 
         Parameters:
