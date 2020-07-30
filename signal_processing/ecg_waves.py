@@ -26,7 +26,7 @@ import warnings
 
 import numpy as np
 
-from utils.misc import smooth, detect_peaks
+from utils.utils_signal import smooth, detect_peaks
 
 
 __all__ = [

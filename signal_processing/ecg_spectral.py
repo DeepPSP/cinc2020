@@ -8,7 +8,7 @@ from typing import Union, Optional, NoReturn
 import numpy as np
 import scipy.signal as SS
 
-from utils.misc import resample_irregular_timeseries
+from utils.utils_signal import resample_irregular_timeseries
 
 
 __all__ = [
