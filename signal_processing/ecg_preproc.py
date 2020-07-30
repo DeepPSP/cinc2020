@@ -210,12 +210,12 @@ def merge_rpeaks(rpeaks_candidates:List[np.ndarray], sig:np.ndarray, fs:Real, ve
     """
     rpeak_masks = np.zeros_like(sig, dtype=int)
     sig_len = sig.shape[1]
-    bias = int(PreprocCfg.rpeak_mask_bias * fs / 1000)
+    radius = int(PreprocCfg.rpeak_mask_radius * fs / 1000)
     if verbose >= 1:
-        print(f"sig_len = {sig_len}, bias = {bias}")
+        print(f"sig_len = {sig_len}, radius = {radius}")
     for lead in range(sig.shape[0]):
         for r in rpeaks_candidates[lead]:
-            rpeak_masks[lead,max(0,r-bias):min(sig_len-1,r+bias)] = 1
+            rpeak_masks[lead,max(0,r-radius):min(sig_len-1,r+radius)] = 1
     rpeak_masks = (rpeak_masks.sum(axis=0) >= PreprocCfg.rpeak_threshold).astype(int)
     rpeak_masks[0], rpeak_masks[-1] = 0, 0
     split_indices = np.where(np.diff(rpeak_masks) != 0)[0]
