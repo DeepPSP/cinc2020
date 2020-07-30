@@ -21,5 +21,7 @@ PreprocCfg.rpeak_threshold = 8
 PreprocCfg.beat_winL = 250
 PreprocCfg.beat_winR = 250
 
+FeatureCfg = ED()
+FeatureCfg.pr_fs_lower_bound = 50  # Hz
 
 TrainCfg = ED()

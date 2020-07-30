@@ -168,6 +168,7 @@ def preprocess_single_lead_signal(raw_sig:np.ndarray, fs:Real, bl_win:Optional[L
         filtered_ecg = filter_signal(
             signal=filtered_ecg,
             ftype='FIR',
+            # ftype='butter',
             band='bandpass',
             order=int(0.3 * fs),
             sampling_rate=fs,
