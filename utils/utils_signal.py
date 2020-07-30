@@ -4,7 +4,7 @@ including spatial, temporal, spatio-temporal domains
 """
 import os
 from copy import deepcopy
-from typing import Union, Optional, List, Sequence, NoReturn
+from typing import Union, Optional, List, Tuple, Sequence, NoReturn
 from numbers import Real
 
 import numpy as np
@@ -586,13 +586,13 @@ def butter_bandpass(lowcut:Real, highcut:Real, fs:Real, order:int, verbose:int=0
     return b, a
 
 
-def butter_bandpass_filter(data:ArrayLike, lowcut:Real, highcut:Real, fs:Real, order:int, verbose:int=0) -> np.ndarray:
+def butter_bandpass_filter(data:np.ndarray, lowcut:Real, highcut:Real, fs:Real, order:int, verbose:int=0) -> np.ndarray:
     """
     Butterworth Bandpass
 
     Parameters:
     -----------
-    data: array_like,
+    data: ndarray,
         data to be filtered
     lowcut: real,
         low cutoff frequency

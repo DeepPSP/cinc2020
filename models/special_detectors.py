@@ -9,11 +9,18 @@ from typing import Union, Optional, Any, List, Dict, Callable
 
 import numpy as np
 from biosppy.signals.tools import filter_signal
-from .ecg_rpeaks import (
+
+from signal_processing.ecg_rpeaks import (
     xqrs_detect, gqrs_detect, pantompkins,
     hamilton_detect, ssf_detect, christov_detect, engzee_detect, gamboa_detect,
 )
 from cfg import FeatureCfg
+
+
+__all__ = [
+    "pace_rhythm_detector",
+    "electrical_axis_detector",
+]
 
 
 def pace_rhythm_detector(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first") -> bool:
@@ -45,7 +52,7 @@ def pace_rhythm_detector(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first
     raise NotImplementedError
 
 
-def electrical_axis_detector(filtered_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", rpeaks:np.ndarray) -> str:
+def electrical_axis_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real, sig_fmt:str="channel_first", method:Optional[str]=None, verbose:int=0) -> str:
     """ finished, not checked,
 
     detector of the heart electrical axis by means of '2-lead' method or '3-lead' method,
@@ -55,21 +62,30 @@ def electrical_axis_detector(filtered_sig:np.ndarray, fs:Real, sig_fmt:str="chan
     -----------
     filtered_sig: ndarray,
         the filtered 12-lead ecg signal
+    rpeaks: ndarray,
+        array of indices of the R peaks
     fs: real number,
         sampling frequency of `sig`
     sig_fmt: str, default "channel_first",
         format of the 12 lead ecg signal,
         'channel_last' (alias 'lead_last'), or
         'channel_first' (alias 'lead_first', original)
-    rpeaks: ndarray,
-        array of indices of the R peaks
+    method: str, optional,
+        method for detecting electrical axis, can be '2-lead', '3-lead',
+        if not specified, `FeatureCfg.axis_method` will be used
+    verbose: int, default 0,
+        print verbosity
 
     Returns:
     --------
     axis: str,
         one of 'normal', 'LAD', 'RAD'
     """
-    if sig_fmt.lower in ['channel_first', 'lead_first']:
+    decision_method = method or FeatureCfg.axis_method
+    decision_method = decision_method.lower()
+    assert decision_method in ['2-lead', '3-lead',]
+
+    if sig_fmt.lower() in ['channel_first', 'lead_first']:
         s = filtered_sig.copy()
     else:
         s = filtered_sig.T
@@ -82,7 +98,11 @@ def electrical_axis_detector(filtered_sig:np.ndarray, fs:Real, sig_fmt:str="chan
     radius = int(FeatureCfg.axis_qrs_mask_radius * fs / 1000)
     l_qrs = []
     for r in rpeaks:
-        l_qrs.append([max(0,r-radius),min(sig_len-1,r+radius)])
+        l_qrs.append([max(0,r-radius), min(sig_len-1,r+radius)])
+
+    if verbose >= 1:
+        print(f"qrs mask radius = {radius}, sig_len = {sig_len}")
+        print(f"l_qrs = {l_qrs}")
     
     # lead I
     lead_I_positive = sum([
@@ -103,14 +123,14 @@ def electrical_axis_detector(filtered_sig:np.ndarray, fs:Real, sig_fmt:str="chan
     ]) >= len(l_qrs)//2 + 1
 
     # decision making
-    if FeatureCfg.axis_method == '2-lead':
+    if decision_method == '2-lead':
         if lead_I_positive and not lead_aVF_positive:
             axis = 'LAD'
         elif not lead_I_positive and lead_aVF_positive:
             axis = 'RAD'
         else:
             axis = 'normal'  # might also include extreme axis
-    elif FeatureCfg.axis_method == '3-lead':
+    elif decision_method == '3-lead':
         if lead_I_positive and not lead_II_positive and not lead_aVF_positive:
             axis = 'LAD'
         elif not lead_I_positive and lead_aVF_positive:
