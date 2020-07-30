@@ -199,6 +199,7 @@ PR = ED({  # morphology
     "fullname": "pacing rhythm",
     "url": [
         "https://litfl.com/pacemaker-rhythms-normal-patterns/",
+        "https://www.youtube.com/watch?v=YkB4oX_COi8",
     ],
     "knowledge": [
         "morphology is dependent on the pacing mode (AAI, VVI, DDD, Magnet) used",
@@ -294,6 +295,7 @@ RAD = ED({  # morphology
         "https://en.wikipedia.org/wiki/Right_axis_deviation",
         "https://www.ncbi.nlm.nih.gov/books/NBK470532/",
         "https://ecglibrary.com/axis.html",
+        "https://www.youtube.com/watch?v=PbzDN2_rAFc",
     ],
     "knowledge": [  # should combine with LAD to study
         "QRS axis greater than +90°",
@@ -309,6 +311,7 @@ LAD = ED({  # morphology
         "https://en.wikipedia.org/wiki/Left_axis_deviation",
         "https://www.ncbi.nlm.nih.gov/books/NBK470532/",
         "https://ecglibrary.com/axis.html",
+        "https://www.youtube.com/watch?v=PbzDN2_rAFc",
     ],
     "knowledge": [  # should combine with RAD to study
         "QRS axis (-30°, -90°)",
