@@ -203,7 +203,7 @@ PR = ED({  # morphology
     ],
     "knowledge": [
         "morphology is dependent on the pacing mode (AAI, VVI, DDD, Magnet) used",
-        "there are pacing spikes: vertical spikes of short duration, usually 2 ms (500Hz)",  # important
+        "there are pacing spikes: vertical spikes of short duration, usually 2 ms (in doubt, viewing signals of the CINC2020 dataset, probably 10-20ms(at most half a small grid)?)",  # important
         "AAI (atrial pacing): pacing spike precedes the p wave",
         "VVI (ventricle pacing): pacing spike precedes the QRS complex; morphology similar to LBBB or RBBB (depending on lead placement)",
     ],
