@@ -35,6 +35,7 @@ from utils.misc import ms2samples
 __all__ = [
     "preprocess_single_lead_signal",
     "preprocess_12_lead_signal",
+    "rpeaks_detect_multi_leads",
     "merge_rpeaks",
 ]
 

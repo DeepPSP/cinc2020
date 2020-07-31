@@ -1,5 +1,5 @@
 """
-algorithms detecting R peaks from (filtered) ECG signal
+algorithms detecting R peaks from (filtered) single-lead ECG signal
 
 Exists algorithms from wfdb and biosppy,
 
