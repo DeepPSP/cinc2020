@@ -15,6 +15,7 @@ __all__ = [
     "get_record_list_recursive",
     "dict_to_str",
     "diff_with_step",
+    "ms2samples",
 ]
 
 
@@ -124,3 +125,22 @@ def diff_with_step(a:np.ndarray, step:int=1, **kwargs) -> np.ndarray:
         raise ValueError(f"step ({step}) should be less than the length ({len(a)}) of `a`")
     d = a[step:] - a[:-step]
     return d
+
+
+def ms2samples(t:Real, fs:Real) -> int:
+    """ finished, checked,
+
+    Parameters:
+    -----------
+    t: real number,
+        time with units in ms
+    fs: real number,
+        sampling frequency of a signal
+
+    Returns:
+    --------
+    n_samples: int,
+        number of samples corresponding to time `t`
+    """
+    n_samples = t * fs // 1000
+    return n_samples

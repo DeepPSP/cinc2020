@@ -23,11 +23,13 @@ from scipy.signal.signaltools import resample
 # https://github.com/scipy/scipy/issues/9680
 from biosppy.signals.tools import filter_signal
 
+from cfg import PreprocCfg
 from .ecg_rpeaks import (
-    xqrs_detect, gqrs_detect, pantompkins,
+    pantompkins,
+    xqrs_detect, gqrs_detect,
     hamilton_detect, ssf_detect, christov_detect, engzee_detect, gamboa_detect,
 )
-from cfg import PreprocCfg
+from utils.misc import ms2samples
 
 
 __all__ = [
@@ -210,7 +212,7 @@ def merge_rpeaks(rpeaks_candidates:List[np.ndarray], sig:np.ndarray, fs:Real, ve
     """
     rpeak_masks = np.zeros_like(sig, dtype=int)
     sig_len = sig.shape[1]
-    radius = int(PreprocCfg.rpeak_mask_radius * fs / 1000)
+    radius = ms2samples(PreprocCfg.rpeak_mask_radius, fs)
     if verbose >= 1:
         print(f"sig_len = {sig_len}, radius = {radius}")
     for lead in range(sig.shape[0]):

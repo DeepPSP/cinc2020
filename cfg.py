@@ -13,6 +13,7 @@ __all__ = [
 
 
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+_ONE_MINUTE_IN_MS = 60 * 1000
 
 PreprocCfg = ED()
 # PreprocCfg.fs = 500
@@ -27,5 +28,7 @@ FeatureCfg.leads_ordering = deepcopy(PreprocCfg.leads_ordering)
 FeatureCfg.pr_fs_lower_bound = 50  # Hz
 FeatureCfg.axis_qrs_mask_radius = 70  # ms
 FeatureCfg.axis_method = '2-lead'  # can also be '3-lead'
+FeatureCfg.brady_threshold = _ONE_MINUTE_IN_MS / 60  # ms, corr. to 60 bpm
+FeatureCfg.tachy_threshold = _ONE_MINUTE_IN_MS / 100  # ms, corr. to 100 bpm
 
 TrainCfg = ED()

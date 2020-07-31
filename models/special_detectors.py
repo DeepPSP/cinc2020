@@ -5,25 +5,29 @@ for (perhaps auxiliarily) detecting PR, Brady (including SB), LQRSV, RAD, LAD, S
 pending arrhythmia classes: LPR, LQT
 """
 from numbers import Real
-from typing import Union, Optional, Any, List, Dict, Callable
+from typing import Union, Optional, Any, List, Dict, Callable, Sequence
 
 import numpy as np
+from scipy.signal import peak_prominences, peak_widths
 from biosppy.signals.tools import filter_signal
 
+from cfg import FeatureCfg
 from signal_processing.ecg_rpeaks import (
-    xqrs_detect, gqrs_detect, pantompkins,
+    pantompkins,
+    xqrs_detect, gqrs_detect,
     hamilton_detect, ssf_detect, christov_detect, engzee_detect, gamboa_detect,
 )
-from cfg import FeatureCfg
+from utils.misc import ms2samples
 
 
 __all__ = [
     "pace_rhythm_detector",
     "electrical_axis_detector",
+    "brady_tachy_detector",
 ]
 
 
-def pace_rhythm_detector(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first") -> bool:
+def pace_rhythm_detector(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", verbose:int=0) -> bool:
     """
 
     Parameters:
@@ -38,6 +42,7 @@ def pace_rhythm_detector(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first
         s = raw_sig.copy()
     else:
         s = raw_sig.T
+    
     data_hp = np.array([
         filter_signal(
             raw_sig[lead],
@@ -49,6 +54,7 @@ def pace_rhythm_detector(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first
                 for lead in range(12)
     ])
     # TODO: making decision using data_hp
+
     raise NotImplementedError
 
 
@@ -96,7 +102,7 @@ def electrical_axis_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real
     lead_aVF = s[FeatureCfg.leads_ordering.index('aVF')]
 
     sig_len = s.shape[1]
-    radius = int(FeatureCfg.axis_qrs_mask_radius * fs / 1000)
+    radius = ms2samples(FeatureCfg.axis_qrs_mask_radius, fs)
     l_qrs = []
     for r in rpeaks:
         l_qrs.append([max(0,r-radius), min(sig_len-1,r+radius)])
@@ -140,3 +146,43 @@ def electrical_axis_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real
             axis = 'normal'  # might also include extreme axis
 
     return axis
+
+
+def brady_tachy_detector(rpeaks:np.ndarray, fs:Real, normal_rr_range:Optional[Sequence[Real]]=None, verbose:int=0) -> str:
+    """ finished, NOT checked,
+
+    detemine if the ecg is bradycadia or tachycardia or normal,
+    only by the mean rr interval.
+
+    this detector can be used alone (e.g. for the arrhythmia `Brady`),
+    or combined with other detectors (e.g. for the arrhythmia `STach`)
+
+    Parameters:
+    -----------
+    rpeaks: ndarray,
+        array of indices of the R peaks
+    fs: real number,
+        sampling frequency of the ecg signal
+    normal_rr_range: sequence of int, optional,
+        the range of normal rr interval, with units in ms;
+        if not given, default values from `FeatureCfg` will be used
+    verbose: int, default 0,
+        print verbosity
+
+    Returns:
+    --------
+    conclusion: str,
+        one of "T" (tachycardia), "B" (bradycardia), "N" (normal)
+    """
+    mean_rr = np.mean(np.diff(rpeaks))
+    nrr = normal_rr_range or [FeatureCfg.tachy_threshold, FeatureCfg.brady_threshold]
+    nrr = sorted(nrr)
+    assert
+    nrr = [ms2samples(nrr[0], fs), ms2samples(nrr[-1], fs)]
+    if mean_rr < nrr[0]:
+        conclusion = "T"
+    elif mean_rr > nrr[1]:
+        conclusion = "B"
+    else:
+        conclusion = "N"
+    return conclusion
