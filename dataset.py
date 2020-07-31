@@ -7,7 +7,7 @@ import time
 import logging
 # import pprint
 from datetime import datetime
-from typing import Union, Optional, Any, List, Dict, NoReturn
+from typing import Union, Optional, Any, List, Dict, Sequence, NoReturn
 from numbers import Real
 
 import numpy as np
@@ -540,7 +540,7 @@ class CINC2020(object):
             f.write("\n".join([recording_string, class_string, label_string, score_string, ""]))
 
 
-    def plot(self, rec:str, data:Optional[np.ndarray]=None, leads:Optional[Union[str, List[str]]]=None, ticks_granularity:int=0, **kwargs) -> NoReturn:
+    def plot(self, rec:str, data:Optional[np.ndarray]=None, ticks_granularity:int=0, leads:Optional[Union[str, List[str]]]=None, waves:Dict[str, Sequence[int]], **kwargs) -> NoReturn:
         """ finished, checked, to improve,
 
         Parameters:
@@ -550,15 +550,21 @@ class CINC2020(object):
         data: ndarray, optional,
             12-lead ecg signal to plot,
             if given, data of `rec` will not be used
-        leads: str or list of str, optional,
-            the leads to plot
         ticks_granularity: int, default 0,
             the granularity to plot axis ticks, the higher the more
+        leads: str or list of str, optional,
+            the leads to plot
+        waves: dict, optional,
+            indices of the wave critical points, including
+            'p_onset', 'p_peak', 'p_offset',
+            'q_onset', 'q_peak', 'r_peak', 's_peak', 's_offset',
+            't_onset', 't_peak', 't_offset'
         kwargs: dict,
 
         TODO:
         -----
-        slice too long records, and plot separately for each segment
+        1. slice too long records, and plot separately for each segment
+        2. plot waves using `axvspan`
 
         NOTE:
         -----
