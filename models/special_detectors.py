@@ -24,6 +24,7 @@ __all__ = [
     "pace_rhythm_detector",
     "electrical_axis_detector",
     "brady_tachy_detector",
+    "LQRSV_detector",
 ]
 
 
@@ -177,7 +178,7 @@ def brady_tachy_detector(rpeaks:np.ndarray, fs:Real, normal_rr_range:Optional[Se
     mean_rr = np.mean(np.diff(rpeaks))
     nrr = normal_rr_range or [FeatureCfg.tachy_threshold, FeatureCfg.brady_threshold]
     nrr = sorted(nrr)
-    assert
+    assert len(nrr) >= 2
     nrr = [ms2samples(nrr[0], fs), ms2samples(nrr[-1], fs)]
     if mean_rr < nrr[0]:
         conclusion = "T"
@@ -186,3 +187,17 @@ def brady_tachy_detector(rpeaks:np.ndarray, fs:Real, normal_rr_range:Optional[Se
     else:
         conclusion = "N"
     return conclusion
+
+
+def LQRSV_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real, sig_fmt:str="channel_first", verbose:int=0) -> str:
+    """ NOT finished,
+
+    Parameters:
+    -----------
+    to write
+
+    Returns:
+    --------
+    to write
+    """
+    raise NotImplementedError
