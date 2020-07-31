@@ -17,18 +17,19 @@ from signal_processing.ecg_rpeaks import (
     xqrs_detect, gqrs_detect,
     hamilton_detect, ssf_detect, christov_detect, engzee_detect, gamboa_detect,
 )
+from signal_processing.ecg_preproc import rpeaks_detect_multi_leads
 from utils.misc import ms2samples
 
 
 __all__ = [
-    "pace_rhythm_detector",
+    "pacing_rhythm_detector",
     "electrical_axis_detector",
     "brady_tachy_detector",
     "LQRSV_detector",
 ]
 
 
-def pace_rhythm_detector(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", verbose:int=0) -> bool:
+def pacing_rhythm_detector(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", verbose:int=0) -> bool:
     """
 
     Parameters:
@@ -52,9 +53,18 @@ def pace_rhythm_detector(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first
             order=5,
             frequency=FeatureCfg.pr_fs_lower_bound,
             sampling_rate=fs)['signal'] \
-                for lead in range(12)
+                for lead in range(s.shape[0])
     ])
-    # TODO: making decision using data_hp
+
+    potential_spikes = rpeaks_detect_multi_leads(
+        sig=data_hp,
+        fs=fs,
+        sig_fmt='channel_first',
+        rpeak_fn=xqrs_detect,
+        verbose=verbose,
+    )
+
+    # TODO: making decision using `potential_spikes`
 
     raise NotImplementedError
 
@@ -200,4 +210,5 @@ def LQRSV_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real, sig_fmt:
     --------
     to write
     """
+    
     raise NotImplementedError

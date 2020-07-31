@@ -193,15 +193,15 @@ def preprocess_single_lead_signal(raw_sig:np.ndarray, fs:Real, bl_win:Optional[L
     return retval
 
 
-def rpeaks_detect_multi_leads(filtered_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", rpeak_fn:Callable[[np.ndarray,Real], np.ndarray], verbose:int=0) -> np.ndarray:
+def rpeaks_detect_multi_leads(sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", rpeak_fn:Callable[[np.ndarray,Real], np.ndarray], verbose:int=0) -> np.ndarray:
     """ finished, NOT checked,
 
     detect rpeaks from the filtered multi-lead ecg signal
 
     Parameters:
     -----------
-    filtered_sig: ndarray,
-        the filtered ecg signal
+    sig: ndarray,
+        the (better be filtered) ecg signal
     fs: real number,
         sampling frequency of `filtered_sig`
     sig_fmt: str, default "channel_first",
@@ -221,9 +221,9 @@ def rpeaks_detect_multi_leads(filtered_sig:np.ndarray, fs:Real, sig_fmt:str="cha
     """
     assert sig_fmt.lower() in ['channel_first', 'lead_first', 'channel_last', 'lead_last']
     if sig_fmt.lower() in ['channel_last', 'lead_last']:
-        s = filtered_sig.T
+        s = sig.T
     else:
-        s = filtered_sig.copy()
+        s = sig.copy()
     rpeaks = []
     for lead in range(s.shape[0]):
         rpeaks.append(rpeak_fn(s, fs).astype(int))
