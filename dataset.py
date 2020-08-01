@@ -545,7 +545,7 @@ class CINC2020(object):
             f.write("\n".join([recording_string, class_string, label_string, score_string, ""]))
 
 
-    def plot(self, rec:str, data:Optional[np.ndarray]=None, ticks_granularity:int=0, leads:Optional[Union[str, List[str]]]=None, waves:Dict[str, Sequence[int]], **kwargs) -> NoReturn:
+    def plot(self, rec:str, data:Optional[np.ndarray]=None, ticks_granularity:int=0, leads:Optional[Union[str, List[str]]]=None, waves:Optional[Dict[str, Sequence[int]]]=None, **kwargs) -> NoReturn:
         """ finished, checked, to improve,
 
         Parameters:
@@ -602,44 +602,47 @@ class CINC2020(object):
             data = self.load_data(rec, data_format='channel_first')[lead_indices]
         y_ranges = np.max(np.abs(data), axis=1) + 100
 
-        if waves['p_onsets'] and waves['p_offsets']:
-            p_waves = [
-                [onset, offset] for onset, offset in zip(waves['p_onsets'], waves['p_offsets'])
-            ]
-        elif waves['p_peaks']:
-            p_waves = [
-                [max(0, p + ms2samples(PlotCfg.p_onset)), min(data.shape[1], p + ms2samples(PlotCfg.p_offset))] \
-                    for p in waves['p_peaks']
-            ]
+        if waves:
+            if waves.get('p_onsets', None) and waves.get('p_offsets', None):
+                p_waves = [
+                    [onset, offset] for onset, offset in zip(waves['p_onsets'], waves['p_offsets'])
+                ]
+            elif waves.get('p_peaks']:
+                p_waves = [
+                    [max(0, p + ms2samples(PlotCfg.p_onset)), min(data.shape[1], p + ms2samples(PlotCfg.p_offset))] \
+                        for p in waves['p_peaks']
+                ]
+            else:
+                p_waves = []
+            if waves.get('q_onsets', None) and waves.get('s_offsets', None):
+                qrs = [
+                    [onset, offset] for onset, offset in zip(waves['q_onsets'], waves['s_offsets'])
+                ]
+            elif waves.get('q_peaks', None) and waves.get('s_peaks', None):
+                qrs = [
+                    [max(0, q + ms2samples(PlotCfg.q_onset)), min(data.shape[1], s + ms2samples(PlotCfg.s_offset))] \
+                        for q,s in zip(waves['q_peaks'], waves['s_peaks'])
+                ]
+            elif waves.get('r_peaks', None):
+                qrs = [
+                    [max(0, r + ms2samples(PlotCfg.qrs_radius)), min(data.shape[1], r + ms2samples(PlotCfg.qrs_radius))] \
+                        for r in waves['r_peaks']
+                ]
+            else:
+                qrs = []
+            if waves.get('t_onsets', None) and waves.get('t_offsets', None):
+                t_waves = [
+                    [onset, offset] for onset, offset in zip(waves['t_onsets'], waves['t_offsets'])
+                ]
+            elif waves.get('t_peaks', None):
+                t_waves = [
+                    [max(0, t + ms2samples(PlotCfg.t_onset)), min(data.shape[1], t + ms2samples(PlotCfg.t_offset))] \
+                        for t in waves['t_peaks']
+                ]
+            else:
+                t_waves = []
         else:
-            p_waves = []
-        if waves['q_onsets'] and waves['s_offsets']:
-            qrs = [
-                [onset, offset] for onset, offset in zip(waves['q_onsets'], waves['s_offsets'])
-            ]
-        elif waves['q_peaks'] and waves['s_peaks']:
-            qrs = [
-                [max(0, q + ms2samples(PlotCfg.q_onset)), min(data.shape[1], s + ms2samples(PlotCfg.s_offset))] \
-                    for q,s in zip(waves['q_peaks'], waves['s_peaks'])
-            ]
-        elif waves['r_peaks']:
-            qrs = [
-                [max(0, r + ms2samples(PlotCfg.qrs_radius)), min(data.shape[1], r + ms2samples(PlotCfg.qrs_radius))] \
-                    for r in waves['r_peaks']
-            ]
-        else:
-            qrs = []
-        if waves['t_onsets'] and waves['t_offsets']:
-            t_waves = [
-                [onset, offset] for onset, offset in zip(waves['t_onsets'], waves['t_offsets'])
-            ]
-        elif waves['t_peaks']:
-            t_waves = [
-                [max(0, t + ms2samples(PlotCfg.t_onset)), min(data.shape[1], t + ms2samples(PlotCfg.t_offset))] \
-                    for t in waves['t_peaks']
-            ]
-        else:
-            t_waves = []
+            p_waves, qrs, t_waves = [], [], []
         palette = {'p_waves': 'green', 'qrs': 'red', 't_waves': 'pink',}
         plot_alpha = 0.4
 
