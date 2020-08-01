@@ -1,6 +1,7 @@
 """
 preprocess of (single lead) ecg signal:
-    band pass (dep. on purpose?) --> remove baseline --> find rpeaks --> wave delineation (?)
+    band pass (dep. on purpose?) --> remove baseline (?) --> find rpeaks
+    --> wave delineation (?, put into several stand alone files)
 
 References:
 -----------
@@ -203,7 +204,7 @@ def rpeaks_detect_multi_leads(sig:np.ndarray, fs:Real, sig_fmt:str="channel_firs
     sig: ndarray,
         the (better be filtered) ecg signal
     fs: real number,
-        sampling frequency of `filtered_sig`
+        sampling frequency of `sig`
     sig_fmt: str, default "channel_first",
         format of the 12 lead ecg signal,
         'channel_last' (alias 'lead_last'), or
@@ -227,7 +228,7 @@ def rpeaks_detect_multi_leads(sig:np.ndarray, fs:Real, sig_fmt:str="channel_firs
     rpeaks = []
     for lead in range(s.shape[0]):
         rpeaks.append(rpeak_fn(s[lead], fs).astype(int))
-    rpeaks = merge_rpeaks(rpeaks, filtered_sig, fs, verbose)
+    rpeaks = merge_rpeaks(rpeaks, sig, fs, verbose)
     return rpeaks
 
 
