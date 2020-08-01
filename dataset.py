@@ -17,12 +17,17 @@ from scipy.io import loadmat
 from easydict import EasyDict as ED
 
 import utils
-from utils.misc import get_record_list_recursive, dict_to_str
+from utils.misc import (
+    get_record_list_recursive,
+    dict_to_str,
+    ms2samples,
+)
 from utils.scoring_aux_data import (
     dx_mapping_all, dx_mapping_scored, dx_mapping_unscored,
     normalize_class,
 )
 from utils import ecg_arrhythmia_knowledge as EAK
+from cfg import PlotCfg
 
 
 __all__ = [
@@ -556,9 +561,9 @@ class CINC2020(object):
             the leads to plot
         waves: dict, optional,
             indices of the wave critical points, including
-            'p_onset', 'p_peak', 'p_offset',
-            'q_onset', 'q_peak', 'r_peak', 's_peak', 's_offset',
-            't_onset', 't_peak', 't_offset'
+            'p_onsets', 'p_peaks', 'p_offsets',
+            'q_onsets', 'q_peaks', 'r_peaks', 's_peaks', 's_offsets',
+            't_onsets', 't_peaks', 't_offsets'
         kwargs: dict,
 
         TODO:
@@ -597,6 +602,47 @@ class CINC2020(object):
             data = self.load_data(rec, data_format='channel_first')[lead_indices]
         y_ranges = np.max(np.abs(data), axis=1) + 100
 
+        if waves['p_onsets'] and waves['p_offsets']:
+            p_waves = [
+                [onset, offset] for onset, offset in zip(waves['p_onsets'], waves['p_offsets'])
+            ]
+        elif waves['p_peaks']:
+            p_waves = [
+                [max(0, p + ms2samples(PlotCfg.p_onset)), min(data.shape[1], p + ms2samples(PlotCfg.p_offset))] \
+                    for p in waves['p_peaks']
+            ]
+        else:
+            p_waves = []
+        if waves['q_onsets'] and waves['s_offsets']:
+            qrs = [
+                [onset, offset] for onset, offset in zip(waves['q_onsets'], waves['s_offsets'])
+            ]
+        elif waves['q_peaks'] and waves['s_peaks']:
+            qrs = [
+                [max(0, q + ms2samples(PlotCfg.q_onset)), min(data.shape[1], s + ms2samples(PlotCfg.s_offset))] \
+                    for q,s in zip(waves['q_peaks'], waves['s_peaks'])
+            ]
+        elif waves['r_peaks']:
+            qrs = [
+                [max(0, r + ms2samples(PlotCfg.qrs_radius)), min(data.shape[1], r + ms2samples(PlotCfg.qrs_radius))] \
+                    for r in waves['r_peaks']
+            ]
+        else:
+            qrs = []
+        if waves['t_onsets'] and waves['t_offsets']:
+            t_waves = [
+                [onset, offset] for onset, offset in zip(waves['t_onsets'], waves['t_offsets'])
+            ]
+        elif waves['t_peaks']:
+            t_waves = [
+                [max(0, t + ms2samples(PlotCfg.t_onset)), min(data.shape[1], t + ms2samples(PlotCfg.t_offset))] \
+                    for t in waves['t_peaks']
+            ]
+        else:
+            t_waves = []
+        palette = {'p_waves': 'green', 'qrs': 'red', 't_waves': 'pink',}
+        plot_alpha = 0.4
+
         diag_scored = self.get_labels(rec, scored_only=True, abbr=True)
         diag_all = self.get_labels(rec, scored_only=False, abbr=True)
 
@@ -631,6 +677,9 @@ class CINC2020(object):
             axes[idx].plot([], [], ' ', label=f"labels_a - {','.join(diag_all)}")
             axes[idx].plot([], [], ' ', label=f"tranche - {self.tranche_names[tranche]}")
             axes[idx].plot([], [], ' ', label=f"freq - {self.freq[tranche]}")
+            for w in ['p_waves', 'qrs', 't_waves']:
+                for itv in eval(w):
+                    axes[idx].axvspan(itv[0], itv[1], color=palette[w], alpha=plot_alpha)
             axes[idx].legend(loc='upper left')
             axes[idx].set_xlim(t[0], t[-1])
             axes[idx].set_ylim(-y_ranges[idx], y_ranges[idx])
