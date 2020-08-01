@@ -6,14 +6,14 @@ Standard_12Leads_ECG:
 ---------------------
     Inferior leads: II, III, aVF
     Lateral leads: I, aVL, V5-6
-    Septal leads: V1, aVR
+    Septal leads: aVR, V1
     Anterior leads: V2-4
     -----------------------------------
     Chest (precordial) leads: V1-6
-    Limb leads: I, II, III, aVF, aVR, aVL
+    Limb leads: I, II, III, aVR, aVL, aVF
 
-ECG rhythm:
------------
+ECG rhythm (https://litfl.com/ecg-rhythm-evaluation/):
+------------------------------------------------------
 1. On a 12 lead ECG, ECG rhythm is usually a 10 second recording from Lead II
 2. 7 steps to analyze:
     2.1. rate (brady < 60 bpm; 60 bpm <= normal <= 100 bpm; tachy > 100 bpm)
@@ -26,7 +26,11 @@ ECG rhythm:
 
 References:
 -----------
-[1] https://litfl.com/ecg-rhythm-evaluation/
+[1] https://litfl.com/
+[2] https://ecgwaves.com/
+[3] https://ecglibrary.com/ecghome.php
+
+NOTE that wikipedia is NOT listed in the References
 """
 from easydict import EasyDict as ED
 
@@ -413,7 +417,9 @@ SPB = SVPB  # alias
 STD = ED({
     "fullname": "st depression",
     "url": [
-        "",
+        "https://litfl.com/st-segment-ecg-library/",
+        "https://ecgwaves.com/st-segment-normal-abnormal-depression-elevation-causes/",
+        "https://en.wikipedia.org/wiki/ST_elevation",
     ],
     "knowledge": [
         "",
@@ -423,7 +429,9 @@ STD = ED({
 STE = ED({
     "fullname": "st elevation",
     "url": [
-        "",
+        "https://litfl.com/st-segment-ecg-library/",
+        "https://ecgwaves.com/st-segment-normal-abnormal-depression-elevation-causes/",
+        "https://en.wikipedia.org/wiki/ST_depression",
     ],
     "knowledge": [
         "",
