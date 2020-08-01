@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-knowledge about ECG arrhythmia, and corresponding Dx maps
+knowledge about ECG arrhythmia
 
-Standard_12Leads_ECG:
+Standard 12Leads ECG:
 ---------------------
     Inferior leads: II, III, aVF
     Lateral leads: I, aVL, V5-6
@@ -23,6 +23,10 @@ ECG rhythm (https://litfl.com/ecg-rhythm-evaluation/):
     2.5. relation of P waves and QRS complexes (atrial rate and ventricular rate, AV association or AV disassociation)
     2.6. onset and termination (abrupt or gradual)
     (2.7. response to vagal manoeuvres)
+
+ECG waves:
+----------
+https://ecgwaves.com/topic/ecg-normal-p-wave-qrs-complex-st-segment-t-wave-j-point/
 
 References:
 -----------
