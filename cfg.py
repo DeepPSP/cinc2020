@@ -56,5 +56,6 @@ PlotCfg.p_onset = -40
 PlotCfg.p_offset = 40
 PlotCfg.q_onset = -20
 PlotCfg.s_offset = 40
+PlotCfg.qrs_radius = 60
 PlotCfg.t_onset = -100
 PlotCfg.t_offset = 60
