@@ -607,7 +607,7 @@ class CINC2020(object):
                 p_waves = [
                     [onset, offset] for onset, offset in zip(waves['p_onsets'], waves['p_offsets'])
                 ]
-            elif waves.get('p_peaks']:
+            elif waves.get('p_peaks', None):
                 p_waves = [
                     [max(0, p + ms2samples(PlotCfg.p_onset)), min(data.shape[1], p + ms2samples(PlotCfg.p_offset))] \
                         for p in waves['p_peaks']

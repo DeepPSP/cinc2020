@@ -193,7 +193,7 @@ def preprocess_single_lead_signal(raw_sig:np.ndarray, fs:Real, bl_win:Optional[L
     return retval
 
 
-def rpeaks_detect_multi_leads(sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", rpeak_fn:Callable[[np.ndarray,Real], np.ndarray], verbose:int=0) -> np.ndarray:
+def rpeaks_detect_multi_leads(sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", rpeak_fn:Callable[[np.ndarray,Real], np.ndarray]=xqrs_detect, verbose:int=0) -> np.ndarray:
     """ finished, NOT checked,
 
     detect rpeaks from the filtered multi-lead ecg signal

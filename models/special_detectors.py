@@ -3,6 +3,8 @@ special detectors using rules,
 for (perhaps auxiliarily) detecting PR, Brady (including SB), LQRSV, RAD, LAD, STach
 
 pending arrhythmia classes: LPR, LQT
+
+NOTE: almost all the rules can be found in `utils.ecg_arrhythmia_knowledge`
 """
 from numbers import Real
 from typing import Union, Optional, Any, List, Dict, Callable, Sequence
@@ -18,7 +20,7 @@ from signal_processing.ecg_rpeaks import (
     hamilton_detect, ssf_detect, christov_detect, engzee_detect, gamboa_detect,
 )
 from signal_processing.ecg_preproc import rpeaks_detect_multi_leads
-from utils.misc import ms2samples
+from utils.misc import ms2samples, get_mask
 
 
 __all__ = [
@@ -34,11 +36,21 @@ def pacing_rhythm_detector(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_fir
 
     Parameters:
     -----------
-    to write
+    raw_sig: ndarray,
+        the raw 12-lead ecg signal
+    fs: real number,
+        sampling frequency of `sig`
+    sig_fmt: str, default "channel_first",
+        format of the 12 lead ecg signal,
+        'channel_last' (alias 'lead_last'), or
+        'channel_first' (alias 'lead_first', original)
+    verbose: int, default 0,
+        print verbosity
 
     Returns:
     --------
-    to write
+    is_PR: bool,
+        the ecg signal is of pacing rhythm or not
     """
     if sig_fmt.lower in ['channel_first', 'lead_first']:
         s = raw_sig.copy()
@@ -199,16 +211,35 @@ def brady_tachy_detector(rpeaks:np.ndarray, fs:Real, normal_rr_range:Optional[Se
     return conclusion
 
 
-def LQRSV_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real, sig_fmt:str="channel_first", verbose:int=0) -> str:
+def LQRSV_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, sig_fmt:str="channel_first", verbose:int=0) -> bool:
     """ NOT finished,
 
     Parameters:
     -----------
-    to write
+    filtered_sig: ndarray,
+        the filtered 12-lead ecg signal
+    rpeaks: ndarray,
+        array of indices of the R peaks
+    sig_fmt: str, default "channel_first",
+        format of the 12 lead ecg signal,
+        'channel_last' (alias 'lead_last'), or
+        'channel_first' (alias 'lead_first', original)
+    verbose: int, default 0,
+        print verbosity
 
     Returns:
     --------
-    to write
+    is_LQRSV: bool,
+        the ecg signal is of arrhythmia `LQRSV` or not
     """
-    
+    if sig_fmt.lower() in ['channel_first', 'lead_first']:
+        s = filtered_sig.copy()
+    else:
+        s = filtered_sig.T
+    rpeaks_mask = get_mask(
+        shape=s.shape,
+        critical_points=rpeaks,
+        left_bias=PreprocCfg.rpeak_mask_radius,
+        right_bias=PreprocCfg.rpeak_mask_radius,
+    )
     raise NotImplementedError

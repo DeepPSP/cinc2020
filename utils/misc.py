@@ -16,6 +16,7 @@ __all__ = [
     "dict_to_str",
     "diff_with_step",
     "ms2samples",
+    "get_mask",
 ]
 
 
@@ -144,3 +145,29 @@ def ms2samples(t:Real, fs:Real) -> int:
     """
     n_samples = t * fs // 1000
     return n_samples
+
+
+def get_mask(shape:Union[int, Sequence[int]], critical_points:np.ndarray, left_bias:int, right_bias:int) -> np.ndarray:
+    """ finished, checked,
+
+    get the mask around the `critical_points`
+
+    Parameters:
+    -----------
+    shape: int, or sequence of int,
+        shape of the mask (and the original data)
+    critical_points: ndarray,
+        indices (of the last dimension) of the points around which to be masked (value 1)
+    left_bias: int, non-negative
+        bias to the left of the critical points for the mask
+    right_bias: int, non-negative
+        bias to the right of the critical points for the mask
+
+    Returns:
+    --------
+    mask: ndarray,
+    """
+    mask = np.zeros(shape=shape, dtype=int)
+    for cp in critical_points:
+        mask[...,max(0,cp-left_bias):min(shape[-1],cp+right_bias)] = 1
+    return mask
