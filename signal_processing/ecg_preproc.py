@@ -226,7 +226,7 @@ def rpeaks_detect_multi_leads(sig:np.ndarray, fs:Real, sig_fmt:str="channel_firs
         s = sig.copy()
     rpeaks = []
     for lead in range(s.shape[0]):
-        rpeaks.append(rpeak_fn(s, fs).astype(int))
+        rpeaks.append(rpeak_fn(s[lead], fs).astype(int))
     rpeaks = merge_rpeaks(rpeaks, filtered_sig, fs, verbose)
     return rpeaks
 
@@ -234,7 +234,8 @@ def rpeaks_detect_multi_leads(sig:np.ndarray, fs:Real, sig_fmt:str="channel_firs
 def merge_rpeaks(rpeaks_candidates:List[np.ndarray], sig:np.ndarray, fs:Real, verbose:int=0) -> np.ndarray:
     """ finished, checked,
 
-    merge rpeaks that are detected from each of the 12 leads
+    merge rpeaks that are detected from each of the 12 leads,
+    using certain criterion merging 12 qrs masks
 
     Parameters:
     -----------
@@ -250,6 +251,7 @@ def merge_rpeaks(rpeaks_candidates:List[np.ndarray], sig:np.ndarray, fs:Real, ve
     Returns:
     --------
     final_rpeaks: np.ndarray
+        the final rpeaks obtained by merging the rpeaks from all the 12 leads
     """
     rpeak_masks = np.zeros_like(sig, dtype=int)
     sig_len = sig.shape[1]
