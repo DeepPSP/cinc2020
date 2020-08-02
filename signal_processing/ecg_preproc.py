@@ -193,7 +193,7 @@ def preprocess_single_lead_signal(raw_sig:np.ndarray, fs:Real, bl_win:Optional[L
         "rpeaks": rpeaks,
     })
 
-    if verbose >= 2:
+    if verbose >= 3:
         from utils.misc import plot_single_lead
         from cfg import PlotCfg
         t = np.arange(len(filtered_ecg)) / fs
@@ -283,7 +283,9 @@ def merge_rpeaks(rpeaks_candidates:List[np.ndarray], sig:np.ndarray, fs:Real, ve
     rpeak_masks[0], rpeak_masks[-1] = 0, 0
     split_indices = np.where(np.diff(rpeak_masks) != 0)[0]
     if verbose >= 1:
-        print(f"split_indices = {split_indices}")
+        print(f"split_indices = {split_indices}, with total number = {len(split_indices)}")
+        if verbose >= 2:
+            print(f"the corresponding intervals are {[[split_indices[2*idx], split_indices[2*idx+1]] for idx in range(len(split_indices)//2)]}")
 
     final_rpeaks = []
     for idx in range(len(split_indices)//2):
@@ -297,9 +299,11 @@ def merge_rpeaks(rpeaks_candidates:List[np.ndarray], sig:np.ndarray, fs:Real, ve
             print(f"at the {idx}-th interval, start_idx = {start_idx}, end_idx = {end_idx}")
             print(f"rc = {rc}")
         counter = Counter(rc).most_common()
-        if counter[0][1] >= len(rc)//2+1:
+        if len(counter) > 0 and counter[0][1] >= len(rc)//2+1:
+            # might have the case where
+            # rc is empty
             final_rpeaks.append(counter[0][0])
-        else:
+        elif len(counter) > 0:
             final_rpeaks.append(int(np.mean(rc)))
     final_rpeaks = np.array(final_rpeaks)
     return final_rpeaks

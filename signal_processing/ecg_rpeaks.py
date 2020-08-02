@@ -5,6 +5,11 @@ Exists algorithms from wfdb and biosppy,
 
 TODO: algorithms compared in [1]
 
+NOTE:
+detectors (xqrs tested) from `wfdb` better fed with signal units in mV,
+if in μV, more false r peaks might be detected,
+currently not tested using detectors from `biosppy`
+
 References:
 -----------
 [1] Liu, Feifei, et al. "Performance analysis of ten common QRS detectors on different ECG application cases." Journal of healthcare engineering 2018 (2018).
@@ -93,6 +98,8 @@ def gqrs_detect(sig:np.ndarray, fs:Real, **kwargs) -> np.ndarray:
 # algorithms from biosppy
 def hamilton_detect(sig:np.ndarray, fs:Real, **kwargs) -> np.ndarray:
     """
+
+    the default detector used by `BSE`
 
     References:
     -----------

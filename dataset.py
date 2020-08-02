@@ -346,7 +346,7 @@ class CINC2020(object):
         return tranche
 
 
-    def load_data(self, rec:str, leads:Optional[Union[str, List[str]]]=None, data_format='channel_first', backend:str='wfdb', units:str='uV') -> np.ndarray:
+    def load_data(self, rec:str, leads:Optional[Union[str, List[str]]]=None, data_format='channel_first', backend:str='wfdb', units:str='mV') -> np.ndarray:
         """ finished, checked,
 
         load physical (converted from digital) ecg data,
@@ -364,8 +364,8 @@ class CINC2020(object):
             'channel_first' (alias 'lead_first', original)
         backend: str, default 'wfdb',
             the backend data reader, can also be 'scipy'
-        units: str, default 'uV',
-            units of the output signal, can also be 'μV' (alias of 'uV') or 'mV'
+        units: str, default 'mV',
+            units of the output signal, can also be 'μV', with an alias of 'uV'
         
         Returns:
         --------
@@ -613,7 +613,7 @@ class CINC2020(object):
     def plot(self, rec:str, data:Optional[np.ndarray]=None, ticks_granularity:int=0, leads:Optional[Union[str, List[str]]]=None, waves:Optional[Dict[str, Sequence[int]]]=None, **kwargs) -> NoReturn:
         """ finished, checked, to improve,
 
-        plot the signals of a record or external signals,
+        plot the signals of a record or external signals (units in μV),
         with metadata (freq, labels, tranche, etc.),
         possibly also along with wave delineations
 
@@ -668,8 +668,14 @@ class CINC2020(object):
         # lead_indices = [lead_list.index(l) for l in leads]
         lead_indices = [self.all_leads.index(l) for l in leads]
         if data is None:
-            data = self.load_data(rec, data_format='channel_first')[lead_indices]
-        y_ranges = np.max(np.abs(data), axis=1) + 100
+            _data = self.load_data(rec, data_format='channel_first', units='μV')[lead_indices]
+        else:
+            units = self._auto_detect_units(data)
+            if units.lower() == 'mv':
+                _data = 1000 * data
+            else:
+                _data = data
+        y_ranges = np.max(np.abs(_data), axis=1) + 100
 
         if waves:
             if waves.get('p_onsets', None) and waves.get('p_offsets', None):
@@ -678,7 +684,7 @@ class CINC2020(object):
                 ]
             elif waves.get('p_peaks', None):
                 p_waves = [
-                    [max(0, p + ms2samples(PlotCfg.p_onset)), min(data.shape[1], p + ms2samples(PlotCfg.p_offset))] \
+                    [max(0, p + ms2samples(PlotCfg.p_onset)), min(_data.shape[1], p + ms2samples(PlotCfg.p_offset))] \
                         for p in waves['p_peaks']
                 ]
             else:
@@ -689,12 +695,12 @@ class CINC2020(object):
                 ]
             elif waves.get('q_peaks', None) and waves.get('s_peaks', None):
                 qrs = [
-                    [max(0, q + ms2samples(PlotCfg.q_onset)), min(data.shape[1], s + ms2samples(PlotCfg.s_offset))] \
+                    [max(0, q + ms2samples(PlotCfg.q_onset)), min(_data.shape[1], s + ms2samples(PlotCfg.s_offset))] \
                         for q,s in zip(waves['q_peaks'], waves['s_peaks'])
                 ]
             elif waves.get('r_peaks', None):
                 qrs = [
-                    [max(0, r + ms2samples(PlotCfg.qrs_radius)), min(data.shape[1], r + ms2samples(PlotCfg.qrs_radius))] \
+                    [max(0, r + ms2samples(PlotCfg.qrs_radius)), min(_data.shape[1], r + ms2samples(PlotCfg.qrs_radius))] \
                         for r in waves['r_peaks']
                 ]
             else:
@@ -705,7 +711,7 @@ class CINC2020(object):
                 ]
             elif waves.get('t_peaks', None):
                 t_waves = [
-                    [max(0, t + ms2samples(PlotCfg.t_onset)), min(data.shape[1], t + ms2samples(PlotCfg.t_offset))] \
+                    [max(0, t + ms2samples(PlotCfg.t_onset)), min(_data.shape[1], t + ms2samples(PlotCfg.t_offset))] \
                         for t in waves['t_peaks']
                 ]
             else:
@@ -721,18 +727,18 @@ class CINC2020(object):
         nb_leads = len(leads)
 
         seg_len = self.freq[tranche] * 25  # 25 seconds
-        nb_segs = data.shape[1] // seg_len
+        nb_segs = _data.shape[1] // seg_len
 
-        t = np.arange(data.shape[1]) / self.freq[tranche]
+        t = np.arange(_data.shape[1]) / self.freq[tranche]
         duration = len(t) / self.freq[tranche]
         fig_sz_w = int(round(4.8 * duration))
         fig_sz_h = 6 * y_ranges / 1500
         nl = "\n"
         fig, axes = plt.subplots(nb_leads, 1, sharex=True, figsize=(fig_sz_w, np.sum(fig_sz_h)))
         for idx in range(nb_leads):
-            # axes[idx].plot(t, data[idx], label='lead - ' + leads[idx] + '\n' + 'labels - ' + ",".join(diag_scored))
-            # axes[idx].plot(t, data[idx], label=f'lead - {leads[idx]}{nl}labels_s - {",".join(diag_scored)}{nl}labels_a - {",".join(diag_all)}')
-            axes[idx].plot(t, data[idx], label=f'lead - {leads[idx]}')
+            # axes[idx].plot(t, _data[idx], label='lead - ' + leads[idx] + '\n' + 'labels - ' + ",".join(diag_scored))
+            # axes[idx].plot(t, _data[idx], label=f'lead - {leads[idx]}{nl}labels_s - {",".join(diag_scored)}{nl}labels_a - {",".join(diag_all)}')
+            axes[idx].plot(t, _data[idx], label=f'lead - {leads[idx]}')
             axes[idx].axhline(y=0, linestyle='-', linewidth='1.0', color='red')
             # NOTE that `Locator` has default `MAXTICKS` equal to 1000
             if ticks_granularity >= 1:
@@ -759,6 +765,31 @@ class CINC2020(object):
             axes[idx].set_ylabel('Voltage [μV]')
         plt.subplots_adjust(hspace=0.2)
         plt.show()
+
+
+    def _auto_detect_units(self, data:np.ndarray) -> str:
+        """ finished, checked
+
+        automatically detect units of `data`,
+        under the assumption that `data` not raw data, with baseline removed
+
+        Parameters:
+        -----------
+        data: ndarray,
+            the data to detect its units
+
+        Returns:
+        --------
+        units: str,
+            units of `data`, 'μV' or 'mV'
+        """
+        _MAX_mV = 10  # 10mV
+        max_val = np.max(np.abs(data))
+        if max_val > _MAX_mV:
+            units = 'μV'
+        else:
+            units = 'mV'
+        return units
 
 
     @classmethod
