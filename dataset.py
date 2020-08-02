@@ -515,8 +515,28 @@ class CINC2020(object):
             labels = labels['diagnosis_fullname']
         return labels
 
+
+    def get_freq(self, rec:str) -> Real:
+        """ finished, checked,
+
+        get the sampling frequency of a record
+
+        Paramters:
+        ----------
+        rec: str,
+            name of the record
+
+        Returns:
+        --------
+        freq: real number,
+            sampling frequency of the record `rec`
+        """
+        tranche = self._get_tranche(rec)
+        freq = self.freq[tranche]
+        return freq
+
     
-    def get_patient_info(self, rec:str, items:Optional[List[str]]=None) -> dict:
+    def get_subject_info(self, rec:str, items:Optional[List[str]]=None) -> dict:
         """ finished, checked,
 
         Parameters:
@@ -524,11 +544,13 @@ class CINC2020(object):
         rec: str,
             name of the record
         items: list of str, optional,
-            items of the patient information (e.g. sex, age, etc.)
+            items of the subject's information (e.g. sex, age, etc.)
         
         Returns:
         --------
-        patient_info, dict,
+        subject_info: dict,
+            information about the subject, including
+            'age', 'sex', 'medical_prescription', 'history', 'symptom_or_surgery',
         """
         if items is None or len(items) == 0:
             info_items = [
@@ -537,9 +559,9 @@ class CINC2020(object):
         else:
             info_items = items
         ann_dict = self.load_ann(rec)
-        patient_info = [ann_dict[item] for item in info_items]
+        subject_info = [ann_dict[item] for item in info_items]
 
-        return patient_info
+        return subject_info
 
 
     def save_challenge_predictions(self, rec:str, output_dir:str, scores:List[Real], labels:List[int], classes:List[str]) -> NoReturn:
