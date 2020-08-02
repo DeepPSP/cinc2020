@@ -13,6 +13,9 @@ __all__ = [
     "FeatureCfg",
     "TrainCfg",
     "PlotCfg",
+    "Standard12Leads",
+    "InferiorLeads", "LateralLeads", "SeptalLeads",
+    "ChestLeads", "PrecordialLeads", "LimbLeads",
 ]
 
 
@@ -20,6 +23,7 @@ _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 _ONE_MINUTE_IN_MS = 60 * 1000
 
 
+Standard12Leads = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6',]
 InferiorLeads = ['II', 'III', 'aVF',]
 LateralLeads = ['I', 'aVL',] + [f'V{i}' for i in range(5,7)]
 SeptalLeads = ['aVR', 'V1',]
@@ -31,9 +35,9 @@ LimbLeads = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF',]
 
 PreprocCfg = ED()
 # PreprocCfg.fs = 500
-PreprocCfg.leads_ordering = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6',]
+PreprocCfg.leads_ordering = deepcopy(Standard12Leads)
 PreprocCfg.rpeak_mask_radius = 50  # ms
-PreprocCfg.rpeak_threshold = 8
+PreprocCfg.rpeak_num_threshold = 8  # used for merging rpeaks detected from 12 leads
 PreprocCfg.beat_winL = 250
 PreprocCfg.beat_winR = 250
 
@@ -44,6 +48,8 @@ FeatureCfg.axis_qrs_mask_radius = 70  # ms
 FeatureCfg.axis_method = '2-lead'  # can also be '3-lead'
 FeatureCfg.brady_threshold = _ONE_MINUTE_IN_MS / 60  # ms, corr. to 60 bpm
 FeatureCfg.tachy_threshold = _ONE_MINUTE_IN_MS / 100  # ms, corr. to 100 bpm
+FeatureCfg.lqrsv_ampl_bias = 0.02  # mV, TODO: should be further determined by resolution, etc.
+FeatureCfg.lqrsv_ratio_threshold = 0.8
 
 TrainCfg = ED()
 

@@ -3,6 +3,10 @@ preprocess of (single lead) ecg signal:
     band pass (dep. on purpose?) --> remove baseline (?) --> find rpeaks
     --> wave delineation (?, put into several stand alone files)
 
+NOTE:
+-----
+1. ALL signals are assumed to have units in mV
+
 References:
 -----------
 [1] https://github.com/PIA-Group/BioSPPy
@@ -59,13 +63,13 @@ QRS_DETECTORS = {
 def preprocess_multi_lead_signal(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", bl_win:Optional[List[Real]]=None, band_fs:Optional[List[Real]]=None, rpeak_fn:Optional[str]=None, verbose:int=0) -> Dict[str, np.ndarray]:
     """ finished, checked,
 
-    perform preprocessing for multi-lead ecg signal,
+    perform preprocessing for multi-lead ecg signal (with units in mV),
     preprocessing may include median filter, bandpass filter, and rpeaks detection, etc.
 
     Parameters:
     -----------
     raw_sig: ndarray,
-        the raw ecg signal
+        the raw ecg signal, with units in mV
     fs: real number,
         sampling frequency of `raw_sig`
     sig_fmt: str, default "channel_first",
@@ -133,13 +137,13 @@ def preprocess_multi_lead_signal(raw_sig:np.ndarray, fs:Real, sig_fmt:str="chann
 def preprocess_single_lead_signal(raw_sig:np.ndarray, fs:Real, bl_win:Optional[List[Real]]=None, band_fs:Optional[List[Real]]=None, rpeak_fn:Optional[str]=None, verbose:int=0) -> Dict[str, np.ndarray]:
     """ finished, checked,
 
-    perform preprocessing for single lead ecg signal,
+    perform preprocessing for single lead ecg signal (with units in mV),
     preprocessing may include median filter, bandpass filter, and rpeaks detection, etc.
 
     Parameters:
     -----------
     raw_sig: ndarray,
-        the raw ecg signal
+        the raw ecg signal, with units in mV
     fs: real number,
         sampling frequency of `raw_sig`
     bl_win: list (of 2 real numbers), optional,
@@ -218,12 +222,12 @@ def preprocess_single_lead_signal(raw_sig:np.ndarray, fs:Real, bl_win:Optional[L
 def rpeaks_detect_multi_leads(sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", rpeak_fn:Callable[[np.ndarray,Real], np.ndarray]=xqrs_detect, verbose:int=0) -> np.ndarray:
     """ finished, NOT checked,
 
-    detect rpeaks from the filtered multi-lead ecg signal
+    detect rpeaks from the filtered multi-lead ecg signal (with units in mV)
 
     Parameters:
     -----------
     sig: ndarray,
-        the (better be filtered) ecg signal
+        the (better be filtered) ecg signal, with units in mV
     fs: real number,
         sampling frequency of `sig`
     sig_fmt: str, default "channel_first",
@@ -256,7 +260,7 @@ def rpeaks_detect_multi_leads(sig:np.ndarray, fs:Real, sig_fmt:str="channel_firs
 def merge_rpeaks(rpeaks_candidates:List[np.ndarray], sig:np.ndarray, fs:Real, verbose:int=0) -> np.ndarray:
     """ finished, checked,
 
-    merge rpeaks that are detected from each lead of multi-lead signals,
+    merge rpeaks that are detected from each lead of multi-lead signals (with units in mV),
     using certain criterion merging qrs masks from each lead
 
     Parameters:
@@ -264,7 +268,7 @@ def merge_rpeaks(rpeaks_candidates:List[np.ndarray], sig:np.ndarray, fs:Real, ve
     rpeaks_candidates: list of ndarray,
         each element (ndarray) is the array of indices of rpeaks of corr. lead
     sig: ndarray,
-        the multi-lead ecg signal
+        the multi-lead ecg signal, with units in mV
     fs: real number,
         sampling frequency of `sig`
     verbose: int, default 0,
@@ -283,7 +287,7 @@ def merge_rpeaks(rpeaks_candidates:List[np.ndarray], sig:np.ndarray, fs:Real, ve
     for lead in range(sig.shape[0]):
         for r in rpeaks_candidates[lead]:
             rpeak_masks[lead,max(0,r-radius):min(sig_len-1,r+radius)] = 1
-    rpeak_masks = (rpeak_masks.sum(axis=0) >= PreprocCfg.rpeak_threshold).astype(int)
+    rpeak_masks = (rpeak_masks.sum(axis=0) >= PreprocCfg.rpeak_num_threshold).astype(int)
     rpeak_masks[0], rpeak_masks[-1] = 0, 0
     split_indices = np.where(np.diff(rpeak_masks) != 0)[0]
     if verbose >= 1:

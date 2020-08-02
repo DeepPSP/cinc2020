@@ -5,8 +5,9 @@ for (perhaps auxiliarily) detecting PR, Brady (including SB), LQRSV, RAD, LAD, S
 pending arrhythmia classes: LPR, LQT
 
 NOTE:
-1. almost all the rules can be found in `utils.ecg_arrhythmia_knowledge`
-2. 'PR' is superior to electrical axis deviation, which should be considered in the final decision.
+1. ALL signals are assumed to have units in mV
+2. almost all the rules can be found in `utils.ecg_arrhythmia_knowledge`
+3. 'PR' is superior to electrical axis deviation, which should be considered in the final decision.
 the co-occurrence of 'PR' and 'LAD' is 7; the co-occurrence of 'PR' and 'RAD' is 3, whose probabilities are both relatively low
 """
 from numbers import Real
@@ -18,7 +19,10 @@ from biosppy.signals.tools import filter_signal
 
 np.set_printoptions(precision=5, suppress=True)
 
-from cfg import FeatureCfg
+from cfg import (
+    FeatureCfg,
+    Standard12Leads, ChestLeads, PrecordialLeads, LimbLeads
+)
 from signal_processing.ecg_rpeaks import (
     pantompkins,
     xqrs_detect, gqrs_detect,
@@ -37,12 +41,12 @@ __all__ = [
 
 
 def pacing_rhythm_detector(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", verbose:int=0) -> bool:
-    """
+    """ NOT finished, NOT checked,
 
     Parameters:
     -----------
     raw_sig: ndarray,
-        the raw 12-lead ecg signal
+        the raw 12-lead ecg signal, with units in mV
     fs: real number,
         sampling frequency of `sig`
     sig_fmt: str, default "channel_first",
@@ -95,7 +99,7 @@ def electrical_axis_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real
     Parameters:
     -----------
     filtered_sig: ndarray,
-        the filtered 12-lead ecg signal
+        the filtered 12-lead ecg signal, with units in mV
     rpeaks: ndarray,
         array of indices of the R peaks
     fs: real number,
@@ -220,12 +224,12 @@ def brady_tachy_detector(rpeaks:np.ndarray, fs:Real, normal_rr_range:Optional[Se
 
 
 def LQRSV_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, sig_fmt:str="channel_first", verbose:int=0) -> bool:
-    """ NOT finished,
+    """ finished, NOT checked,
 
     Parameters:
     -----------
     filtered_sig: ndarray,
-        the filtered 12-lead ecg signal
+        the filtered 12-lead ecg signal, with units in mV
     rpeaks: ndarray,
         array of indices of the R peaks
     sig_fmt: str, default "channel_first",
@@ -241,13 +245,34 @@ def LQRSV_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, sig_fmt:str="chan
         the ecg signal is of arrhythmia `LQRSV` or not
     """
     if sig_fmt.lower() in ['channel_first', 'lead_first']:
-        s = filtered_sig.copy()
+        sig_ampl = np.abs(filtered_sig)
     else:
-        s = filtered_sig.T
-    rpeaks_mask = get_mask(
-        shape=s.shape,
+        sig_ampl = np.abs(filtered_sig.T)
+    l_qrs = get_mask(
+        shape=sig_ampl.shape,
         critical_points=rpeaks,
         left_bias=PreprocCfg.rpeak_mask_radius,
         right_bias=PreprocCfg.rpeak_mask_radius,
+        return_fmt='intervals',
     )
-    raise NotImplementedError
+    limb_lead_inds = [Standard12Leads.index(l) for l in LimbLeads]
+    precordial_lead_inds = [Standard12Leads.index(l) for l in PrecordialLeads]
+
+    l_qrs_limb_leads = []
+    l_qrs_precordial_leads = []
+    for itv in l_qrs:
+        for idx in limb_lead_inds:
+            l_qrs_limb_leads.append(sig_ampl[itv[0]:itv[1], idx].flatten())
+        for idx in l_qrs_precordial_leads:
+            l_qrs_precordial_leads.append(sig_ampl[itv[0]:itv[1], idx].flatten())
+
+    low_qrs_limb_leads = [np.max(item) < 0.5 + FeatureCfg.lqrsv_ampl_bias for item in l_qrs_limb_leads]
+    low_qrs_limb_leads = sum(low_qrs_limb_leads) / len(low_qrs_limb_leads)  # to ratio
+    low_qrs_precordial_leads = [np.max(item) < 1 + FeatureCfg.lqrsv_ampl_bias for item in l_qrs_precordial_leads]
+    low_qrs_precordial_leads = sum(low_qrs_precordial_leads) / len(low_qrs_precordial_leads)
+
+    is_LQRSV = \
+        (low_qrs_limb_leads < lqrsv_ratio_threshold) \
+        or (low_qrs_precordial_leads < lqrsv_ratio_threshold)
+
+    return is_LQRSV
