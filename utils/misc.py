@@ -200,7 +200,8 @@ def plot_single_lead(t:np.ndarray, sig:np.ndarray, ax:Optional[Any]=None, ticks_
         fig_sz_w = int(round(4.8 * (t[-1]-t[0])))
         fig_sz_h = 6 * y_range / 1500
         fig, ax = plt.subplots(figsize=(fig_sz_w, fig_sz_h))
-    if kwargs.get('label', None):
+    label = kwargs.get('label', None)
+    if label:
         ax.plot(t, sig, label=kwargs.get('label'))
     else:
         ax.plot(t, sig)
@@ -219,7 +220,8 @@ def plot_single_lead(t:np.ndarray, sig:np.ndarray, ax:Optional[Any]=None, ticks_
     for w, l_itv in waves.items():
         for itv in l_itv:
             ax.axvspan(itv[0], itv[1], color=palette[w], alpha=plot_alpha)
-    ax.legend(loc='upper left')
+    if label:
+        ax.legend(loc='upper left')
     ax.set_xlim(t[0], t[-1])
     ax.set_ylim(-y_range, y_range)
     ax.set_xlabel('Time [s]')

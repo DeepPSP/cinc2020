@@ -34,8 +34,8 @@ from utils.misc import ms2samples, get_mask
 
 
 __all__ = [
+    "preprocess_multi_lead_signal",
     "preprocess_single_lead_signal",
-    "preprocess_12_lead_signal",
     "rpeaks_detect_multi_leads",
     "merge_rpeaks",
 ]
@@ -53,10 +53,10 @@ QRS_DETECTORS = {
 }
 
 
-def preprocess_12_lead_signal(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", bl_win:Optional[List[Real]]=None, band_fs:Optional[List[Real]]=None, rpeak_fn:Optional[Callable[[np.ndarray,Real], np.ndarray]]=None, verbose:int=0) -> Dict[str, np.ndarray]:
+def preprocess_multi_lead_signal(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", bl_win:Optional[List[Real]]=None, band_fs:Optional[List[Real]]=None, rpeak_fn:Optional[Callable[[np.ndarray,Real], np.ndarray]]=None, verbose:int=0) -> Dict[str, np.ndarray]:
     """ finished, checked,
 
-    perform preprocessing for 12-lead ecg signal,
+    perform preprocessing for multi-lead ecg signal,
     preprocessing may include median filter, bandpass filter, and rpeaks detection, etc.
 
     Parameters:
@@ -66,7 +66,7 @@ def preprocess_12_lead_signal(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_
     fs: real number,
         sampling frequency of `raw_sig`
     sig_fmt: str, default "channel_first",
-        format of the 12 lead ecg signal,
+        format of the multi-lead ecg signal,
         'channel_last' (alias 'lead_last'), or
         'channel_first' (alias 'lead_first', original)
     bl_win: list (of 2 real numbers), optional,
@@ -115,6 +115,8 @@ def preprocess_12_lead_signal(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_
         filtered_metadata = results[lead]
         filtered_ecg[lead,...] = filtered_metadata["filtered_ecg"]
         rpeaks_candidates.append(filtered_metadata["rpeaks"])
+        if verbose >= 1:
+            print(f"for the {}-th lead, rpeaks_candidates = {filtered_metadata['rpeaks']}")
 
     rpeaks = merge_rpeaks(rpeaks_candidates, raw_sig, fs, verbose)
     retval = ED({
@@ -221,7 +223,7 @@ def rpeaks_detect_multi_leads(sig:np.ndarray, fs:Real, sig_fmt:str="channel_firs
     fs: real number,
         sampling frequency of `sig`
     sig_fmt: str, default "channel_first",
-        format of the 12 lead ecg signal,
+        format of the multi-lead ecg signal,
         'channel_last' (alias 'lead_last'), or
         'channel_first' (alias 'lead_first', original)
     rpeak_fn: callable,
@@ -250,15 +252,15 @@ def rpeaks_detect_multi_leads(sig:np.ndarray, fs:Real, sig_fmt:str="channel_firs
 def merge_rpeaks(rpeaks_candidates:List[np.ndarray], sig:np.ndarray, fs:Real, verbose:int=0) -> np.ndarray:
     """ finished, checked,
 
-    merge rpeaks that are detected from each of the 12 leads,
-    using certain criterion merging 12 qrs masks
+    merge rpeaks that are detected from each lead of multi-lead signals,
+    using certain criterion merging qrs masks from each lead
 
     Parameters:
     -----------
     rpeaks_candidates: list of ndarray,
         each element (ndarray) is the array of indices of rpeaks of corr. lead
     sig: ndarray,
-        the 12-lead ecg signal
+        the multi-lead ecg signal
     fs: real number,
         sampling frequency of `sig`
     verbose: int, default 0,
@@ -267,7 +269,7 @@ def merge_rpeaks(rpeaks_candidates:List[np.ndarray], sig:np.ndarray, fs:Real, ve
     Returns:
     --------
     final_rpeaks: np.ndarray
-        the final rpeaks obtained by merging the rpeaks from all the 12 leads
+        the final rpeaks obtained by merging the rpeaks from all the leads
     """
     rpeak_masks = np.zeros_like(sig, dtype=int)
     sig_len = sig.shape[1]
