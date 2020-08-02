@@ -102,7 +102,7 @@ def preprocess_12_lead_signal(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_
     with mp.Pool(processes=cpu_num) as pool:
         results = pool.starmap(
             func=preprocess_single_lead_signal,
-            iterable=[(filtered_ecg[lead,...], fs, bl_win, band_fs, rpeak_fn) for lead in range(filtered_ecg.shape[0])]
+            iterable=[(filtered_ecg[lead,...], fs, bl_win, band_fs, rpeak_fn, verbose) for lead in range(filtered_ecg.shape[0])]
         )
     for lead in range(filtered_ecg.shape[0]):
         # filtered_metadata = preprocess_single_lead_signal(
@@ -116,7 +116,7 @@ def preprocess_12_lead_signal(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_
         filtered_ecg[lead,...] = filtered_metadata["filtered_ecg"]
         rpeaks_candidates.append(filtered_metadata["rpeaks"])
 
-    rpeaks = merge_rpeaks(rpeaks_candidates, raw_sig, fs)
+    rpeaks = merge_rpeaks(rpeaks_candidates, raw_sig, fs, verbose)
     retval = ED({
         "filtered_ecg": filtered_ecg,
         "rpeaks": rpeaks,
