@@ -258,6 +258,9 @@ def LQRSV_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real, sig_fmt:
         right_bias=qrs_mask_radius,
         return_fmt='intervals',
     )
+    if verbose >= 2:
+        print(f"qrs intervals = {l_qrs}")
+
     limb_lead_inds = [Standard12Leads.index(l) for l in LimbLeads]
     precordial_lead_inds = [Standard12Leads.index(l) for l in PrecordialLeads]
 
@@ -268,6 +271,13 @@ def LQRSV_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real, sig_fmt:
             l_qrs_limb_leads.append(sig_ampl[itv[0]:itv[1], idx].flatten())
         for idx in l_qrs_precordial_leads:
             l_qrs_precordial_leads.append(sig_ampl[itv[0]:itv[1], idx].flatten())
+
+    if verbose >= 2:
+        print("for limb leads, the qrs amplitudes are as follows:")
+        for idx, lead_name in enumerate(LimbLeads):
+            print(f"for limb lead {lead_name}, the qrs amplitudes are {[np.max(item) for item in l_qrs_limb_leads[idx*len(l_qrs): (idx+1)*len(l_qrs)]]}")
+        for idx, lead_name in enumerate(PrecordialLeads):
+            print(f"for precordial lead {lead_name}, the qrs amplitudes are {[np.max(item) for item in l_qrs_limb_leads[idx*len(l_qrs): (idx+1)*len(l_qrs)]]}")
 
     low_qrs_limb_leads = [np.max(item) < 0.5 + FeatureCfg.lqrsv_ampl_bias for item in l_qrs_limb_leads]
     low_qrs_limb_leads = sum(low_qrs_limb_leads) / len(low_qrs_limb_leads)  # to ratio

@@ -28,7 +28,7 @@ InferiorLeads = ['II', 'III', 'aVF',]
 LateralLeads = ['I', 'aVL',] + [f'V{i}' for i in range(5,7)]
 SeptalLeads = ['aVR', 'V1',]
 AnteriorLeads = [f'V{i}' for i in range(2,5)]
-ChestLeads = [f'V{i}' for i in range(7)]
+ChestLeads = [f'V{i}' for i in range(1, 7)]
 PrecordialLeads = ChestLeads
 LimbLeads = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF',]
 
