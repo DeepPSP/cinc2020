@@ -2,7 +2,7 @@
 """
 import os
 from copy import deepcopy
-from typing import Union, Optional, List, Sequence, NoReturn
+from typing import Union, Optional, List, Dict, Sequence, NoReturn, Any
 from numbers import Real
 
 import numpy as np
@@ -17,6 +17,7 @@ __all__ = [
     "diff_with_step",
     "ms2samples",
     "get_mask",
+    "plot_single_lead",
 ]
 
 
@@ -147,7 +148,7 @@ def ms2samples(t:Real, fs:Real) -> int:
     return n_samples
 
 
-def get_mask(shape:Union[int, Sequence[int]], critical_points:np.ndarray, left_bias:int, right_bias:int) -> np.ndarray:
+def get_mask(shape:Union[int, Sequence[int]], critical_points:np.ndarray, left_bias:int, right_bias:int, return_fmt:str="mask") -> Union[np.ndarray,list]:
     """ finished, checked,
 
     get the mask around the `critical_points`
@@ -162,12 +163,62 @@ def get_mask(shape:Union[int, Sequence[int]], critical_points:np.ndarray, left_b
         bias to the left of the critical points for the mask
     right_bias: int, non-negative
         bias to the right of the critical points for the mask
+    return_fmt: str, default "mask",
+        format of the return values,
+        "mask" for the usual mask,
+        can also be "intervals", which consists of a list of intervals
 
     Returns:
     --------
-    mask: ndarray,
+    mask: ndarray or list,
     """
-    mask = np.zeros(shape=shape, dtype=int)
-    for cp in critical_points:
-        mask[...,max(0,cp-left_bias):min(shape[-1],cp+right_bias)] = 1
+    l_itv = [[max(0,cp-left_bias),min(shape[-1],cp+right_bias)] for cp in critical_points]
+    if return_fmt.lower() == "mask":
+        mask = np.zeros(shape=shape, dtype=int)
+        for itv in l_itv:
+            mask[..., itv[0]:itv[1]] = 1
+    elif return_fmt.lower() == "intervals":
+        mask = l_itv
     return mask
+
+
+def plot_single_lead(t:np.ndarray, sig:np.ndarray, ax:Optional[Any]=None, ticks_granularity:int=0, **kwargs) -> NoReturn:
+    """ finished, NOT checked,
+
+    Parameters:
+    -----------
+    to write
+    """
+    if 'plt' not in dir():
+        import matplotlib.pyplot as plt
+    palette = {'p_waves': 'green', 'qrs': 'red', 't_waves': 'pink',}
+    plot_alpha = 0.4
+    y_range = np.max(np.abs(sig)) + 100
+    if ax is None:
+        fig_sz_w = int(round(4.8 * (t[-1]-t[0])))
+        fig_sz_h = 6 * y_range / 1500
+        fig, ax = plt.subplots(figsize=(fig_sz_w, fig_sz_h))
+    if kwargs.get('label', None):
+        ax.plot(t, sig, label=kwargs.get('label'))
+    else:
+        ax.plot(t, sig)
+    ax.axhline(y=0, linestyle='-', linewidth='1.0', color='red')
+    # NOTE that `Locator` has default `MAXTICKS` equal to 1000
+    if ticks_granularity >= 1:
+        ax.xaxis.set_major_locator(plt.MultipleLocator(0.2))
+        ax.yaxis.set_major_locator(plt.MultipleLocator(500))
+        ax.grid(which='major', linestyle='-', linewidth='0.5', color='red')
+    if ticks_granularity >= 2:
+        ax.xaxis.set_minor_locator(plt.MultipleLocator(0.04))
+        ax.yaxis.set_minor_locator(plt.MultipleLocator(100))
+        ax.grid(which='minor', linestyle=':', linewidth='0.5', color='black')
+    
+    waves = kwargs.get('waves', {'p_waves':[], 'qrs':[], 't_waves':[]})
+    for w, l_itv in waves.items():
+        for itv in l_itv:
+            ax.axvspan(itv[0], itv[1], color=palette[w], alpha=plot_alpha)
+    ax.legend(loc='upper left')
+    ax.set_xlim(t[0], t[-1])
+    ax.set_ylim(-y_range, y_range)
+    ax.set_xlabel('Time [s]')
+    ax.set_ylabel('Voltage [μV]')
