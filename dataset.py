@@ -244,7 +244,7 @@ class CINC2020(object):
 
     @property
     def all_records(self):
-        """
+        """ finished, checked
         """
         if self._all_records is None:
             self._ls_rec()
@@ -278,7 +278,7 @@ class CINC2020(object):
 
     @property
     def diagnoses_records_list(self):
-        """
+        """ finished, checked
         """
         if self._diagnoses_records_list is None:
             self._ls_diagnoses_records()
@@ -286,7 +286,7 @@ class CINC2020(object):
 
 
     def _set_logger(self, prefix:Optional[str]=None) -> NoReturn:
-        """
+        """ finished, checked,
 
         Parameters:
         -----------
@@ -349,7 +349,8 @@ class CINC2020(object):
     def load_data(self, rec:str, leads:Optional[Union[str, List[str]]]=None, data_format='channel_first', backend:str='wfdb', units:str='uV') -> np.ndarray:
         """ finished, checked,
 
-        load ecg data, with units in μV
+        load physical (converted from digital) ecg data,
+        which is more understandable for humans
 
         Parameters:
         -----------
@@ -400,6 +401,8 @@ class CINC2020(object):
     
     def load_ann(self, rec:str, raw:bool=False) -> Union[dict,str]:
         """ finished, checked,
+
+        load annotations (header) stored in the .hea files
         
         Parameters:
         -----------
@@ -486,9 +489,18 @@ class CINC2020(object):
 
         return ann_dict
 
+
+    def load_header(self, rec:str, raw:bool=False) -> Union[dict,str]:
+        """
+        alias for `load_ann`, as annotations are also stored in header files
+        """
+        return self.load_ann(rec, raw)
+
     
     def get_labels(self, rec:str, scored_only:bool=True, abbr:bool=True) -> List[str]:
         """ finished, checked,
+
+        read labels (diagnoses or arrhythmias) of a record
         
         Parameters:
         -----------
@@ -538,6 +550,8 @@ class CINC2020(object):
     
     def get_subject_info(self, rec:str, items:Optional[List[str]]=None) -> dict:
         """ finished, checked,
+
+        read auxiliary information of a subject (a record) stored in the header files
 
         Parameters:
         -----------
@@ -598,6 +612,10 @@ class CINC2020(object):
 
     def plot(self, rec:str, data:Optional[np.ndarray]=None, ticks_granularity:int=0, leads:Optional[Union[str, List[str]]]=None, waves:Optional[Dict[str, Sequence[int]]]=None, **kwargs) -> NoReturn:
         """ finished, checked, to improve,
+
+        plot the signals of a record or external signals,
+        with metadata (freq, labels, tranche, etc.),
+        possibly also along with wave delineations
 
         Parameters:
         -----------
