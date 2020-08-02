@@ -202,7 +202,7 @@ def brady_tachy_detector(rpeaks:np.ndarray, fs:Real, normal_rr_range:Optional[Se
     rr_intervals = np.diff(rpeaks)
     mean_rr = np.mean(rr_intervals)
     if verbose >= 1:
-        print(f"mean_rr = {samples2ms(mean_rr, fs)} ms, with detailed rr_intervals (with units in ms) = {(np.vectorize(lambda item:samples2ms(item, fs))(rr_intervals)).tolist()}")
+        print(f"mean_rr = {round(samples2ms(mean_rr, fs), 1)} ms, with detailed rr_intervals (with units in ms) = {(np.vectorize(lambda item:samples2ms(item, fs))(rr_intervals)).tolist()}")
     nrr = normal_rr_range or [FeatureCfg.tachy_threshold, FeatureCfg.brady_threshold]
     nrr = sorted(nrr)
     assert len(nrr) >= 2

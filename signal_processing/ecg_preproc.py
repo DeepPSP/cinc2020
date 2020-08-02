@@ -55,7 +55,8 @@ QRS_DETECTORS = {
 }
 
 
-def preprocess_multi_lead_signal(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", bl_win:Optional[List[Real]]=None, band_fs:Optional[List[Real]]=None, rpeak_fn:Optional[Callable[[np.ndarray,Real], np.ndarray]]=None, verbose:int=0) -> Dict[str, np.ndarray]:
+# def preprocess_multi_lead_signal(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", bl_win:Optional[List[Real]]=None, band_fs:Optional[List[Real]]=None, rpeak_fn:Optional[Callable[[np.ndarray,Real], np.ndarray]]=None, verbose:int=0) -> Dict[str, np.ndarray]:
+def preprocess_multi_lead_signal(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", bl_win:Optional[List[Real]]=None, band_fs:Optional[List[Real]]=None, rpeak_fn:Optional[str]=None, verbose:int=0) -> Dict[str, np.ndarray]:
     """ finished, checked,
 
     perform preprocessing for multi-lead ecg signal,
@@ -81,9 +82,9 @@ def preprocess_multi_lead_signal(raw_sig:np.ndarray, fs:Real, sig_fmt:str="chann
         a typical pair is [0.5, 45],
         be careful when detecting paced rhythm,
         if is None or empty, bandpass filtering will not be performed
-    rpeak_fn: callable, optional,
-        the function detecting rpeaks,
-        whose first parameter is the signal, second parameter the sampling frequency
+    rpeak_fn: str, optional,
+        name of the function detecting rpeaks,
+        can be one of keys of `QRS_DETECTORS`, case insensitive
     verbose: int, default 0,
         print verbosity
 
@@ -128,7 +129,8 @@ def preprocess_multi_lead_signal(raw_sig:np.ndarray, fs:Real, sig_fmt:str="chann
     return retval
 
 
-def preprocess_single_lead_signal(raw_sig:np.ndarray, fs:Real, bl_win:Optional[List[Real]]=None, band_fs:Optional[List[Real]]=None, rpeak_fn:Optional[Callable[[np.ndarray,Real], np.ndarray]]=None, verbose:int=0) -> Dict[str, np.ndarray]:
+# def preprocess_single_lead_signal(raw_sig:np.ndarray, fs:Real, bl_win:Optional[List[Real]]=None, band_fs:Optional[List[Real]]=None, rpeak_fn:Optional[Callable[[np.ndarray,Real], np.ndarray]]=None, verbose:int=0) -> Dict[str, np.ndarray]:
+def preprocess_single_lead_signal(raw_sig:np.ndarray, fs:Real, bl_win:Optional[List[Real]]=None, band_fs:Optional[List[Real]]=None, rpeak_fn:Optional[str]=None, verbose:int=0) -> Dict[str, np.ndarray]:
     """ finished, checked,
 
     perform preprocessing for single lead ecg signal,
@@ -150,9 +152,9 @@ def preprocess_single_lead_signal(raw_sig:np.ndarray, fs:Real, bl_win:Optional[L
         a typical pair is [0.5, 45],
         be careful when detecting paced rhythm,
         if is None or empty, bandpass filtering will not be performed
-    rpeak_fn: callable, optional,
-        the function detecting rpeaks,
-        whose first parameter is the signal, second parameter the sampling frequency
+    rpeak_fn: str, optional,
+        name of the function detecting rpeaks,
+        can be one of keys of `QRS_DETECTORS`, case insensitive
     verbose: int, default 0,
         print verbosity
 
@@ -186,7 +188,7 @@ def preprocess_single_lead_signal(raw_sig:np.ndarray, fs:Real, bl_win:Optional[L
         )['signal']
 
     if rpeak_fn:
-        rpeaks = rpeak_fn(filtered_ecg, fs).astype(int)
+        rpeaks = QRS_DETECTORS[rpeak_fn.lower()](filtered_ecg, fs).astype(int)
     else:
         rpeaks = np.array([], dtype=int)
 
