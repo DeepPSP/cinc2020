@@ -51,6 +51,7 @@ FeatureCfg.tachy_threshold = _ONE_MINUTE_IN_MS / 100  # ms, corr. to 100 bpm
 FeatureCfg.lqrsv_qrs_mask_radius = 60  # ms
 FeatureCfg.lqrsv_ampl_bias = 0.02  # mV, TODO: should be further determined by resolution, etc.
 FeatureCfg.lqrsv_ratio_threshold = 0.8
+FeatureCfg.spectral_hr_fs_band = [0.5, 4]  # corr. to hr from 30 to 240
 
 TrainCfg = ED()
 
