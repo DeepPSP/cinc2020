@@ -223,7 +223,7 @@ def brady_tachy_detector(rpeaks:np.ndarray, fs:Real, normal_rr_range:Optional[Se
     return conclusion
 
 
-def LQRSV_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, sig_fmt:str="channel_first", verbose:int=0) -> bool:
+def LQRSV_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real, sig_fmt:str="channel_first", verbose:int=0) -> bool:
     """ finished, NOT checked,
 
     Parameters:
@@ -232,6 +232,8 @@ def LQRSV_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, sig_fmt:str="chan
         the filtered 12-lead ecg signal, with units in mV
     rpeaks: ndarray,
         array of indices of the R peaks
+    fs: real number,
+        sampling frequency of the ecg signal
     sig_fmt: str, default "channel_first",
         format of the 12 lead ecg signal,
         'channel_last' (alias 'lead_last'), or
@@ -248,11 +250,12 @@ def LQRSV_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, sig_fmt:str="chan
         sig_ampl = np.abs(filtered_sig)
     else:
         sig_ampl = np.abs(filtered_sig.T)
+    qrs_mask_radius = ms2samples(FeatureCfg.lqrsv_qrs_mask_radius, fs)
     l_qrs = get_mask(
         shape=sig_ampl.shape,
         critical_points=rpeaks,
-        left_bias=PreprocCfg.rpeak_mask_radius,
-        right_bias=PreprocCfg.rpeak_mask_radius,
+        left_bias=qrs_mask_radius,
+        right_bias=qrs_mask_radius,
         return_fmt='intervals',
     )
     limb_lead_inds = [Standard12Leads.index(l) for l in LimbLeads]

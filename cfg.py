@@ -48,6 +48,7 @@ FeatureCfg.axis_qrs_mask_radius = 70  # ms
 FeatureCfg.axis_method = '2-lead'  # can also be '3-lead'
 FeatureCfg.brady_threshold = _ONE_MINUTE_IN_MS / 60  # ms, corr. to 60 bpm
 FeatureCfg.tachy_threshold = _ONE_MINUTE_IN_MS / 100  # ms, corr. to 100 bpm
+FeatureCfg.lqrsv_qrs_mask_radius = 60  # ms
 FeatureCfg.lqrsv_ampl_bias = 0.02  # mV, TODO: should be further determined by resolution, etc.
 FeatureCfg.lqrsv_ratio_threshold = 0.8
 
