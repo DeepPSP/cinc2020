@@ -116,7 +116,7 @@ def preprocess_multi_lead_signal(raw_sig:np.ndarray, fs:Real, sig_fmt:str="chann
         filtered_ecg[lead,...] = filtered_metadata["filtered_ecg"]
         rpeaks_candidates.append(filtered_metadata["rpeaks"])
         if verbose >= 1:
-            print(f"for the {}-th lead, rpeaks_candidates = {filtered_metadata['rpeaks']}")
+            print(f"for the {lead}-th lead, rpeaks_candidates = {filtered_metadata['rpeaks']}")
 
     rpeaks = merge_rpeaks(rpeaks_candidates, raw_sig, fs, verbose)
     retval = ED({
