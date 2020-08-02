@@ -91,7 +91,7 @@ def pacing_rhythm_detector(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_fir
 
 
 def electrical_axis_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real, sig_fmt:str="channel_first", method:Optional[str]=None, verbose:int=0) -> str:
-    """ finished, checked,
+    """ finished, checked, to be improved
 
     detector of the heart electrical axis by means of '2-lead' method or '3-lead' method,
     NOTE that the extreme axis is not checked and treated as 'normal'
@@ -181,7 +181,7 @@ def electrical_axis_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real
 
 
 def brady_tachy_detector(rpeaks:np.ndarray, fs:Real, normal_rr_range:Optional[Sequence[Real]]=None, verbose:int=0) -> str:
-    """ finished, NOT checked,
+    """ finished, checked, to be improved
 
     detemine if the ecg is bradycadia or tachycardia or normal,
     only by the mean rr interval.
@@ -224,7 +224,7 @@ def brady_tachy_detector(rpeaks:np.ndarray, fs:Real, normal_rr_range:Optional[Se
 
 
 def LQRSV_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real, sig_fmt:str="channel_first", verbose:int=0) -> bool:
-    """ finished, NOT checked,
+    """ finished, checked, to be improved
 
     Parameters:
     -----------
@@ -268,9 +268,9 @@ def LQRSV_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real, sig_fmt:
     l_qrs_precordial_leads = []
     for itv in l_qrs:
         for idx in limb_lead_inds:
-            l_qrs_limb_leads.append(sig_ampl[itv[0]:itv[1], idx].flatten())
-        for idx in l_qrs_precordial_leads:
-            l_qrs_precordial_leads.append(sig_ampl[itv[0]:itv[1], idx].flatten())
+            l_qrs_limb_leads.append(sig_ampl[idx, itv[0]:itv[1]].flatten())
+        for idx in precordial_lead_inds:
+            l_qrs_precordial_leads.append(sig_ampl[idx, itv[0]:itv[1]].flatten())
 
     if verbose >= 2:
         print("for limb leads, the qrs amplitudes are as follows:")
@@ -279,13 +279,17 @@ def LQRSV_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real, sig_fmt:
         for idx, lead_name in enumerate(PrecordialLeads):
             print(f"for precordial lead {lead_name}, the qrs amplitudes are {[np.max(item) for item in l_qrs_limb_leads[idx*len(l_qrs): (idx+1)*len(l_qrs)]]}")
 
-    low_qrs_limb_leads = [np.max(item) < 0.5 + FeatureCfg.lqrsv_ampl_bias for item in l_qrs_limb_leads]
+    low_qrs_limb_leads = [np.max(item) <= 0.5 + FeatureCfg.lqrsv_ampl_bias for item in l_qrs_limb_leads]
     low_qrs_limb_leads = sum(low_qrs_limb_leads) / len(low_qrs_limb_leads)  # to ratio
-    low_qrs_precordial_leads = [np.max(item) < 1 + FeatureCfg.lqrsv_ampl_bias for item in l_qrs_precordial_leads]
+    low_qrs_precordial_leads = [np.max(item) <= 1 + FeatureCfg.lqrsv_ampl_bias for item in l_qrs_precordial_leads]
     low_qrs_precordial_leads = sum(low_qrs_precordial_leads) / len(low_qrs_precordial_leads)
 
+    if verbose >= 2:
+        print(f"ratio of low qrs in limb leads = {low_qrs_limb_leads}")
+        print(f"ratio of low qrs in precordial leads = {low_qrs_precordial_leads}")
+
     is_LQRSV = \
-        (low_qrs_limb_leads < lqrsv_ratio_threshold) \
-        or (low_qrs_precordial_leads < lqrsv_ratio_threshold)
+        (low_qrs_limb_leads >= FeatureCfg.lqrsv_ratio_threshold) \
+        or (low_qrs_precordial_leads >= FeatureCfg.lqrsv_ratio_threshold)
 
     return is_LQRSV
