@@ -172,6 +172,8 @@ def get_mask(shape:Union[int, Sequence[int]], critical_points:np.ndarray, left_b
     --------
     mask: ndarray or list,
     """
+    if isinstance(shape, int):
+        shape = (shape,)
     l_itv = [[max(0,cp-left_bias),min(shape[-1],cp+right_bias)] for cp in critical_points]
     if return_fmt.lower() == "mask":
         mask = np.zeros(shape=shape, dtype=int)
