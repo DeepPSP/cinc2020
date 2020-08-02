@@ -20,7 +20,7 @@ from signal_processing.ecg_rpeaks import (
     hamilton_detect, ssf_detect, christov_detect, engzee_detect, gamboa_detect,
 )
 from signal_processing.ecg_preproc import rpeaks_detect_multi_leads
-from utils.misc import ms2samples, get_mask
+from utils.misc import ms2samples, samples2ms, get_mask
 
 
 __all__ = [
@@ -197,7 +197,10 @@ def brady_tachy_detector(rpeaks:np.ndarray, fs:Real, normal_rr_range:Optional[Se
     conclusion: str,
         one of "T" (tachycardia), "B" (bradycardia), "N" (normal)
     """
-    mean_rr = np.mean(np.diff(rpeaks))
+    rr_intervals = np.diff(rpeaks)
+    mean_rr = np.mean(rr_intervals)
+    if verbose >= 1:
+        print(f"mean_rr = {samples2ms(mean_rr, fs)} ms, with detailed rr_intervals (with units in ms) = {np.vectorize(lambda item:samples2ms(item, fs))(rr_intervals)}")
     nrr = normal_rr_range or [FeatureCfg.tachy_threshold, FeatureCfg.brady_threshold]
     nrr = sorted(nrr)
     assert len(nrr) >= 2

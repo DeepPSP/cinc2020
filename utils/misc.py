@@ -16,6 +16,7 @@ __all__ = [
     "dict_to_str",
     "diff_with_step",
     "ms2samples",
+    "samples2ms",
     "get_mask",
     "plot_single_lead",
 ]
@@ -132,6 +133,8 @@ def diff_with_step(a:np.ndarray, step:int=1, **kwargs) -> np.ndarray:
 def ms2samples(t:Real, fs:Real) -> int:
     """ finished, checked,
 
+    convert time `t` with units in ms to number of samples
+
     Parameters:
     -----------
     t: real number,
@@ -146,6 +149,27 @@ def ms2samples(t:Real, fs:Real) -> int:
     """
     n_samples = t * fs // 1000
     return n_samples
+
+
+def samples2ms(n_samples:int, fs:Real) -> Real:
+    """ finished, checked,
+
+    inverse function of `ms2samples`
+
+    Parameters:
+    -----------
+    n_samples: int,
+        number of sample points
+    fs: real number,
+        sampling frequency of a signal
+
+    Returns:
+    --------
+    t: real number,
+        time duration correponding to `n_samples`
+    """
+    t = n_samples * 1000 / fs
+    return t
 
 
 def get_mask(shape:Union[int, Sequence[int]], critical_points:np.ndarray, left_bias:int, right_bias:int, return_fmt:str="mask") -> Union[np.ndarray,list]:
