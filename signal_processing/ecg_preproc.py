@@ -30,7 +30,7 @@ from .ecg_rpeaks import (
     xqrs_detect, gqrs_detect,
     hamilton_detect, ssf_detect, christov_detect, engzee_detect, gamboa_detect,
 )
-from utils.misc import ms2samples
+from utils.misc import ms2samples, get_mask
 
 
 __all__ = [
@@ -190,6 +190,21 @@ def preprocess_single_lead_signal(raw_sig:np.ndarray, fs:Real, bl_win:Optional[L
         "filtered_ecg": filtered_ecg,
         "rpeaks": rpeaks,
     })
+
+    if verbose >= 2:
+        from utils.misc import plot_single_lead
+        from cfg import PlotCfg
+        t = np.arange(len(filtered_ecg)) / fs
+        waves = {
+            "qrs": get_mask(
+                shape=len(filtered_ecg),
+                critical_points=rpeaks,
+                left_bias=ms2samples(PlotCfg.qrs_radius, fs),
+                right_bias=ms2samples(PlotCfg.qrs_radius, fs),
+                return_fmt="intervals",
+            )
+        }
+        plot_single_lead(t=t, sig=filtered_ecg, ticks_granularity=2, waves=waves)
     
     return retval
 
