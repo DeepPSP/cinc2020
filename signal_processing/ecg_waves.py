@@ -25,6 +25,7 @@ from numbers import Real
 import warnings
 
 import numpy as np
+np.set_printoptions(precision=5, suppress=True)
 
 from utils.utils_signal import smooth, detect_peaks
 

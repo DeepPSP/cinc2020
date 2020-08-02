@@ -6,6 +6,7 @@ from numbers import Real
 from typing import Union, Optional, NoReturn
 
 import numpy as np
+np.set_printoptions(precision=5, suppress=True)
 import scipy.signal as SS
 
 from utils.utils_signal import resample_irregular_timeseries

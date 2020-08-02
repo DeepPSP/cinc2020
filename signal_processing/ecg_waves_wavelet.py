@@ -17,6 +17,8 @@ from typing import Union, Optional, NoReturn
 import numpy as np
 from pywt import cwt
 
+np.set_printoptions(precision=5, suppress=True)
+
 
 __all__ = [
     "continuous_daubechies",

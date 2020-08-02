@@ -24,6 +24,8 @@ from scipy.signal.signaltools import resample
 # https://github.com/scipy/scipy/issues/9680
 from biosppy.signals.tools import filter_signal
 
+np.set_printoptions(precision=5, suppress=True)
+
 from cfg import PreprocCfg
 from .ecg_rpeaks import (
     pantompkins,
