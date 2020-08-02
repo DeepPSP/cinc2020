@@ -4,7 +4,10 @@ for (perhaps auxiliarily) detecting PR, Brady (including SB), LQRSV, RAD, LAD, S
 
 pending arrhythmia classes: LPR, LQT
 
-NOTE: almost all the rules can be found in `utils.ecg_arrhythmia_knowledge`
+NOTE:
+1. almost all the rules can be found in `utils.ecg_arrhythmia_knowledge`
+2. 'PR' is superior to electrical axis deviation, which should be considered in the final decision.
+the co-occurrence of 'PR' and 'LAD' is 7; the co-occurrence of 'PR' and 'RAD' is 3, whose probabilities are both relatively low
 """
 from numbers import Real
 from typing import Union, Optional, Any, List, Dict, Callable, Sequence
