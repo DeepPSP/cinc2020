@@ -70,17 +70,17 @@ class CINC2020(object):
         F. (Georgia): 500 Hz
     7. all data are recorded in the leads ordering of
         ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6']
-        using for example the following code:
-        >>> db_dir = "/media/cfs/wenhao71/data/cinc2020_data/"
-        >>> working_dir = "./working_dir"
-        >>> data_gen = CINC2020(db_dir=db_dir,working_dir=working_dir)
-        >>> set_leads = []
-        >>> for tranche, l_rec in data_gen.all_records.items():
-        ...     for rec in l_rec:
-        ...         ann = data_gen.load_ann(rec)
-        ...         leads = ann['df_leads']['lead_name'].values.tolist()
-        ...     if leads not in set_leads:
-        ...         set_leads.append(leads)
+    using for example the following code:
+    >>> db_dir = "/media/cfs/wenhao71/data/cinc2020_data/"
+    >>> working_dir = "./working_dir"
+    >>> data_gen = CINC2020(db_dir=db_dir,working_dir=working_dir)
+    >>> set_leads = []
+    >>> for tranche, l_rec in data_gen.all_records.items():
+    ...     for rec in l_rec:
+    ...         ann = data_gen.load_ann(rec)
+    ...         leads = ann['df_leads']['lead_name'].values.tolist()
+    ...     if leads not in set_leads:
+    ...         set_leads.append(leads)
 
     NOTE:
     -----
@@ -94,6 +94,21 @@ class CINC2020(object):
         - PAC, SVPB
         - PVC, VPB
     7. unfortunately, the newly added tranches (C - F) have baseline drift and are much noisier. In contrast, CPSC data have had baseline removed and have higher SNR
+    8. on Aug. 1, 2020, adc gain (including 'resolution', 'ADC'? in .hea files) of datasets INCART, PTB, and PTB-xl (tranches C, D, E) are corrected. After correction, (the .tar files of) the 3 datasets are all put in a "WFDB" subfolder. In order to keep the structures consistant, they are moved into "Training_StPetersburg", "Training_PTB", "WFDB" as previously. Using the following code, one can check the resolutions and baselines of each tranche:
+    >>> db_dir = "/media/cfs/wenhao71/data/cinc2020_data/"
+    >>> working_dir = "./working_dir"
+    >>> data_gen = CINC2020(db_dir=db_dir,working_dir=working_dir)
+    >>> resolution = {tranche: set() for tranche in "ABCDEF"}
+    >>> baseline = {tranche: set() for tranche in "ABCDEF"}
+    >>> for tranche, l_rec in data_gen.all_records.items():
+    ...     for rec in l_rec:
+    ...         ann = data_gen.load_ann(rec)
+    ...         resolution[tranche] = resolution[tranche].union(set(ann['df_leads']['resolution(mV)']))
+    ...         baseline[tranche] = baseline[tranche].union(set(ann['df_leads']['baseline']))
+    >>> print(resolution, baseline)
+    {'A': {1000}, 'B': {1000}, 'C': {1000}, 'D': {1000}, 'E': {1000}, 'F': {4880}} {'A': {0}, 'B': {0}, 'C': {0}, 'D': {0}, 'E': {0}, 'F': {0}}
+    9. the .mat files all contain digital signals, which has to be converted to physical values using adc gain, basesline, etc. in corresponding .hea files. `wfdb.rdrecord` has already done this conversion, hence greatly simplifies the data loading process.
+    NOTE that there's a difference when using `wfdb.rdrecord`: data from `loadmat` are in 'channel_first' format, while `wfdb.rdrecord.p_signal` produces data in the 'channel_last' format
 
     ISSUES:
     -------
@@ -331,8 +346,10 @@ class CINC2020(object):
         return tranche
 
 
-    def load_data(self, rec:str, leads:Optional[Union[str, List[str]]]=None, data_format='channel_first') -> np.ndarray:
+    def load_data(self, rec:str, leads:Optional[Union[str, List[str]]]=None, data_format='channel_first', backend:str='wfdb', units:str='uV') -> np.ndarray:
         """ finished, checked,
+
+        load ecg data, with units in μV
 
         Parameters:
         -----------
@@ -344,6 +361,10 @@ class CINC2020(object):
             format of the ecg data,
             'channel_last' (alias 'lead_last'), or
             'channel_first' (alias 'lead_first', original)
+        backend: str, default 'wfdb',
+            the backend data reader, can also be 'scipy'
+        units: str, default 'uV',
+            units of the output signal, can also be 'μV' (alias of 'uV') or 'mV'
         
         Returns:
         --------
@@ -352,9 +373,14 @@ class CINC2020(object):
         """
         assert data_format.lower() in ['channel_first', 'lead_first', 'channel_last', 'lead_last']
         tranche = self._get_tranche(rec)
-        rec_fp = os.path.join(self.db_dirs[tranche], f'{rec}.{self.rec_ext}')
-        data = loadmat(rec_fp)
-        data = np.asarray(data['val'], dtype=np.float64)
+        if backend.lower() == 'scipy':
+            rec_fp = os.path.join(self.db_dirs[tranche], f'{rec}.{self.rec_ext}')
+            data = loadmat(rec_fp)
+            resolutions = self.load_ann(rec, raw=False)['df_leads']['resolution(mV)'].values.reshape(12,-1)
+            data = np.asarray(data['val'], dtype=np.float64) / resolutions
+        elif backend.lower() == 'wfdb':
+            rec_fp = os.path.join(self.db_dirs[tranche], rec)
+            data = np.asarray(wfdb.rdrecord(rec_fp).p_signal.T, dtype=np.float64)
 
         if leads and isinstance(leads, str):
             leads_ind = [self.all_leads.index(leads)]
@@ -365,6 +391,9 @@ class CINC2020(object):
 
         if data_format.lower() in ['channel_last', 'lead_last']:
             data = data.T
+
+        if units.lower() in ['uv', 'μv']:
+            data = data * 1000
         
         return data
 
