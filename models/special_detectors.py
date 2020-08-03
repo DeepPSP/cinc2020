@@ -43,7 +43,7 @@ __all__ = [
 
 
 def pacing_rhythm_detector(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", verbose:int=0) -> bool:
-    """ NOT finished, NOT checked,
+    """ finished, NOT checked,
 
     Parameters:
     -----------
@@ -100,18 +100,29 @@ def pacing_rhythm_detector(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_fir
     potential_spikes = []
     sig_len = data_hp.shape[-1]
     for l in range(data_hp.shape[0]):
-        lead_hp = data_hp[l,...]
-        mph = FeatureCfg.pr_spike_mph_ratio * np.sum(np.abs(lead_hp)) / sig_len
+        lead_hp = np.abs(data_hp[l,...])
+        mph = FeatureCfg.pr_spike_mph_ratio * np.sum(lead_hp) / sig_len
         lead_spikes = detect_peaks(
             x=lead_hp,
             mph=mph,
-            mpd=ms2samples(200, fs),
+            mpd=ms2samples(FeatureCfg.pr_spike_mpd, fs),
+            prominence=FeatureCfg.pr_spike_prominence,
+            prominence_wlen=ms2samples(FeatureCfg.pr_spike_prominence_wlen, fs),
             verbose=verbose,
         )
+        if verbose >= 2:
+            print(f"for the {l}-th lead, its spike detecting mph = {round(mph, 4)} mV")
+            print(f"lead_spikes = {lead_spikes.tolist()}")
+            print(f"with prominences = {np.round(peak_prominences(lead_hp, lead_spikes, wlen=ms2samples(FeatureCfg.pr_spike_prominence_wlen, fs))[0], 5).tolist()}")
         potential_spikes.append(lead_spikes)
-    # TODO: making decision using `potential_spikes`
-
-    raise NotImplementedError
+    
+    # make decision using `potential_spikes`
+    sig_duration_ms = samples2ms(sig_len, fs)
+    lead_has_enough_spikes = [sig_duration_ms / len(potential_spikes[l]) < FeatureCfg.pr_spike_inv_density_threshold for l in range(data_hp.shape[0])]
+    if verbose >= 1:
+        print(f"lead_has_enough_spikes = {lead_has_enough_spikes}")
+    is_PR = sum(lead_has_enough_spikes) >= FeatureCfg.pr_spike_leads_threshold
+    return is_PR
 
 
 def electrical_axis_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real, sig_fmt:str="channel_first", method:Optional[str]=None, verbose:int=0) -> str:
