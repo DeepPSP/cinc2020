@@ -22,6 +22,7 @@ __all__ = [
     "normalize_class",
     "dx_cooccurrence_all",
     "dx_cooccurrence_scored",
+    "get_cooccurrence",
 ]
 
 
