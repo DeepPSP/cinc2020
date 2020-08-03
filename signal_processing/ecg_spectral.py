@@ -1,6 +1,10 @@
 """
 spectral analysis on the sequence of rr intervals (hrv, etc.),
 and on the ecg signal itself (heart rate, etc.)
+
+As most of signal of CINC2020 have high sampling frequency and short duration,
+computing heart rate, mean rr interval from frequency domain would unsually be unfeasible,
+hence priority of this module is set LOW 
 """
 from numbers import Real
 from typing import Union, Optional, Sequence, NoReturn
@@ -47,6 +51,10 @@ def spectral_heart_rate(filtered_sig:np.ndarray, fs:Real, hr_fs_band:Optional[Se
     ret_val: real number,
         mean heart rate of the ecg signal, with units in bpm;
         or mean rr intervals, with units in ms
+
+    NOTE:
+    for high frequency signal with short duration,
+    the lowest frequency of the spectrogram might be too high for computing heart rate
     """
     assert sig_fmt.lower() in ['channel_first', 'lead_first', 'channel_last', 'lead_last']
     if sig_fmt.lower() in ['channel_last', 'lead_last']:
@@ -95,3 +103,20 @@ def spectral_heart_rate(filtered_sig:np.ndarray, fs:Real, hr_fs_band:Optional[Se
     elif mode.lower() in ['rr', 'rr_interval']:
         ret_val = 1000 / ret_val
     return ret_val
+
+def _check_feasibility(freqs: np.ndarray) -> bool:
+    """ NOT finished, NOT checked,
+
+    check feasibility of using `spectral_heart_rate` to compute mean heart rate
+
+    Parameters:
+    -----------
+    freqs: ndarray,
+        array of sample frequencies of spectrogram of an ecg signal
+
+    Returns:
+    --------
+    is_feasible: bool,
+    """
+    is_feasible = True
+    raise NotImplementedError
