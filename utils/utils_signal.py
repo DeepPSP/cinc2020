@@ -9,6 +9,7 @@ from numbers import Real
 
 import numpy as np
 from scipy import interpolate
+from scipy.signal import peak_prominences
 
 np.set_printoptions(precision=5, suppress=True)
 
@@ -302,7 +303,8 @@ def resample_irregular_timeseries(s:np.ndarray, output_fs:Real=2, method:str="sp
 def detect_peaks(x:Sequence,
                  mph:Optional[Real]=None, mpd:int=1,
                  threshold:Real=0, left_threshold:Real=0, right_threshold:Real=0,
-                 edge:str='rising', kpsh:bool=False, valley:bool=False,
+                 prominence:Optional[Real]=None, prominence_wlen:Optional[int]=None,
+                 edge:Union[str,type(None)]='rising', kpsh:bool=False, valley:bool=False,
                  show:bool=False, ax=None,
                  verbose:int=0) -> np.ndarray:
     """
@@ -310,31 +312,37 @@ def detect_peaks(x:Sequence,
 
     Parameters:
     -----------
-    x : 1D array_like
-        data.
-    mph : {None, number}, optional (default = None)
-        abbr. for maximum (minimum) peak height
-        detect peaks that are greater than minimum peak height (if parameter
-        `valley` is False) or peaks that are smaller than maximum peak height
-         (if parameter `valley` is True).
-    mpd : positive integer, optional (default = 1)
-        abbr. for minimum peak distance
-        detect peaks that are at least separated by minimum peak distance (in
-        number of data).
-    threshold : positive number, optional (default = 0)
-        detect peaks (valleys) that are greater (smaller) than `threshold`
-        in relation to their neighbors within the range of mpd.
-    edge : {None, 'rising', 'falling', 'both'}, optional (default = 'rising')
-        for a flat peak, keep only the rising edge ('rising'), only the
-        falling edge ('falling'), both edges ('both'), or don't detect a
-        flat peak (None).
-    kpsh : bool, optional (default = False)
-        keep peaks with same height even if they are closer than `mpd`.
-    valley : bool, optional (default = False)
-        if True (1), detect valleys (local minima) instead of peaks.
-    show : bool, optional (default = False)
-        if True (1), plot data in matplotlib figure.
-    ax : a matplotlib.axes.Axes instance, optional (default = None).
+    x: 1D array_like,
+        data
+    mph: positive number, optional,
+        abbr. for maximum (minimum) peak height,
+        detect peaks that are greater than minimum peak height (if parameter `valley` is False),
+        or peaks that are smaller than maximum peak height (if parameter `valley` is True)
+    mpd: positive integer, default 1,
+        abbr. for minimum peak distance,
+        detect peaks that are at least separated by minimum peak distance (in number of samples)
+    threshold: positive number, default 0,
+        detect peaks (valleys) that are greater (smaller) than `threshold`,
+        in relation to their neighbors within the range of `mpd`
+    left_threshold: positive number, default 0,
+        `threshold` that is restricted to the left
+    right_threshold: positive number, default 0,
+        `threshold` that is restricted to the left
+    prominence: positive number, optional,
+        threshold of prominence of the detected peaks (valleys)
+    prominence_wlen: positive int, optional,
+        the `wlen` parameter of the function `scipy.signal.peak_prominences`
+    edge: str or None, default 'rising',
+        can also be 'falling', 'both',
+        for a flat peak, keep only the rising edge ('rising'), only the falling edge ('falling'),
+        both edges ('both'), or don't detect a flat peak (None)
+    kpsh: bool, default False,
+        keep peaks with same height even if they are closer than `mpd`
+    valley: bool, default False,
+        if True (1), detect valleys (local minima) instead of peaks
+    show: bool, default False,
+        if True (1), plot data in matplotlib figure
+    ax: a matplotlib.axes.Axes instance, optional,
 
     Returns:
     --------
@@ -481,6 +489,14 @@ def detect_peaks(x:Sequence,
 
     if verbose >= 1:
         print(f'after filtering by mpd, ind = {ind.tolist()}')
+
+    if prominence:
+        _p = peak_prominences(data, ind, prominence_wlen)[0]
+        ind = ind[np.where(_p >= prominence)[0]]
+        if verbose >= 1:
+            print(f'after filtering by prominence, ind = {ind.tolist()}')
+            if verbose >= 2:
+                print(f'with detailed prominence = {_p.tolist()}')
 
     if show:
         if indnan.size:
