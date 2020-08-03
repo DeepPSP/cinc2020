@@ -12,7 +12,7 @@ import torch.nn.functional as F
 from models.utils.torch_utils import (
     Mish, Swish,
     Conv_Bn_Activation,
-    Attention, GatedAttention,
+    # AML_Attention, AML_GatedAttention,
 )
 
 

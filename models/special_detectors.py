@@ -5,6 +5,7 @@ for (perhaps auxiliarily) detecting PR, Brady (including SB), LQRSV, RAD, LAD, S
 pending arrhythmia classes: LPR, LQT
 
 NOTE:
+-----
 1. ALL signals are assumed to have units in mV
 2. almost all the rules can be found in `utils.ecg_arrhythmia_knowledge`
 3. 'PR' is superior to electrical axis deviation, which should be considered in the final decision.

@@ -229,7 +229,7 @@ def load_weights(classes:Sequence[Union[int,str]]=None, return_fmt:str='np') -> 
         the weight matrix of the `classes`
     """
     if classes:
-        l_nc = [normalize_class(c) for c in classes]
+        l_nc = [normalize_class(c, ensure_scored=True) for c in classes]
         assert len(set(l_nc)) == len(classes), "`classes` has duplicates!"
         mat = df_weights_abbr.loc[l_nc,l_nc]
     else:
@@ -247,7 +247,7 @@ def load_weights(classes:Sequence[Union[int,str]]=None, return_fmt:str='np') -> 
     return mat
 
 
-def normalize_class(c:Union[str,int]) -> str:
+def normalize_class(c:Union[str,int], ensure_scored:bool=False) -> str:
     """ finished, checked,
 
     normalize the class name to its abbr.,
@@ -257,6 +257,9 @@ def normalize_class(c:Union[str,int]) -> str:
     -----------
     c: str or int,
         abbr. or SNOMED CT Code of the class
+    ensure_scored: bool, default False,
+        ensure that the class is a scored class,
+        if True, `ValueError` would be raised if `c` is not scored
 
     Returns:
     --------
@@ -267,7 +270,7 @@ def normalize_class(c:Union[str,int]) -> str:
         nc = snomed_ct_code_to_abbr(c)
     except:
         nc = c
-    if nc not in df_weights_abbr.columns:
+    if ensure_scored and nc not in df_weights_abbr.columns:
         raise ValueError(f"class {c} not among the scored classes")
     return nc
 
@@ -411,6 +414,30 @@ WAP,1,1,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,2,0,1,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,1,
 WPW,0,2,0,1,0,3,0,41,0,0,0,0,1,0,0,0,0,3,0,3,3,66,0,6,4,0,0,0,41,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,7,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,88
 """), index_col=0)
 dx_cooccurrence_scored = dx_cooccurrence_all.loc[dx_mapping_scored.Abbreviation, dx_mapping_scored.Abbreviation]
+
+
+def get_cooccurrence(c1:Union[str,int], c2:Union[str,int], ensure_scored:bool=False) -> int:
+    """ finished, checked,
+
+    Parameters:
+    -----------
+    c1, c2: str or int,
+        the 2 classes
+    ensure_scored: bool, default False,
+        ensure that the class is a scored class,
+        if True, `ValueError` would be raised if `c` is not scored
+
+    Returns:
+    --------
+    cooccurrence: int,
+        cooccurrence of class `c1` and `c2`, if they are not the same class;
+        otherwise the occurrence of the class `c1` (also `c2`)
+    """
+    _c1 = normalize_class(c1, ensure_scored=ensure_scored)
+    _c2 = normalize_class(c2, ensure_scored=ensure_scored)
+    cooccurrence = dx_cooccurrence_all.loc[_c1, _c2]
+    return cooccurrence
+
 
 """
 dx_cooccurrence_all is obtained via the following code
