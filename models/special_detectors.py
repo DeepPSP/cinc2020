@@ -43,7 +43,7 @@ __all__ = [
 
 
 def pacing_rhythm_detector(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", verbose:int=0) -> bool:
-    """ finished, NOT checked,
+    """ finished, checked, to be improved (fine-tuning hyper-parameters in cfg.py),
 
     Parameters:
     -----------
@@ -63,28 +63,29 @@ def pacing_rhythm_detector(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_fir
     is_PR: bool,
         the ecg signal is of pacing rhythm or not
     """
-    if sig_fmt.lower in ['channel_first', 'lead_first']:
+    if sig_fmt.lower() in ['channel_first', 'lead_first']:
         s = raw_sig.copy()
     else:
         s = raw_sig.T
     
-    # data_hp = np.array([
-    #     filter_signal(
-    #         s[lead],
-    #         ftype='butter',
-    #         band='highpass',
-    #         order=20,
-    #         frequency=FeatureCfg.pr_fs_lower_bound,
-    #         sampling_rate=fs)['signal'] \
-    #             for lead in range(s.shape[0])
-    # ])
-    cpu_num = max(1, mp.cpu_count()-3)
-    with mp.Pool(processes=cpu_num) as pool:
-        results = pool.starmap(
-            func=filter_signal,
-            iterable=[(s[lead,...], 'butter', 'highpass', 20, FeatureCfg.pr_fs_lower_bound, fs) for lead in range(s.shape[0])]
-        )
-    data_hp = np.array([item['signal'] for item in results])
+    data_hp = np.array([
+        filter_signal(
+            s[lead,...],
+            ftype='butter',
+            band='highpass',
+            order=20,
+            frequency=FeatureCfg.pr_fs_lower_bound,
+            sampling_rate=fs)['signal'] \
+                for lead in range(s.shape[0])
+    ])
+    # cpu_num = max(1, mp.cpu_count()-3)
+    # with mp.Pool(processes=cpu_num) as pool:
+    #     iterable = [(s[lead,...], 'butter', 'highpass', 20, FeatureCfg.pr_fs_lower_bound, fs) for lead in range(s.shape[0])]
+    #     results = pool.starmap(
+    #         func=filter_signal,
+    #         iterable=iterable,
+    #     )
+    # data_hp = np.array([item['signal'] for item in results])
 
     # if the signal is 'PR', then there's only sharp spikes left in data_hp
     # however, 'xqrs' seems unable to pick out these spikes as R peaks
@@ -108,7 +109,7 @@ def pacing_rhythm_detector(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_fir
             mpd=ms2samples(FeatureCfg.pr_spike_mpd, fs),
             prominence=FeatureCfg.pr_spike_prominence,
             prominence_wlen=ms2samples(FeatureCfg.pr_spike_prominence_wlen, fs),
-            verbose=verbose,
+            verbose=0,
         )
         if verbose >= 2:
             print(f"for the {l}-th lead, its spike detecting mph = {round(mph, 4)} mV")
@@ -121,12 +122,13 @@ def pacing_rhythm_detector(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_fir
     lead_has_enough_spikes = [sig_duration_ms / len(potential_spikes[l]) < FeatureCfg.pr_spike_inv_density_threshold for l in range(data_hp.shape[0])]
     if verbose >= 1:
         print(f"lead_has_enough_spikes = {lead_has_enough_spikes}")
+        print(f"leads spikes density (units in ms) = {[sig_duration_ms / len(potential_spikes[l]) for l in range(data_hp.shape[0])]}")
     is_PR = sum(lead_has_enough_spikes) >= FeatureCfg.pr_spike_leads_threshold
     return is_PR
 
 
 def electrical_axis_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real, sig_fmt:str="channel_first", method:Optional[str]=None, verbose:int=0) -> str:
-    """ finished, checked, to be improved,
+    """ finished, checked, to be improved (fine-tuning hyper-parameters in cfg.py),
 
     detector of the heart electrical axis by means of '2-lead' method or '3-lead' method,
     NOTE that the extreme axis is not checked and treated as 'normal'
@@ -216,7 +218,7 @@ def electrical_axis_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real
 
 
 def brady_tachy_detector(rpeaks:np.ndarray, fs:Real, normal_rr_range:Optional[Sequence[Real]]=None, verbose:int=0) -> str:
-    """ finished, checked, to be improved,
+    """ finished, checked, to be improved (fine-tuning hyper-parameters in cfg.py),
 
     detemine if the ecg is bradycadia or tachycardia or normal,
     only by the mean rr interval.
@@ -259,7 +261,7 @@ def brady_tachy_detector(rpeaks:np.ndarray, fs:Real, normal_rr_range:Optional[Se
 
 
 def LQRSV_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real, sig_fmt:str="channel_first", verbose:int=0) -> bool:
-    """ finished, checked, to be improved,
+    """ finished, checked, to be improved (fine-tuning hyper-parameters in cfg.py),
 
     Parameters:
     -----------

@@ -43,10 +43,10 @@ PreprocCfg.beat_winR = 250
 
 FeatureCfg = ED()
 FeatureCfg.leads_ordering = deepcopy(PreprocCfg.leads_ordering)
-FeatureCfg.pr_fs_lower_bound = 50  # Hz
-FeatureCfg.pr_spike_mph_ratio = 20  # ratio to the average amplitude of the signal
+FeatureCfg.pr_fs_lower_bound = 47  # Hz
+FeatureCfg.pr_spike_mph_ratio = 15  # ratio to the average amplitude of the signal
 FeatureCfg.pr_spike_mpd = 300  # ms
-FeatureCfg.pr_spike_prominence = 0.4
+FeatureCfg.pr_spike_prominence = 0.3
 FeatureCfg.pr_spike_prominence_wlen = 120  # ms
 FeatureCfg.pr_spike_inv_density_threshold = 2000  # inverse density (1/density), one spike per 2000 ms
 FeatureCfg.pr_spike_leads_threshold = 7
