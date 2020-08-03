@@ -64,7 +64,12 @@ def spectral_heart_rate(filtered_sig:np.ndarray, fs:Real, hr_fs_band:Optional[Se
     
     # psd of shape (c,n,k), freqs of shape (n,)
     # where n = length of signal, c = number of leads, k rel. to freq bands
-    freqs, _, psd = SS.spectrogram(s, fs, axis=-1)
+    # freqs, _, psd = SS.spectrogram(s, fs, axis=-1)
+    freqs, psd = SS.welch(s, fs, axis=-1)
+
+    if not _check_feasibility(freqs):
+        raise ValueError("it is not feasible to compute heart rate in frequency domain")
+
     fs_band = hr_fs_band or FeatureCfg.spectral_hr_fs_band
     assert len(fs_band) >= 2, "frequency band of heart rate should at least has 2 bounds"
     fs_band = sorted(fs_band)
@@ -80,7 +85,7 @@ def spectral_heart_rate(filtered_sig:np.ndarray, fs:Real, hr_fs_band:Optional[Se
     # psd_of_interest of shape (c, m), freqs_of_interest of shape (m,)
     # where m = length of inds_of_interest
     freqs_of_interest = freqs[inds_of_interest]
-    psd_of_interest = psd[:,inds_of_interest,:]
+    psd_of_interest = psd[...,inds_of_interest]
     peak_inds = np.argmax(psd_of_interest, axis=-1)
 
     if verbose >= 1:
@@ -93,7 +98,6 @@ def spectral_heart_rate(filtered_sig:np.ndarray, fs:Real, hr_fs_band:Optional[Se
     n_nbh = 1
     psd_mask = np.zeros_like(psd_of_interest, dtype=int)
     for l in range(psd_mask.shape[0]):
-        # TODO: fix bug here
         psd_mask[l, max(0,peak_inds[l]-n_nbh):min(psd_mask.shape[-1],peak_inds[l]+n_nbh)] = 1
     psd_of_interest = psd_of_interest * psd_mask
     # ret_val with units in second^{-1}
@@ -105,9 +109,10 @@ def spectral_heart_rate(filtered_sig:np.ndarray, fs:Real, hr_fs_band:Optional[Se
     return ret_val
 
 def _check_feasibility(freqs: np.ndarray) -> bool:
-    """ NOT finished, NOT checked,
+    """ finished, checked,
 
-    check feasibility of using `spectral_heart_rate` to compute mean heart rate
+    check feasibility of using `spectral_heart_rate` to compute mean heart rate,
+    feasibility here means that `freqs` should cover the range of common heart rate
 
     Parameters:
     -----------
@@ -117,6 +122,9 @@ def _check_feasibility(freqs: np.ndarray) -> bool:
     Returns:
     --------
     is_feasible: bool,
+        whether or not it is feasible to compute heart rate in frequency domain
     """
-    is_feasible = True
-    raise NotImplementedError
+    _f = np.asarray(freqs)
+    _f = np.sort(_f[_f>0])
+    is_feasible = (_f[0] <= 50/60) and (_f[-1] >= 100/60)
+    return is_feasible
