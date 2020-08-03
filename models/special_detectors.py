@@ -10,6 +10,7 @@ NOTE:
 3. 'PR' is superior to electrical axis deviation, which should be considered in the final decision.
 the co-occurrence of 'PR' and 'LAD' is 7; the co-occurrence of 'PR' and 'RAD' is 3, whose probabilities are both relatively low
 """
+import multiprocessing as mp
 from numbers import Real
 from typing import Union, Optional, Any, List, Dict, Callable, Sequence
 
@@ -29,6 +30,7 @@ from signal_processing.ecg_rpeaks import (
     hamilton_detect, ssf_detect, christov_detect, engzee_detect, gamboa_detect,
 )
 from signal_processing.ecg_preproc import rpeaks_detect_multi_leads
+from utils.utils_signal import detect_peaks
 from utils.misc import ms2samples, samples2ms, get_mask
 
 
@@ -66,32 +68,54 @@ def pacing_rhythm_detector(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_fir
     else:
         s = raw_sig.T
     
-    data_hp = np.array([
-        filter_signal(
-            raw_sig[lead],
-            ftype='butter',
-            band='highpass',
-            order=5,
-            frequency=FeatureCfg.pr_fs_lower_bound,
-            sampling_rate=fs)['signal'] \
-                for lead in range(s.shape[0])
-    ])
+    # data_hp = np.array([
+    #     filter_signal(
+    #         s[lead],
+    #         ftype='butter',
+    #         band='highpass',
+    #         order=20,
+    #         frequency=FeatureCfg.pr_fs_lower_bound,
+    #         sampling_rate=fs)['signal'] \
+    #             for lead in range(s.shape[0])
+    # ])
+    cpu_num = max(1, mp.cpu_count()-3)
+    with mp.Pool(processes=cpu_num) as pool:
+        results = pool.starmap(
+            func=filter_signal,
+            iterable=[(s[lead,...], 'butter', 'highpass', 20, FeatureCfg.pr_fs_lower_bound, fs) for lead in range(s.shape[0])]
+        )
+    data_hp = np.array([item['signal'] for item in results])
 
-    potential_spikes = rpeaks_detect_multi_leads(
-        sig=data_hp,
-        fs=fs,
-        sig_fmt='channel_first',
-        rpeak_fn=xqrs_detect,
-        verbose=verbose,
-    )
+    # if the signal is 'PR', then there's only sharp spikes left in data_hp
+    # however, 'xqrs' seems unable to pick out these spikes as R peaks
 
+    # potential_spikes = rpeaks_detect_multi_leads(
+    #     sig=data_hp,
+    #     fs=fs,
+    #     sig_fmt='channel_first',
+    #     rpeak_fn='xqrs',
+    #     verbose=verbose,
+    # )
+
+    potential_spikes = []
+    sig_len = data_hp.shape[-1]
+    for l in range(data_hp.shape[0]):
+        lead_hp = data_hp[l,...]
+        mph = FeatureCfg.pr_spike_mph_ratio * np.sum(np.abs(lead_hp)) / sig_len
+        lead_spikes = detect_peaks(
+            x=lead_hp,
+            mph=mph,
+            mpd=ms2samples(200, fs),
+            verbose=verbose,
+        )
+        potential_spikes.append(lead_spikes)
     # TODO: making decision using `potential_spikes`
 
     raise NotImplementedError
 
 
 def electrical_axis_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real, sig_fmt:str="channel_first", method:Optional[str]=None, verbose:int=0) -> str:
-    """ finished, checked, to be improved
+    """ finished, checked, to be improved,
 
     detector of the heart electrical axis by means of '2-lead' method or '3-lead' method,
     NOTE that the extreme axis is not checked and treated as 'normal'
@@ -129,9 +153,9 @@ def electrical_axis_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real
     else:
         s = filtered_sig.T
     
-    lead_I = s[FeatureCfg.leads_ordering.index('I')]
-    lead_II = s[FeatureCfg.leads_ordering.index('II')]
-    lead_aVF = s[FeatureCfg.leads_ordering.index('aVF')]
+    lead_I = s[Standard12Leads.index('I')]
+    lead_II = s[Standard12Leads.index('II')]
+    lead_aVF = s[Standard12Leads.index('aVF')]
 
     sig_len = s.shape[1]
     radius = ms2samples(FeatureCfg.axis_qrs_mask_radius, fs)
@@ -181,7 +205,7 @@ def electrical_axis_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real
 
 
 def brady_tachy_detector(rpeaks:np.ndarray, fs:Real, normal_rr_range:Optional[Sequence[Real]]=None, verbose:int=0) -> str:
-    """ finished, checked, to be improved
+    """ finished, checked, to be improved,
 
     detemine if the ecg is bradycadia or tachycardia or normal,
     only by the mean rr interval.
@@ -224,7 +248,7 @@ def brady_tachy_detector(rpeaks:np.ndarray, fs:Real, normal_rr_range:Optional[Se
 
 
 def LQRSV_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real, sig_fmt:str="channel_first", verbose:int=0) -> bool:
-    """ finished, checked, to be improved
+    """ finished, checked, to be improved,
 
     Parameters:
     -----------

@@ -44,6 +44,7 @@ PreprocCfg.beat_winR = 250
 FeatureCfg = ED()
 FeatureCfg.leads_ordering = deepcopy(PreprocCfg.leads_ordering)
 FeatureCfg.pr_fs_lower_bound = 50  # Hz
+FeatureCfg.pr_spike_mph_ratio = 0.8
 FeatureCfg.axis_qrs_mask_radius = 70  # ms
 FeatureCfg.axis_method = '2-lead'  # can also be '3-lead'
 FeatureCfg.brady_threshold = _ONE_MINUTE_IN_MS / 60  # ms, corr. to 60 bpm

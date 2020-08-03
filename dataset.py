@@ -671,6 +671,7 @@ class CINC2020(object):
             _data = self.load_data(rec, data_format='channel_first', units='μV')[lead_indices]
         else:
             units = self._auto_detect_units(data)
+            print(f"input data is auto detected to have units in {units}")
             if units.lower() == 'mv':
                 _data = 1000 * data
             else:
