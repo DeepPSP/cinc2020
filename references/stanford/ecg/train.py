@@ -91,3 +91,31 @@ if __name__ == '__main__':
     args = parser.parse_args()
     params = json.load(open(args.config_file, 'r'))
     train(args, params)
+
+
+"""
+example config (https://github.com/awni/ecg/blob/master/examples/cinc17/config.json):
+
+{
+    "conv_subsample_lengths": [1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2],
+    "conv_filter_length": 16,
+    "conv_num_filters_start": 32,
+    "conv_init": "he_normal",
+    "conv_activation": "relu",
+    "conv_dropout": 0.2,
+    "conv_num_skip": 2,
+    "conv_increase_channels_at": 4,
+
+    "learning_rate": 0.001,
+    "batch_size": 32,
+
+    "train": "examples/cinc17/train.json",
+    "dev": "examples/cinc17/dev.json",
+
+    "generator": true,
+
+    "save_dir": "saved",
+    # "input_shape": [None, 1],
+    # "num_categories": 9,
+}
+"""

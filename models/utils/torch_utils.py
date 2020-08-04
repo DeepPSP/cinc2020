@@ -9,6 +9,7 @@ from torch import nn
 from torch import Tensor
 from torch.nn import Parameter
 import torch.nn.functional as F
+from easydict import EasyDict as ED
 
 
 __all__ = [
@@ -28,6 +29,7 @@ else:
         return dividend / divisor
 
 
+# ---------------------------------------------
 # activations
 class Mish(torch.nn.Module):
     """ The Mish activation """
@@ -57,8 +59,9 @@ class Swish(torch.nn.Module):
         return x
 
 
+# ---------------------------------------------
 # initializers
-Initializers = {
+Initializers = ED({
     'he_normal': nn.init.kaiming_normal_,
     'kaiming_normal': nn.init.kaiming_normal_,
     'he_uniform': nn.init.kaiming_uniform_,
@@ -73,19 +76,40 @@ Initializers = {
     'zeros': nn.init.zeros_,
     'ones': nn.init.ones_,
     'constant': nn.init.constant_,
-}
+})
 
 
+# ---------------------------------------------
 # basic building blocks of CNN
 class Conv_Bn_Activation(nn.Sequential):
     """
     """
-    def __init__(self, in_channels:int, out_channels:int, kernel_size:int, stride:int, activation:Union[str,callable], kernel_initializer:Optional[Union[str,callable]]=None, bn:bool=True, bias:bool=True) -> NoReturn:
+    def __init__(self, in_channels:int, out_channels:int, kernel_size:int, stride:int, bn:Union[bool,nn.Module]=True, activation:Optional[Union[str,nn.Module]]=None, kernel_initializer:Optional[Union[str,callable]]=None, bias:bool=True) -> NoReturn:
         """
 
         Parameters:
         -----------
-        to write
+        in_channels: int,
+            number of channels in the input signal
+        out_channels: int,
+            number of channels produced by the convolution
+        kernel_size: int,
+            size of the convolving kernel
+        stride: int,
+            stride of the convolution
+        bn: bool or Module,
+            batch normalization,
+            the Module itself or (if is bool) whether or not to use `nn.BatchNorm1d`
+        activation: str or Module, optional,
+            name or Module of the activation,
+            if is str, can be one of
+            "mish", "swish", "relu", "leaky", "leaky_relu", "linear",
+            "linear" is equivalent to `activation=None`
+        kernel_initializer: str or callable (function), optional,
+            a function to initialize kernel weights of the convolution,
+            or name or the initialzer, can be one of the keys of Initializers
+        bias: bool, default True,
+            If True, adds a learnable bias to the output
         """
         super().__init__()
         padding = (kernel_size - 1) // 2  # 'same' padding
@@ -101,37 +125,51 @@ class Conv_Bn_Activation(nn.Sequential):
         self.add_module("conv1d", conv_layer)
 
         if bn:
-            self.add_module("batch_norm", nn.BatchNorm1d(out_channels))
+            bn_layer = nn.BatchNorm1d(out_channels) if isinstance(bn, bool) else bn(out_channels)
+            self.add_module("batch_norm", bn_layer)
 
         if isinstance(activation, str):
             activation = activation.lower()
 
-        if callable(activation):
+        if not activation:
+            act_layer = None
+            act_name = None
+        elif callable(activation):
             act_layer = activation
-            act_name = "activation"
+            act_name = f"activation_{type(act_layer).__name__}"
         elif activation.lower() == "mish":
             act_layer = Mish()
-            act_name = "mish"
+            act_name = "activation_mish"
         elif activation.lower() == "swish":
             act_layer = Swish()
-            act_name = "swish"
+            act_name = "activation_swish"
         elif activation.lower() == "relu":
             act_layer = nn.ReLU(inplace=True)
-            act_name = "relu"
+            act_name = "activation_relu"
         elif activation.lower() in ["leaky", "leaky_relu"]:
             act_layer = nn.LeakyReLU(0.1, inplace=True)
-            act_name = "leaky_relu"
+            act_name = "activation_leaky_relu"
         elif activation.lower() == "linear":
             act_layer = None
+            act_name = None
         else:
             print(f"activate error !!! {sys._getframe().f_code.co_filename} {sys._getframe().f_code.co_name} {sys._getframe().f_lineno}")
             act_layer = None
+            act_name = None
 
         if act_layer:
             self.add_module(act_name, act_layer)
 
+    def forward(self, input):
+        """
+        just use the forward function of `nn.Sequential`
+        """
+        x = super().forward(input)
+        return x
 
-# attention
+
+# ---------------------------------------------
+# attention mechanisms, from various sources
 class AML_Attention(nn.Module):
     """ NOT checked,
 

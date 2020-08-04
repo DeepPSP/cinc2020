@@ -2,7 +2,8 @@
 """
 import sys
 from collections import OrderedDict
-from typing import Union, NoReturn, Optional
+from typing import Union, Optional, NoReturn
+from numbers import Real
 
 import torch
 from torch import nn
@@ -19,7 +20,7 @@ from models.utils.torch_utils import (
 class VGGBlock(nn.Sequential):
     """
     """
-    def __init__(self, num_convs:int, in_channels:int, out_channels:int) -> NoReturn:
+    def __init__(self, num_convs:int, in_channels:int, out_channels:int, **kwargs) -> NoReturn:
         """
         """
         super().__init__()
@@ -102,13 +103,91 @@ class VGG6(nn.Sequential):
         )
 
 
-class ResBlock(nn.Module):
+class ResNetBasicBlock(nn.Module):
     """
+
+    References:
+    -----------
+    [1] https://github.com/awni/ecg
+    [2] https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py
+
+    TODO:
+    -----
+    1. check performances of activations other than "nn.ReLU", especially mish and swish
+    2. to add
     """
-    def __init__(self,):
+    __name__ = "ResNetBasicBlock"
+    expansion = 1
+
+    def __init__(self, in_channels:int, out_channels:int, stride:int=1, downsample:Optional[nn.Module]=None, groups:int=1, base_width:int=64, dilation:Real=1, norm_layer:Optional[nn.Module]=None, **kwargs) -> NoReturn:
         """
         """
         super().__init__()
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm1d
+        # if groups != 1 or base_width != 64:  # from torchvision
+        #     raise ValueError('ResBlock only supports groups=1 and base_width=64')
+        if dilation > 1:
+            raise NotImplementedError(f"Dilation > 1 not supported in {self.__name__}")
+        # Both self.conv1 and self.downsample layers downsample the input when stride != 1
+
+        # NOTE that in ref. [2], the conv3x3 and the conv1x1 layers both have `bias = False`
+        self.conv_bn_activation_1 = Conv_Bn_Activation(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=3,
+            stride=stride,
+            bn=norm_layer,
+            activation="relu",
+            kernel_initializer='he_normal',
+            bias=False,
+        )
+        self.conv_bn_activation_2 = Conv_Bn_Activation(
+            in_channels=out_channels,
+            out_channels=out_channels,
+            kernel_size=3,
+            stride=1,
+            bn=norm_layer,
+            activation=None,
+            kernel_initializer="he_normal",
+            bias=False,
+        )
+        self.activation = nn.ReLU(inplace=True)
+        self.downsample = downsample
+        self.stride = stride
+
+    def forward(self, input):
+        """
+        """
+        identity = input
+
+        out = self.conv_bn_activation_1(input)
+        out = self.conv_bn_activation_2(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(input)
+
+        out += identity
+        out = self.activation(out)
+
+        return out
+
+
+class ResNetBottleneck(nn.Module):
+    """
+    """
+    __name__ = "ResNetBottleneck"
+    expansion = 4
+
+    def __init__(self, in_channels:int, out_channels:int, stride:int=1, downsample:Optional[nn.Module]=None, groups:int=1, base_width:int=64, dilation:Real=1, norm_layer:Optional[nn.Module]=None, **kwargs) -> NoReturn:
+        """
+        """
+        super().__init__()
+        raise NotImplementedError
+
+    def forward(self, input):
+        """
+        """
         raise NotImplementedError
 
 
@@ -119,6 +198,11 @@ class ResNet(nn.Module):
         """
         """
         super().__init__()
+        raise NotImplementedError
+
+    def forward(self, input):
+        """
+        """
         raise NotImplementedError
 
 
@@ -145,10 +229,10 @@ class TI_CNN(nn.Module):
         self.lstm_2 = nn.LSTM(input_size=128,hidden_size=32,bidirectional=True)
         self.lstm_3 = nn.LSTM(input_size=32,hidden_size=9,bidirectional=True)
 
-        self.clf = nn.Linear()
+        self.clf = nn.Linear()  # TODO: add in_features and out_features
 
 
-    def forward(self, input):
+    def forward(self, input:Tensor) -> Tensor:
         """
         """
         x = self.cnn(input)  # batch_size, channel, seq_len
@@ -162,6 +246,8 @@ class TI_CNN(nn.Module):
         x = x.view(seq_len, batch_size, 2, double_channels//2)[:,:,]
         x,_ = self.lstm_2(x)
         x,_ = self.lstm_3(x)
+        pred = self.clf(x)
+        return pred
 
 
 class ATI_CNN(nn.Module):
@@ -183,7 +269,7 @@ class ATI_CNN(nn.Module):
             raise NotImplementedError
 
 
-    def forward(self, input):
+    def forward(self, input:Tensor) -> Tensor:
         """
         """
         x = self.cnn(input)
