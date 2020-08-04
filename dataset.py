@@ -672,7 +672,7 @@ class CINC2020(object):
         if data is None:
             _data = self.load_data(rec, data_format='channel_first', units='μV')[lead_indices]
         else:
-            units = self._auto_detect_units(data)
+            units = self._auto_infer_units(data)
             print(f"input data is auto detected to have units in {units}")
             if units.lower() == 'mv':
                 _data = 1000 * data
@@ -774,16 +774,16 @@ class CINC2020(object):
         plt.show()
 
 
-    def _auto_detect_units(self, data:np.ndarray) -> str:
+    def _auto_infer_units(self, data:np.ndarray) -> str:
         """ finished, checked
 
-        automatically detect units of `data`,
+        automatically infer the units of `data`,
         under the assumption that `data` not raw data, with baseline removed
 
         Parameters:
         -----------
         data: ndarray,
-            the data to detect its units
+            the data to infer its units
 
         Returns:
         --------
