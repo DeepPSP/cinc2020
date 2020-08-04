@@ -14,6 +14,7 @@ from easydict import EasyDict as ED
 
 __all__ = [
     "Mish", "Swish",
+    "Initializers", "Activations",
     "Conv_Bn_Activation",
     "AML_Attention", "AML_GatedAttention",
     "AttentionWithContext",
@@ -61,22 +62,32 @@ class Swish(torch.nn.Module):
 
 # ---------------------------------------------
 # initializers
-Initializers = ED({
-    'he_normal': nn.init.kaiming_normal_,
-    'kaiming_normal': nn.init.kaiming_normal_,
-    'he_uniform': nn.init.kaiming_uniform_,
-    'kaiming_uniform': nn.init.kaiming_uniform_,
-    'xavier_normal': nn.init.xavier_normal_,
-    'glorot_normal': nn.init.xavier_normal_,
-    'xavier_uniform': nn.init.xavier_uniform_,
-    'glorot_uniform': nn.init.xavier_uniform_,
-    'normal': nn.init.normal_,
-    'uniform': nn.init.uniform_,
-    'orthogonal': nn.init.orthogonal_,
-    'zeros': nn.init.zeros_,
-    'ones': nn.init.ones_,
-    'constant': nn.init.constant_,
-})
+Initializers = ED()
+Initializers.he_normal = nn.init.kaiming_normal_
+Initializers.kaiming_normal = nn.init.kaiming_normal_
+Initializers.he_uniform = nn.init.kaiming_uniform_
+Initializers.kaiming_uniform = nn.init.kaiming_uniform_
+Initializers.xavier_normal = nn.init.xavier_normal_
+Initializers.glorot_normal = nn.init.xavier_normal_
+Initializers.xavier_uniform = nn.init.xavier_uniform_
+Initializers.glorot_uniform = nn.init.xavier_uniform_
+Initializers.normal = nn.init.normal_
+Initializers.uniform = nn.init.uniform_
+Initializers.orthogonal = nn.init.orthogonal_
+Initializers.zeros = nn.init.zeros_
+Initializers.ones = nn.init.ones_
+Initializers.constant = nn.init.constant_
+
+
+# ---------------------------------------------
+# activations
+Activations = ED()
+Activations.mish = Mish()
+Activations.swish = Swish()
+Activations.relu = nn.ReLU(inplace=True)
+Activations.leaky = nn.LeakyReLU(0.1, inplace=True)
+Activations.leaky_relu = Activations.leaky
+Activations.linear = None
 
 
 # ---------------------------------------------
@@ -137,21 +148,9 @@ class Conv_Bn_Activation(nn.Sequential):
         elif callable(activation):
             act_layer = activation
             act_name = f"activation_{type(act_layer).__name__}"
-        elif activation.lower() == "mish":
-            act_layer = Mish()
-            act_name = "activation_mish"
-        elif activation.lower() == "swish":
-            act_layer = Swish()
-            act_name = "activation_swish"
-        elif activation.lower() == "relu":
-            act_layer = nn.ReLU(inplace=True)
-            act_name = "activation_relu"
-        elif activation.lower() in ["leaky", "leaky_relu"]:
-            act_layer = nn.LeakyReLU(0.1, inplace=True)
-            act_name = "activation_leaky_relu"
-        elif activation.lower() == "linear":
-            act_layer = None
-            act_name = None
+        elif isinstance(activation, str) and activation.lower() in Activations.keys():
+            act_layer = Activations[activation.lower()]
+            act_name = f"activation_{activation.lower()}"
         else:
             print(f"activate error !!! {sys._getframe().f_code.co_filename} {sys._getframe().f_code.co_name} {sys._getframe().f_lineno}")
             act_layer = None
