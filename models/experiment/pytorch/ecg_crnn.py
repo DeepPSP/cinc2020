@@ -10,8 +10,9 @@ from torch import nn
 from torch import Tensor
 import torch.nn.functional as F
 
+from cfg import ModelCfg
 from models.utils.torch_utils import (
-    Mish, Swish,
+    Mish, Swish, Activations,
     Conv_Bn_Activation,
     # AML_Attention, AML_GatedAttention,
 )
@@ -29,11 +30,11 @@ class VGGBlock(nn.Sequential):
             "block_1",
             Conv_Bn_Activation(
                 in_channels, out_channels,
-                kernel_size=3,
-                stride=1,
-                activation="mish",
-                kernel_initializer="he_normal",
-                bn=True
+                kernel_size=ModelCfg.vgg_block.filter_length,
+                stride=ModelCfg.vgg_block.subsample_length,
+                activation=ModelCfg.vgg_block.activation,
+                kernel_initializer=ModelCfg.vgg_block.kernel_initializer,
+                bn=ModelCfg.vgg_block.batch_norm,
             )
         )
         for idx in range(num_convs-1):
@@ -41,16 +42,16 @@ class VGGBlock(nn.Sequential):
                 f"block_{idx+2}",
                 Conv_Bn_Activation(
                     out_channels, out_channels,
-                    kernel_size=3,
-                    stride=1,
-                    activation="mish",
-                    kernel_initializer="he_normal",
-                    bn=True
+                    kernel_size=ModelCfg.vgg_block.filter_length,
+                    stride=ModelCfg.vgg_block.subsample_length,
+                    activation=ModelCfg.vgg_block.activation,
+                    kernel_initializer=ModelCfg.vgg_block.kernel_initializer,
+                    bn=ModelCfg.vgg_block.batch_norm,
                 )
             )
         self.add_module(
             "max_pool",
-            nn.MaxPool1d(3,3)
+            nn.MaxPool1d(ModelCfg.vgg_block.pool_kernel, ModelCfg.vgg_block.pool_stride)
         )
 
 
@@ -61,46 +62,23 @@ class VGG6(nn.Sequential):
         """
         """
         super().__init__()
-        self.add_module(
-            "vgg_block_1",
-            VGGBlock(
-                num_convs=2,
-                in_channels=in_channels,
-                out_channels=64,
+        
+        config = ModelCfg.vgg6_model
+        for idx, (nc, nf) in enumerate(zip(config.num_convs, config.num_filters)):
+            module_name = f"vgg_block_{idx+1}"
+            if idx == 0:
+                module_in_channels = in_channels
+            else:
+                module_in_channels = config.num_filters[idx-1]
+            module_out_channels = nf
+            self.add_module(
+                "vgg_block_1",
+                VGGBlock(
+                    num_convs=nc,
+                    in_channels=module_in_channels,
+                    out_channels=module_out_channels,
+                )
             )
-        )
-        self.add_module(
-            "vgg_block_2",
-            VGGBlock(
-                num_convs=2,
-                in_channels=64,
-                out_channels=128,
-            )
-        )
-        self.add_module(
-            "vgg_block_3",
-            VGGBlock(
-                num_convs=3,
-                in_channels=128,
-                out_channels=256,
-            )
-        )
-        self.add_module(
-            "vgg_block_4",
-            VGGBlock(
-                num_convs=3,
-                in_channels=256,
-                out_channels=512,
-            )
-        )
-        self.add_module(
-            "vgg_block_5",
-            VGGBlock(
-                num_convs=3,
-                in_channels=512,
-                out_channels=512,
-            )
-        )
 
 
 class ResNetBasicBlock(nn.Module):

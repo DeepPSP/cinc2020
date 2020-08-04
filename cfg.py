@@ -23,6 +23,7 @@ _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 _ONE_MINUTE_IN_MS = 60 * 1000
 
 
+# names of the 12 leads
 Standard12Leads = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6',]
 InferiorLeads = ['II', 'III', 'aVF',]
 LateralLeads = ['I', 'aVL',] + [f'V{i}' for i in range(5,7)]
@@ -33,6 +34,7 @@ PrecordialLeads = ChestLeads
 LimbLeads = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF',]
 
 
+# ecg signal preprocessing configurations
 PreprocCfg = ED()
 # PreprocCfg.fs = 500
 PreprocCfg.leads_ordering = deepcopy(Standard12Leads)
@@ -41,6 +43,9 @@ PreprocCfg.rpeak_num_threshold = 8  # used for merging rpeaks detected from 12 l
 PreprocCfg.beat_winL = 250
 PreprocCfg.beat_winR = 250
 
+
+# feature extracting configurations,
+# mainly used by the special detectors
 FeatureCfg = ED()
 FeatureCfg.leads_ordering = deepcopy(PreprocCfg.leads_ordering)
 FeatureCfg.pr_fs_lower_bound = 47  # Hz
@@ -59,9 +64,8 @@ FeatureCfg.lqrsv_ampl_bias = 0.02  # mV, TODO: should be further determined by r
 FeatureCfg.lqrsv_ratio_threshold = 0.8
 FeatureCfg.spectral_hr_fs_band = [0.5, 4]  # corr. to hr from 30 to 240
 
-TrainCfg = ED()
 
-
+# configurations for visualization
 PlotCfg = ED()
 # default const for the plot function in dataset.py
 # used only when corr. values are absent
@@ -73,3 +77,24 @@ PlotCfg.s_offset = 40
 PlotCfg.qrs_radius = 60
 PlotCfg.t_onset = -100
 PlotCfg.t_offset = 60
+
+
+# configurations for building deep learning models
+# terminologies of stanford ecg repo. will be adopted
+ModelCfg = ED()
+ModelCfg.vgg_block = ED()
+ModelCfg.vgg_block.filter_length = 3
+ModelCfg.vgg_block.subsample_length = 1
+ModelCfg.vgg_block.activation = "mish"
+ModelCfg.vgg_block.kernel_initializer = "he_normal"
+ModelCfg.vgg_block.batch_norm = True
+ModelCfg.vgg_block.pool_kernel = True
+ModelCfg.vgg_block.pool_stride = True
+ModelCfg.vgg6_model = ED()
+ModelCfg.vgg6_model.num_convs = [2,2,3,3,3]
+ModelCfg.vgg6_model.num_filters = [64,128,256,512,512]
+ModelCfg.conv_kernel_size = 16  # TODO: adjust for different sampling frequencies
+
+
+# training configurations for machine learning and deep learning
+TrainCfg = ED()
