@@ -610,7 +610,7 @@ class CINC2020(object):
             f.write("\n".join([recording_string, class_string, label_string, score_string, ""]))
 
 
-    def plot(self, rec:str, data:Optional[np.ndarray]=None, ticks_granularity:int=0, leads:Optional[Union[str, List[str]]]=None, waves:Optional[Dict[str, Sequence[int]]]=None, **kwargs) -> NoReturn:
+    def plot(self, rec:str, data:Optional[np.ndarray]=None, ticks_granularity:int=0, leads:Optional[Union[str, List[str]]]=None, same_range:bool=False, waves:Optional[Dict[str, Sequence[int]]]=None, **kwargs) -> NoReturn:
         """ finished, checked, to improve,
 
         plot the signals of a record or external signals (units in μV),
@@ -628,6 +628,8 @@ class CINC2020(object):
             the granularity to plot axis ticks, the higher the more
         leads: str or list of str, optional,
             the leads to plot
+        same_range: bool, default False,
+            if True, forces all leads to have the same y range
         waves: dict, optional,
             indices of the wave critical points, including
             'p_onsets', 'p_peaks', 'p_offsets',
@@ -676,7 +678,11 @@ class CINC2020(object):
                 _data = 1000 * data
             else:
                 _data = data
-        y_ranges = np.max(np.abs(_data), axis=1) + 100
+        
+        if same_range:
+            y_ranges = np.ones((_data.shape[0],)) * np.max(np.abs(_data)) + 100
+        else:
+            y_ranges = np.max(np.abs(_data), axis=1) + 100
 
         if waves:
             if waves.get('p_onsets', None) and waves.get('p_offsets', None):
