@@ -136,6 +136,7 @@ class CINC2020(object):
         working_dir: str, optional,
             working directory, to store intermediate files and log file
         verbose: int, default 2,
+            print and log verbosity
         """
         self.db_name = 'CINC2020'
         self.working_dir = working_dir or os.getcwd()
@@ -377,8 +378,10 @@ class CINC2020(object):
         if backend.lower() == 'scipy':
             rec_fp = os.path.join(self.db_dirs[tranche], f'{rec}.{self.rec_ext}')
             data = loadmat(rec_fp)
-            resolutions = self.load_ann(rec, raw=False)['df_leads']['resolution(mV)'].values.reshape(12,-1)
-            data = np.asarray(data['val'], dtype=np.float64) / resolutions
+            header_info = self.load_ann(rec, raw=False)['df_leads']
+            baselines = header_info['baseline'].values.reshape(data.shape[0],-1)
+            resolutions = header_info['resolution(mV)'].values.reshape(data.shape[0],-1)
+            data = np.asarray(data['val']-baselines, dtype=np.float64) / resolutions
         elif backend.lower() == 'wfdb':
             rec_fp = os.path.join(self.db_dirs[tranche], rec)
             data = np.asarray(wfdb.rdrecord(rec_fp).p_signal.T, dtype=np.float64)
