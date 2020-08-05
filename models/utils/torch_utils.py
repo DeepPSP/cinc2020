@@ -22,7 +22,7 @@ __all__ = [
     "AML_Attention", "AML_GatedAttention",
     "AttentionWithContext",
     "MultiheadAttention",
-    "compute_output_shape",
+    "compute_conv_output_shape",
 ]
 
 
@@ -514,14 +514,18 @@ class MultiheadAttention(nn.Module):
                 attn_mask=attn_mask)
 
 
-def compute_output_shape(input_shape:Sequence[Union[int, type(None)], kernel_size:Union[Sequence[int], int]=1, stride:Union[Sequence[int], int]=1, pad:Union[Sequence[int], int]=0, dilation:Union[Sequence[int], int]=1, channel_last:bool=False) -> Tuple[Union[int, type(None)]]:
+def compute_conv_output_shape(input_shape:Sequence[Union[int, type(None)]], num_filters:Optional[int]=None, kernel_size:Union[Sequence[int], int]=1, stride:Union[Sequence[int], int]=1, pad:Union[Sequence[int], int]=0, dilation:Union[Sequence[int], int]=1, channel_last:bool=False) -> Tuple[Union[int, type(None)]]:
     """ finished, checked,
+
+    compute the output shape of a convolution layer
     
     Parameters:
     -----------
     input_shape: sequence of int or None,
         shape of an input Tensor,
         the first dimension is the batch dimension, which is allowed to be `None`
+    num_filters: int, optional,
+        number of filters, also the channel dimension
     kernel_size: int, or sequence of int, default 1,
         kernel size (filter size) of the layer, should be compatible with `input_shape`
     stride: int, or sequence of int, default 1,
@@ -538,10 +542,19 @@ def compute_output_shape(input_shape:Sequence[Union[int, type(None)], kernel_siz
     --------
     output_shape: tuple,
         shape of the output Tensor
+
+    References:
+    -----------
+    [1] https://discuss.pytorch.org/t/utility-function-for-calculating-the-shape-of-a-conv-output/11173/5
     """
     dim = len(input_shape)-2
     assert dim > 0, "input_shape should be a sequence of length at least 3, to be a valid (with batch and channel) shape of a non-degenerate Tensor"
-    assert all([n is not None for n in input_shape[1:]]), "only batch dimension can be `None`"
+
+    none_dim_msg = "only batch and channel dimension can be `None`"
+    if channel_last:
+        assert all([n is not None for n in input_shape[1:-1]]), none_dim_msg
+    else:
+        assert all([n is not None for n in input_shape[2:]]), none_dim_msg
 
     if isinstance(kernel_size, int):
         _kernel_size = [kernel_size for _ in range(dim)]
@@ -580,8 +593,8 @@ def compute_output_shape(input_shape:Sequence[Union[int, type(None)], kernel_siz
             for input_len, p, d, k, s in zip(_input_shape, _pad, _dilation, _kernel_size, _stride)
     ]
     if channel_last:
-        output_shape = tuple([input_shape[0]] + output_shape + [input_shape[-1]])
+        output_shape = tuple([input_shape[0]] + output_shape + [num_filters])
     else:
-        output_shape = tuple(list(input_shape[:2]) + output_shape)
+        output_shape = tuple([input_shape[0], num_filters] + output_shape)
 
     return output_shape
