@@ -197,7 +197,7 @@ class StackedLSTM(nn.Sequential):
     """
     stacked LSTM, which allows different hidden sizes for each LSTM layer
 
-    NOTE that `batch_first` is fixed `True`
+    NOTE that `batch_first` is fixed `False`
     """
     def __init__(self, input_size:int, hidden_sizes:Sequence[int], bias:Union[Sequence[bool], bool]=True, dropout:Union[Sequence[float],float]=0.0, bidirectional:bool=True) -> NoReturn:
         """
@@ -208,7 +208,7 @@ class StackedLSTM(nn.Sequential):
         l_bias = bias if isinstance(bias, Sequence) else [bias for _ in range(self.num_layers)]
         l_dropout = dropout if isinstance(dropout, Sequence) else [dropout for _ in range(self.num_layers)]
         self.bidirectional = bidirectional
-        self.batch_first = True
+        self.batch_first = False
 
         layer_name_prefix = "bidirectional_lstm" if bidirectional else "lstm"
         for idx, (hs, b, d) in enumerate(zip(hidden_sizes, l_bias, l_dropout)):

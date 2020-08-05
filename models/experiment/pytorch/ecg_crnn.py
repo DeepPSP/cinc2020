@@ -14,6 +14,7 @@ from cfg import ModelCfg
 from models.utils.torch_utils import (
     Mish, Swish, Activations,
     Conv_Bn_Activation,
+    StackedLSTM,
     # AML_Attention, AML_GatedAttention,
 )
 
@@ -63,7 +64,7 @@ class VGG6(nn.Sequential):
         """
         super().__init__()
         
-        config = ModelCfg.vgg6_model
+        config = ModelCfg.vgg6
         for idx, (nc, nf) in enumerate(zip(config.num_convs, config.num_filters)):
             module_name = f"vgg_block_{idx+1}"
             if idx == 0:
@@ -187,27 +188,44 @@ class ResNet(nn.Module):
 class TI_CNN(nn.Module):
     """
     """
-    def __init__(self, classes:list, input_len:int, cnn:str='vgg', bidirectional:bool=True):
+    def __init__(self, classes:list, input_len:int, **config):
         """
         """
         super().__init__()
         self.classes = classes
-        self.nb_classes = len(classes)
-        self.nb_leads = 12
+        self.n_classes = len(classes)
+        self.n_leads = 12
         self.input_len = input_len
-        cnn_choice = cnn.lower()
-        self.bidirectional = bidirectional
+        if config.get("bidirectional", None) is None:
+            self.bidirectional = ModelCfg.ati_cnn.bidirectional
+        else:
+            self.bidirectional = config["bidirectional"]
+        
+        cnn_choice = config.get("cnn",None) or ModelCfg.ati_cnn.cnn.lower()
+        if cnn_choice == "vgg6":
+            self.cnn = VGG6(self.n_leads)
+            rnn_input_size = ModelCfg.vgg6.num_filters[-1]
+        elif cnn_choice == "resnet":
+            raise NotImplementedError
 
-        if cnn_choice == 'vgg':
-            self.cnn = VGG6(self.nb_leads)
-        elif cnn_choice == 'resnet':
+        rnn_choice = config.get("rnn",None) or ModelCfg.ati_cnn.rnn.lower()
+        if rnn == 'lstm':
+            self.rnn = StackedLSTM(
+                input_size=rnn_input_size,
+                hidden_sizes=ModelCfg.ati_cnn.rnn_hidden_sizes,
+                bias=True,
+                dropout=0.2,
+                bidirectional=self.bidirectional
+            )
+            if self.bidirectional:
+                clf_input_size = 2*ModelCfg.ati_cnn.rnn_hidden_sizes[-1]
+            else:
+                clf_input_size = ModelCfg.ati_cnn.rnn_hidden_sizes[-1]
+        else:
             raise NotImplementedError
         
-        self.lstm_1 = nn.LSTM(input_size=512,hidden_size=128,bidirectional=True)
-        self.lstm_2 = nn.LSTM(input_size=128,hidden_size=32,bidirectional=True)
-        self.lstm_3 = nn.LSTM(input_size=32,hidden_size=9,bidirectional=True)
-
-        self.clf = nn.Linear()  # TODO: add in_features and out_features
+        if self.bidirectional:
+            self.clf = nn.Linear(clf_input_size, self.n_classes)
 
 
     def forward(self, input:Tensor) -> Tensor:
@@ -216,14 +234,11 @@ class TI_CNN(nn.Module):
         x = self.cnn(input)  # batch_size, channel, seq_len
         # input shape of lstm: (seq_len, batch, input_size)
         x = x.permute(2,0,1)  # seq_len, batch_size, channel
-        x,_ = self.lstm_1(x)
+        x,_ = self.rnn(x)
         # the directions can be separated using 
         # output.view(seq_len, batch, num_directions, hidden_size), 
         # with forward and backward being direction 0 and 1 respectively
-        seq_len, batch_size, double_channels = x.shape
-        x = x.view(seq_len, batch_size, 2, double_channels//2)[:,:,]
-        x,_ = self.lstm_2(x)
-        x,_ = self.lstm_3(x)
+        x = x[-1, ...]  # `return_sequences=False`
         pred = self.clf(x)
         return pred
 
@@ -231,7 +246,7 @@ class TI_CNN(nn.Module):
 class ATI_CNN(nn.Module):
     """
     """
-    def __init__(self, classes:list, input_len:int, cnn:str='vgg'):
+    def __init__(self, classes:list, input_len:int, **config):
         """
         """
         super().__init__()
