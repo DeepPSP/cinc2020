@@ -1,7 +1,8 @@
 """
 """
 import sys
-from typing import Union, NoReturn, Optional
+from math import floor
+from typing import Union, Sequence, Tuple, Optional, NoReturn
 
 from packaging import version
 import torch
@@ -9,6 +10,7 @@ from torch import nn
 from torch import Tensor
 from torch.nn import Parameter
 import torch.nn.functional as F
+from torch.nn.utils.rnn import PackedSequence
 from easydict import EasyDict as ED
 
 
@@ -16,9 +18,11 @@ __all__ = [
     "Mish", "Swish",
     "Initializers", "Activations",
     "Conv_Bn_Activation",
+    "BidirectionalLSTM", "StackedLSTM",
     "AML_Attention", "AML_GatedAttention",
     "AttentionWithContext",
     "MultiheadAttention",
+    "compute_output_shape",
 ]
 
 
@@ -123,7 +127,7 @@ class Conv_Bn_Activation(nn.Sequential):
             If True, adds a learnable bias to the output
         """
         super().__init__()
-        padding = (kernel_size - 1) // 2  # 'same' padding
+        padding = (kernel_size - 1) // 2  # 'same' padding when stride = 1
 
         conv_layer = nn.Conv1d(in_channels, out_channels, kernel_size, stride, padding, bias=bias)
         if kernel_initializer:
@@ -163,8 +167,77 @@ class Conv_Bn_Activation(nn.Sequential):
         """
         just use the forward function of `nn.Sequential`
         """
-        x = super().forward(input)
-        return x
+        out = super().forward(input)
+        return out
+
+
+class BidirectionalLSTM(nn.Module):
+    """
+    from crnn_torch of references.ati_cnn
+    """
+    def __init__(self, input_size:int, hidden_size:int, output_size:int):
+        """
+        """
+        super().__init__()
+        self.lstm = nn.LSTM(input_size, hidden_size, bidirectional=True)
+        self.embedding = nn.Linear(hidden_size * 2, output_size)
+
+    def forward(self, input:Tensor) -> Tensor:
+        recurrent, _ = self.lstm(input)
+        T, b, h = recurrent.size()
+        t_rec = recurrent.view(T * b, h)
+
+        output = self.embedding(t_rec)  # [T * b, nOut]
+        output = output.view(T, b, -1)
+
+        return output
+
+
+class StackedLSTM(nn.Sequential):
+    """
+    stacked LSTM, which allows different hidden sizes for each LSTM layer
+
+    NOTE that `batch_first` is fixed `True`
+    """
+    def __init__(self, input_size:int, hidden_sizes:Sequence[int], bias:Union[Sequence[bool], bool]=True, dropout:Union[Sequence[float],float]=0.0, bidirectional:bool=True) -> NoReturn:
+        """
+        """
+        super().__init__()
+        
+        self.num_layers = len(hidden_sizes)
+        l_bias = bias if isinstance(bias, Sequence) else [bias for _ in range(self.num_layers)]
+        l_dropout = dropout if isinstance(dropout, Sequence) else [dropout for _ in range(self.num_layers)]
+        self.bidirectional = bidirectional
+        self.batch_first = True
+
+        layer_name_prefix = "bidirectional_lstm" if bidirectional else "lstm"
+        for idx, (hs, b, d) in enumerate(zip(hidden_sizes, l_bias, l_dropout)):
+            if idx == 0:
+                _input_size = input_size
+            else:
+                _input_size = hidden_sizes[idx-1]
+                if self.bidirectional:
+                    _input_size = 2*input_size
+            self.add_module(
+                name=f"{layer_name_prefix}_{idx+1}",
+                module=nn.LSTM(
+                    input_size=_input_size,
+                    hidden_size=hs,
+                    num_layers=1,
+                    bias=b,
+                    batch_first=self.batch_first,
+                    dropout=d,
+                    bidirectional=self.bidirectional,
+                )
+            )
+    
+    def forward(self, input:Union[Tensor, PackedSequence], hx:Optional[Tuple[Tensor, Tensor]]=None) -> Tuple[Union[Tensor, PackedSequence], Tuple[Tensor, Tensor]]:
+        """
+        keep up with `nn.LSTM.forward`
+        """
+        for module in self:
+            input, hx = module(input, hx)
+        return input, hx
 
 
 # ---------------------------------------------
@@ -262,12 +335,12 @@ class AttentionWithContext(nn.Module):
             self.register_parameter('b', None)
             self.register_parameter('u', None)
 
-    def compute_mask(self, input, input_mask=None):
+    def compute_mask(self, input:Tensor, input_mask:Optional[Tensor]=None):
         """
         """
         return None
 
-    def forward(self, input, mask=None):
+    def forward(self, input:Tensor, mask:Optional[Tensor]=None) -> Tensor:
         """
         """
         uit = torch.tensordot(input, self.W, dims=1)
@@ -280,8 +353,8 @@ class AttentionWithContext(nn.Module):
             a = a * mask
         a = _true_divide(a, torch.sum(a, dim=1) + torch.finfo(torch.float).eps)
         weighted_input = input * a[...,np.newaxis]
-        ret_tensor = torch.sum(weighted_input, axis=1)
-        return ret_tensor
+        output = torch.sum(weighted_input, axis=1)
+        return output
 
 
 # nn.MultiheadAttention,
@@ -439,3 +512,76 @@ class MultiheadAttention(nn.Module):
                 training=self.training,
                 key_padding_mask=key_padding_mask, need_weights=need_weights,
                 attn_mask=attn_mask)
+
+
+def compute_output_shape(input_shape:Sequence[Union[int, type(None)], kernel_size:Union[Sequence[int], int]=1, stride:Union[Sequence[int], int]=1, pad:Union[Sequence[int], int]=0, dilation:Union[Sequence[int], int]=1, channel_last:bool=False) -> Tuple[Union[int, type(None)]]:
+    """ finished, checked,
+    
+    Parameters:
+    -----------
+    input_shape: sequence of int or None,
+        shape of an input Tensor,
+        the first dimension is the batch dimension, which is allowed to be `None`
+    kernel_size: int, or sequence of int, default 1,
+        kernel size (filter size) of the layer, should be compatible with `input_shape`
+    stride: int, or sequence of int, default 1,
+        stride (down-sampling length) of the layer, should be compatible with `input_shape`
+    pad: int, or sequence of int, default 0,
+        pad length of the layer, should be compatible with `input_shape`
+    dilation: int, or sequence of int, default 1,
+        dilation of the layer, should be compatible with `input_shape`
+    channel_last: bool, default False,
+        channel dimension is the last dimension,
+        or the second dimension (the first is the batch dimension by convention)
+
+    Returns:
+    --------
+    output_shape: tuple,
+        shape of the output Tensor
+    """
+    dim = len(input_shape)-2
+    assert dim > 0, "input_shape should be a sequence of length at least 3, to be a valid (with batch and channel) shape of a non-degenerate Tensor"
+    assert all([n is not None for n in input_shape[1:]]), "only batch dimension can be `None`"
+
+    if isinstance(kernel_size, int):
+        _kernel_size = [kernel_size for _ in range(dim)]
+    elif len(kernel_size) == dim:
+        _kernel_size = kernel_size
+    else:
+        raise ValueError(f"input has {dim} dimensions, while kernel has {len(kernel_size)} dimensions, both not including the channel dimension")
+    
+    if isinstance(stride, int):
+        _stride = [stride for _ in range(dim)]
+    elif len(stride) == dim:
+        _stride = stride
+    else:
+        raise ValueError(f"input has {dim} dimensions, while kernel has {len(stride)} dimensions, both not including the channel dimension")
+
+    if isinstance(pad, int):
+        _pad = [pad for _ in range(dim)]
+    elif len(pad) == dim:
+        _pad = pad
+    else:
+        raise ValueError(f"input has {dim} dimensions, while kernel has {len(pad)} dimensions, both not including the channel dimension")
+
+    if isinstance(dilation, int):
+        _dilation = [dilation for _ in range(dim)]
+    elif len(dilation) == dim:
+        _dilation = dilation
+    else:
+        raise ValueError(f"input has {dim} dimensions, while kernel has {len(dilation)} dimensions, both not including the channel dimension")
+    
+    if channel_last:
+        _input_shape = input_shape[1:-1]
+    else:
+        _input_shape = input_shape[2:]
+    output_shape = [
+        floor( ( ( input_len + 2*p - d*(k-1) - 1 ) / s ) + 1 ) \
+            for input_len, p, d, k, s in zip(_input_shape, _pad, _dilation, _kernel_size, _stride)
+    ]
+    if channel_last:
+        output_shape = tuple([input_shape[0]] + output_shape + [input_shape[-1]])
+    else:
+        output_shape = tuple(list(input_shape[:2]) + output_shape)
+
+    return output_shape
