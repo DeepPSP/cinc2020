@@ -100,9 +100,9 @@ ModelCfg.conv_kernel_size = 16  # TODO: adjust for different sampling frequencie
 # TI_CNN, ATI_CNN
 ModelCfg.ati_cnn = ED()
 ModelCfg.ati_cnn.cnn = "vgg6"
-ModelCfg.ati_cnn.rnn = "vgg6"
+ModelCfg.ati_cnn.rnn = "lstm"
+ModelCfg.ati_cnn.rnn_bidirectional = True
 ModelCfg.ati_cnn.rnn_hidden_sizes = [128,32]
-ModelCfg.ati_cnn.bidirectional = True
 
 
 # training configurations for machine learning and deep learning

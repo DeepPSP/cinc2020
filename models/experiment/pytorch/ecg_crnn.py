@@ -197,7 +197,7 @@ class TI_CNN(nn.Module):
         self.n_leads = 12
         self.input_len = input_len
         if config.get("bidirectional", None) is None:
-            self.bidirectional = ModelCfg.ati_cnn.bidirectional
+            self.bidirectional = ModelCfg.ati_cnn.rnn_bidirectional
         else:
             self.bidirectional = config["bidirectional"]
         
@@ -209,7 +209,7 @@ class TI_CNN(nn.Module):
             raise NotImplementedError
 
         rnn_choice = config.get("rnn",None) or ModelCfg.ati_cnn.rnn.lower()
-        if rnn == 'lstm':
+        if rnn_choice == 'lstm':
             self.rnn = StackedLSTM(
                 input_size=rnn_input_size,
                 hidden_sizes=ModelCfg.ati_cnn.rnn_hidden_sizes,

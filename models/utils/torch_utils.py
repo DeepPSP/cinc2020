@@ -199,19 +199,22 @@ class StackedLSTM(nn.Sequential):
 
     NOTE that `batch_first` is fixed `False`
     """
-    def __init__(self, input_size:int, hidden_sizes:Sequence[int], bias:Union[Sequence[bool], bool]=True, dropout:Union[Sequence[float],float]=0.0, bidirectional:bool=True) -> NoReturn:
+    def __init__(self, input_size:int, hidden_sizes:Sequence[int], bias:Union[Sequence[bool], bool]=True, dropout:float=0.0, bidirectional:bool=True) -> NoReturn:
         """
+
+        Parameters:
+        -----------
+        to write
         """
         super().__init__()
         
         self.num_layers = len(hidden_sizes)
         l_bias = bias if isinstance(bias, Sequence) else [bias for _ in range(self.num_layers)]
-        l_dropout = dropout if isinstance(dropout, Sequence) else [dropout for _ in range(self.num_layers)]
         self.bidirectional = bidirectional
         self.batch_first = False
 
         layer_name_prefix = "bidirectional_lstm" if bidirectional else "lstm"
-        for idx, (hs, b, d) in enumerate(zip(hidden_sizes, l_bias, l_dropout)):
+        for idx, (hs, b) in enumerate(zip(hidden_sizes, l_bias)):
             if idx == 0:
                 _input_size = input_size
             else:
@@ -226,9 +229,13 @@ class StackedLSTM(nn.Sequential):
                     num_layers=1,
                     bias=b,
                     batch_first=self.batch_first,
-                    dropout=d,
                     bidirectional=self.bidirectional,
                 )
+            )
+        if dropout > 0:
+            self.add_module(
+                name="dropout",
+                module=nn.Dropout(dropout),
             )
     
     def forward(self, input:Union[Tensor, PackedSequence], hx:Optional[Tuple[Tensor, Tensor]]=None) -> Tuple[Union[Tensor, PackedSequence], Tuple[Tensor, Tensor]]:
