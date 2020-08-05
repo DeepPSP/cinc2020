@@ -27,15 +27,17 @@ class VGGBlock(nn.Sequential):
         """
         super().__init__()
 
+        config = ModelCfg.vgg_block
+
         self.add_module(
             "block_1",
             Conv_Bn_Activation(
                 in_channels, out_channels,
-                kernel_size=ModelCfg.vgg_block.filter_length,
-                stride=ModelCfg.vgg_block.subsample_length,
-                activation=ModelCfg.vgg_block.activation,
-                kernel_initializer=ModelCfg.vgg_block.kernel_initializer,
-                bn=ModelCfg.vgg_block.batch_norm,
+                kernel_size=config.filter_length,
+                stride=config.subsample_length,
+                activation=config.activation,
+                kernel_initializer=config.kernel_initializer,
+                bn=config.batch_norm,
             )
         )
         for idx in range(num_convs-1):
@@ -43,16 +45,16 @@ class VGGBlock(nn.Sequential):
                 f"block_{idx+2}",
                 Conv_Bn_Activation(
                     out_channels, out_channels,
-                    kernel_size=ModelCfg.vgg_block.filter_length,
-                    stride=ModelCfg.vgg_block.subsample_length,
-                    activation=ModelCfg.vgg_block.activation,
-                    kernel_initializer=ModelCfg.vgg_block.kernel_initializer,
-                    bn=ModelCfg.vgg_block.batch_norm,
+                    kernel_size=config.filter_length,
+                    stride=config.subsample_length,
+                    activation=config.activation,
+                    kernel_initializer=config.kernel_initializer,
+                    bn=config.batch_norm,
                 )
             )
         self.add_module(
             "max_pool",
-            nn.MaxPool1d(ModelCfg.vgg_block.pool_kernel, ModelCfg.vgg_block.pool_stride)
+            nn.MaxPool1d(config.pool_kernel, config.pool_stride)
         )
 
 
@@ -73,13 +75,21 @@ class VGG6(nn.Sequential):
                 module_in_channels = config.num_filters[idx-1]
             module_out_channels = nf
             self.add_module(
-                "vgg_block_1",
-                VGGBlock(
+                name=module_name,
+                module=VGGBlock(
                     num_convs=nc,
                     in_channels=module_in_channels,
                     out_channels=module_out_channels,
                 )
             )
+
+    def forward(self, input):
+        """
+        keep up with `nn.Sequential.forward`
+        """
+        for module in self:
+            input = module(input)
+        return input
 
 
 class ResNetBasicBlock(nn.Module):
