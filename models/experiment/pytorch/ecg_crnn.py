@@ -1,6 +1,7 @@
 """
 """
 import sys
+from copy import deepcopy
 from collections import OrderedDict
 from typing import Union, Optional, NoReturn
 from numbers import Real
@@ -206,35 +207,34 @@ class TI_CNN(nn.Module):
         self.n_classes = len(classes)
         self.n_leads = 12
         self.input_len = input_len
-        if config.get("bidirectional", None) is None:
-            self.bidirectional = ModelCfg.ati_cnn.rnn_bidirectional
-        else:
-            self.bidirectional = config["bidirectional"]
+        self.config = deepcopy(ModelCfg.ati_cnn)
+        self.config.update(config)
+        print(f"self.config = {self.config}")
         
-        cnn_choice = config.get("cnn",None) or ModelCfg.ati_cnn.cnn.lower()
+        cnn_choice = self.config.get("cnn",None) or self.config.cnn.lower()
         if cnn_choice == "vgg6":
             self.cnn = VGG6(self.n_leads)
             rnn_input_size = ModelCfg.vgg6.num_filters[-1]
         elif cnn_choice == "resnet":
             raise NotImplementedError
 
-        rnn_choice = config.get("rnn",None) or ModelCfg.ati_cnn.rnn.lower()
+        rnn_choice = self.config.get("rnn",None) or self.config.rnn.lower()
         if rnn_choice == 'lstm':
             self.rnn = StackedLSTM(
                 input_size=rnn_input_size,
-                hidden_sizes=ModelCfg.ati_cnn.rnn_hidden_sizes,
+                hidden_sizes=self.config.rnn_hidden_sizes,
                 bias=True,
                 dropout=0.2,
-                bidirectional=self.bidirectional
+                bidirectional=self.config.rnn_bidirectional
             )
-            if self.bidirectional:
-                clf_input_size = 2*ModelCfg.ati_cnn.rnn_hidden_sizes[-1]
+            if self.config.rnn_bidirectional:
+                clf_input_size = 2*self.config.rnn_hidden_sizes[-1]
             else:
-                clf_input_size = ModelCfg.ati_cnn.rnn_hidden_sizes[-1]
+                clf_input_size = self.config.rnn_hidden_sizes[-1]
         else:
             raise NotImplementedError
         
-        if self.bidirectional:
+        if self.config.rnn_bidirectional:
             self.clf = nn.Linear(clf_input_size, self.n_classes)
 
 

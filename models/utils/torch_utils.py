@@ -86,10 +86,10 @@ Initializers.constant = nn.init.constant_
 # ---------------------------------------------
 # activations
 Activations = ED()
-Activations.mish = Mish()
-Activations.swish = Swish()
-Activations.relu = nn.ReLU(inplace=True)
-Activations.leaky = nn.LeakyReLU(0.1, inplace=True)
+Activations.mish = Mish
+Activations.swish = Swish
+Activations.relu = nn.ReLU
+Activations.leaky = nn.LeakyReLU
 Activations.leaky_relu = Activations.leaky
 Activations.linear = None
 
@@ -153,7 +153,7 @@ class Conv_Bn_Activation(nn.Sequential):
             act_layer = activation
             act_name = f"activation_{type(act_layer).__name__}"
         elif isinstance(activation, str) and activation.lower() in Activations.keys():
-            act_layer = Activations[activation.lower()]
+            act_layer = Activations[activation.lower()]()
             act_name = f"activation_{activation.lower()}"
         else:
             print(f"activate error !!! {sys._getframe().f_code.co_filename} {sys._getframe().f_code.co_name} {sys._getframe().f_lineno}")
@@ -198,18 +198,24 @@ class StackedLSTM(nn.Sequential):
     stacked LSTM, which allows different hidden sizes for each LSTM layer
 
     NOTE that `batch_first` is fixed `False`
+    NOTE: currently, how to correctly pass the argument `hx` between LSTM layers is not known to me, hence should be careful (and not recommended, use `nn.LSTM` and set `num_layers` instead) to use
     """
     def __init__(self, input_size:int, hidden_sizes:Sequence[int], bias:Union[Sequence[bool], bool]=True, dropout:float=0.0, bidirectional:bool=True) -> NoReturn:
         """
 
-        Parameters:
+        Parameters: (to write)
         -----------
-        to write
+        input_size: int,
+        hidden_sizes: sequence of int,
+        bias: bool, or sequence of bool,
+        dropout: float,
+        bidirectional: bool,
         """
         super().__init__()
         
         self.num_layers = len(hidden_sizes)
         l_bias = bias if isinstance(bias, Sequence) else [bias for _ in range(self.num_layers)]
+        self._dropout = dropout
         self.bidirectional = bidirectional
         self.batch_first = False
 
@@ -220,7 +226,8 @@ class StackedLSTM(nn.Sequential):
             else:
                 _input_size = hidden_sizes[idx-1]
                 if self.bidirectional:
-                    _input_size = 2*input_size
+                    _input_size = 2*_input_size
+            print(f"_input_size = {_input_size}, hs = {hs}, b = {b}")
             self.add_module(
                 name=f"{layer_name_prefix}_{idx+1}",
                 module=nn.LSTM(
@@ -232,19 +239,29 @@ class StackedLSTM(nn.Sequential):
                     bidirectional=self.bidirectional,
                 )
             )
-        if dropout > 0:
+        if self._dropout > 0:
             self.add_module(
                 name="dropout",
-                module=nn.Dropout(dropout),
+                module=nn.Dropout(self._dropout),
             )
     
     def forward(self, input:Union[Tensor, PackedSequence], hx:Optional[Tuple[Tensor, Tensor]]=None) -> Tuple[Union[Tensor, PackedSequence], Tuple[Tensor, Tensor]]:
         """
         keep up with `nn.LSTM.forward`
         """
+        n_layers = 0
+        _input, _hx = input, hx
         for module in self:
-            input, hx = module(input, hx)
-        return input, hx
+            if n_layers < self.num_layers:
+                # print(f"n_layers = {n_layers}, input shape = {input.shape}")
+                if n_layers > 0:
+                    _hx = None
+                _input, _hx = module(_input, _hx)
+                # print(f"n_layers = {n_layers}, input shape = {input.shape}")
+            n_layers += 1
+            if n_layers == self.num_layers and self._dropout > 0:
+                output = module(input)
+        return output, hx
 
 
 # ---------------------------------------------
