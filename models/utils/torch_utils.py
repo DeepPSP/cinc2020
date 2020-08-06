@@ -260,6 +260,9 @@ class StackedLSTM(nn.Sequential):
                 # print(f"n_layers = {n_layers}, input shape = {_input.shape}")
             if n_layers == self.num_layers and self._dropout > 0:
                 output = module(_input)
+                hx = output[-1:,...], _hx[1]  # TODO
+            elif self._dropout == 0 and n_layers == self.num_layers-1:
+                output, hx = _input, _hx
             n_layers += 1
         return output, hx
 
