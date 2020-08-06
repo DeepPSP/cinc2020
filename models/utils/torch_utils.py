@@ -194,7 +194,8 @@ class BidirectionalLSTM(nn.Module):
 
 
 class StackedLSTM(nn.Sequential):
-    """
+    """ finished, checked (no bugs, but correctness is left further to check),
+
     stacked LSTM, which allows different hidden sizes for each LSTM layer
 
     NOTE that `batch_first` is fixed `False`
@@ -227,7 +228,6 @@ class StackedLSTM(nn.Sequential):
                 _input_size = hidden_sizes[idx-1]
                 if self.bidirectional:
                     _input_size = 2*_input_size
-            print(f"_input_size = {_input_size}, hs = {hs}, b = {b}")
             self.add_module(
                 name=f"{layer_name_prefix}_{idx+1}",
                 module=nn.LSTM(
@@ -253,14 +253,14 @@ class StackedLSTM(nn.Sequential):
         _input, _hx = input, hx
         for module in self:
             if n_layers < self.num_layers:
-                # print(f"n_layers = {n_layers}, input shape = {input.shape}")
+                # print(f"n_layers = {n_layers}, input shape = {_input.shape}")
                 if n_layers > 0:
                     _hx = None
                 _input, _hx = module(_input, _hx)
-                # print(f"n_layers = {n_layers}, input shape = {input.shape}")
-            n_layers += 1
+                # print(f"n_layers = {n_layers}, input shape = {_input.shape}")
             if n_layers == self.num_layers and self._dropout > 0:
-                output = module(input)
+                output = module(_input)
+            n_layers += 1
         return output, hx
 
 
