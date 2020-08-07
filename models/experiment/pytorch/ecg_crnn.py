@@ -266,8 +266,8 @@ class ATI_CNN(nn.Module):
             self.rnn = StackedLSTM(
                 input_size=rnn_input_size,
                 hidden_sizes=self.config.rnn.hidden_sizes,
-                bias=True,
-                dropout=0.2,
+                bias=self.config.rnn.bias,
+                dropout=self.config.rnn.dropout,
                 bidirectional=self.config.rnn.bidirectional,
                 return_sequences=self.config.rnn.retseq,
             )

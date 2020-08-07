@@ -33,6 +33,7 @@ References:
 [1] https://litfl.com/
 [2] https://ecgwaves.com/
 [3] https://ecglibrary.com/ecghome.php
+[4] https://courses.cs.washington.edu/courses/cse466/13au/pdfs/lectures/ECG%20filtering.pdf
 
 NOTE that wikipedia is NOT listed in the References
 """

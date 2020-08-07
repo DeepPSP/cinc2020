@@ -38,6 +38,8 @@ ATI_CNN_CONFIG.rnn = ED()
 ATI_CNN_CONFIG.rnn.name = 'lstm'
 
 if ATI_CNN_CONFIG.rnn.name == 'lstm':
+    ATI_CNN_CONFIG.rnn.bias = True
+    ATI_CNN_CONFIG.rnn.dropout = 0.2
     ATI_CNN_CONFIG.rnn.bidirectional = True
     ATI_CNN_CONFIG.rnn.retseq = False
     ATI_CNN_CONFIG.rnn.hidden_sizes = [128,32]
