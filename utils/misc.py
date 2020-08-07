@@ -3,7 +3,7 @@
 import os
 from copy import deepcopy
 from typing import Union, Optional, List, Dict, Sequence, NoReturn, Any
-from numbers import Real
+from numbers import Real, Number
 
 import numpy as np
 from scipy import interpolate
@@ -83,27 +83,79 @@ def dict_to_str(d:Union[dict, list, tuple], current_depth:int=1, indent_spaces:i
     if len(d) == 0:
         s = f"{{}}" if isinstance(d, dict) else f"[]"
         return s
+    # flat_types = (Number, bool, str,)
+    flat_types = (Number, bool,)
+    flat_sep = ", "
     s = "\n"
     unit_indent = " "*indent_spaces
     prefix = unit_indent*current_depth
     if isinstance(d, (list, tuple)):
-        for v in d:
-            if isinstance(v, (dict, list, tuple)):
-                s += f"{prefix}{dict_to_str(v, current_depth+1)}\n"
-            else:
-                val = f'\042{v}\042' if isinstance(v, str) else v
+        if all([isinstance(v, flat_types) for v in d]):
+            len_per_line = 110
+            current_len = len(prefix) + 1  # + 1 for a comma 
+            val = []
+            for idx, v in enumerate(d):
+                add_v = f"\042{v}\042" if isinstance(v, str) else str(v)
+                add_len = len(add_v) + len(flat_sep)
+                if current_len + add_len > len_per_line:
+                    val = ", ".join([item for item in val])
+                    s += f"{prefix}{val},\n"
+                    val = [add_v]
+                    current_len = len(prefix) + 1 + len(add_v)
+                else:
+                    val.append(add_v)
+                    current_len += add_len
+            if len(val) > 0:
+                val = ", ".join([item for item in val])
                 s += f"{prefix}{val}\n"
+        else:
+            for v in d:
+                if isinstance(v, (dict, list, tuple)):
+                    s += f"{prefix}{dict_to_str(v, current_depth+1)}\n"
+                else:
+                    val = f"\042{v}\042" if isinstance(v, str) else v
+                    s += f"{prefix}{val}\n"
     elif isinstance(d, dict):
         for k, v in d.items():
-            key = f'\042{k}\042' if isinstance(k, str) else k
+            key = f"\042{k}\042" if isinstance(k, str) else k
             if isinstance(v, (dict, list, tuple)):
                 s += f"{prefix}{key}: {dict_to_str(v, current_depth+1)}\n"
             else:
-                val = f'\042{v}\042' if isinstance(v, str) else v
+                val = f"\042{v}\042" if isinstance(v, str) else v
                 s += f"{prefix}{key}: {val}\n"
     s += unit_indent*(current_depth-1)
     s = f"{{{s}}}" if isinstance(d, dict) else f"[{s}]"
     return s
+
+
+def str2bool(v:Union[str, bool]) -> bool:
+    """ finished, checked,
+
+    converts a 'boolean' value possibly in the format of str to bool
+
+    Parameters:
+    -----------
+    v: str or bool,
+        the 'boolean' value
+
+    Returns:
+    --------
+    b: bool,
+        `v` in the format of bool
+
+    References:
+    -----------
+    https://stackoverflow.com/questions/15008758/parsing-boolean-values-with-argparse
+    """
+    if isinstance(v, bool):
+       b = v
+    elif v.lower() in ('yes', 'true', 't', 'y', '1'):
+        b = True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        b = False
+    else:
+        raise ValueError('Boolean value expected.')
+    return b
 
 
 def diff_with_step(a:np.ndarray, step:int=1, **kwargs) -> np.ndarray:
