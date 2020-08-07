@@ -14,6 +14,7 @@ np.set_printoptions(precision=5, suppress=True)
 __all__ = [
     "get_record_list_recursive",
     "dict_to_str",
+    "str2bool",
     "diff_with_step",
     "ms2samples",
     "samples2ms",
