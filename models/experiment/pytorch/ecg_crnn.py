@@ -12,12 +12,19 @@ from torch import Tensor
 import torch.nn.functional as F
 
 from cfg import ModelCfg
+from model_configs.ati_cnn import ATI_CNN_CONFIG
 from models.utils.torch_utils import (
     Mish, Swish, Activations,
     Conv_Bn_Activation,
     StackedLSTM,
     # AML_Attention, AML_GatedAttention,
+    compute_conv_output_shape,
 )
+
+
+__all__ = [
+    "ATI_CNN",
+]
 
 
 class VGGBlock(nn.Sequential):
@@ -27,18 +34,21 @@ class VGGBlock(nn.Sequential):
         """
         """
         super().__init__()
+        self.__num_convs = num_convs
+        self.__in_channels = in_channels
+        self.__out_channels = out_channels
 
-        config = ModelCfg.vgg_block
+        self.config = ATI_CNN_CONFIG.cnn.vgg_block
 
         self.add_module(
             "block_1",
             Conv_Bn_Activation(
                 in_channels, out_channels,
-                kernel_size=config.filter_length,
-                stride=config.subsample_length,
-                activation=config.activation,
-                kernel_initializer=config.kernel_initializer,
-                bn=config.batch_norm,
+                kernel_size=self.config.filter_length,
+                stride=self.config.subsample_length,
+                activation=self.config.activation,
+                kernel_initializer=self.config.kernel_initializer,
+                bn=self.config.batch_norm,
             )
         )
         for idx in range(num_convs-1):
@@ -46,17 +56,36 @@ class VGGBlock(nn.Sequential):
                 f"block_{idx+2}",
                 Conv_Bn_Activation(
                     out_channels, out_channels,
-                    kernel_size=config.filter_length,
-                    stride=config.subsample_length,
-                    activation=config.activation,
-                    kernel_initializer=config.kernel_initializer,
-                    bn=config.batch_norm,
+                    kernel_size=self.config.filter_length,
+                    stride=self.config.subsample_length,
+                    activation=self.config.activation,
+                    kernel_initializer=self.config.kernel_initializer,
+                    bn=self.config.batch_norm,
                 )
             )
         self.add_module(
             "max_pool",
-            nn.MaxPool1d(config.pool_kernel, config.pool_stride)
+            nn.MaxPool1d(self.config.pool_kernel, self.config.pool_stride)
         )
+
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+        """
+        """
+        num_layers = 0
+        for module in self:
+            if num_layers < self.__num_convs:
+                output_shape = module.compute_output_shape(seq_len, batch_size)
+                _, _, seq_len = output_shape
+            else:
+                output_shape = compute_conv_output_shape(
+                    input_shape=[batch_size, self.__out_channels, seq_len],
+                    num_filters=self.__out_channels,
+                    kernel_size=self.config.pool_kernel,
+                    stride=self.config.pool_stride,
+                    channel_last=False,
+                )
+            num_layers += 1
+        return output_shape
 
 
 class VGG6(nn.Sequential):
@@ -66,14 +95,15 @@ class VGG6(nn.Sequential):
         """
         """
         super().__init__()
+        self.__in_channels = in_channels
         
-        config = ModelCfg.vgg6
-        for idx, (nc, nf) in enumerate(zip(config.num_convs, config.num_filters)):
+        self.config = ModelCfg.vgg6
+        for idx, (nc, nf) in enumerate(zip(self.config.num_convs, self.config.num_filters)):
             module_name = f"vgg_block_{idx+1}"
             if idx == 0:
                 module_in_channels = in_channels
             else:
-                module_in_channels = config.num_filters[idx-1]
+                module_in_channels = self.config.num_filters[idx-1]
             module_out_channels = nf
             self.add_module(
                 name=module_name,
@@ -91,6 +121,11 @@ class VGG6(nn.Sequential):
         for module in self:
             input = module(input)
         return input
+
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+        """
+        """
+        for 
 
 
 class ResNetBasicBlock(nn.Module):
@@ -196,7 +231,7 @@ class ResNet(nn.Module):
         raise NotImplementedError
 
 
-class TI_CNN(nn.Module):
+class ATI_CNN(nn.Module):
     """
     """
     def __init__(self, classes:list, input_len:int, **config):
@@ -207,14 +242,14 @@ class TI_CNN(nn.Module):
         self.n_classes = len(classes)
         self.n_leads = 12
         self.input_len = input_len
-        self.config = deepcopy(ModelCfg.ati_cnn)
+        self.config = deepcopy(ATI_CNN_CONFIG)
         self.config.update(config)
         print(f"self.config = {self.config}")
         
-        cnn_choice = self.config.get("cnn",None) or self.config.cnn.lower()
+        cnn_choice = self.config.cnn.name.lower()
         if cnn_choice == "vgg6":
             self.cnn = VGG6(self.n_leads)
-            rnn_input_size = ModelCfg.vgg6.num_filters[-1]
+            rnn_input_size = self.config.num_filters[-1]
         elif cnn_choice == "resnet":
             raise NotImplementedError
 
@@ -225,12 +260,17 @@ class TI_CNN(nn.Module):
                 hidden_sizes=self.config.rnn_hidden_sizes,
                 bias=True,
                 dropout=0.2,
-                bidirectional=self.config.rnn_bidirectional
+                bidirectional=self.config.rnn_bidirectional,
+                return_sequences=self.config.rnn_retseq,
             )
             if self.config.rnn_bidirectional:
                 clf_input_size = 2*self.config.rnn_hidden_sizes[-1]
             else:
                 clf_input_size = self.config.rnn_hidden_sizes[-1]
+            if self.config.rnn_retseq:
+                clf_input_size *= 
+        elif rnn_choice == 'attention':
+            raise NotImplementedError
         else:
             raise NotImplementedError
         
@@ -253,28 +293,28 @@ class TI_CNN(nn.Module):
         return pred
 
 
-class ATI_CNN(nn.Module):
-    """
-    """
-    def __init__(self, classes:list, input_len:int, **config):
-        """
-        """
-        super().__init__()
-        self.classes = classes
-        self.nb_classes = len(classes)
-        self.nb_leads = 12
-        self.input_len = input_len
-        cnn_choice = cnn.lower()
+# class ATI_CNN(nn.Module):
+#     """
+#     """
+#     def __init__(self, classes:list, input_len:int, **config):
+#         """
+#         """
+#         super().__init__()
+#         self.classes = classes
+#         self.nb_classes = len(classes)
+#         self.nb_leads = 12
+#         self.input_len = input_len
+#         cnn_choice = cnn.lower()
 
-        if cnn_choice == 'vgg':
-            self.cnn = VGG6(self.nb_leads)
-        elif cnn_choice == 'resnet':
-            raise NotImplementedError
+#         if cnn_choice == 'vgg':
+#             self.cnn = VGG6(self.nb_leads)
+#         elif cnn_choice == 'resnet':
+#             raise NotImplementedError
 
 
-    def forward(self, input:Tensor) -> Tensor:
-        """
-        """
-        x = self.cnn(input)
+#     def forward(self, input:Tensor) -> Tensor:
+#         """
+#         """
+#         x = self.cnn(input)
 
         # NOT finished yet

@@ -128,6 +128,12 @@ class Conv_Bn_Activation(nn.Sequential):
         """
         super().__init__()
         padding = (kernel_size - 1) // 2  # 'same' padding when stride = 1
+        self.__in_channels = in_channels
+        self.__out_channels = out_channels
+        self.__kernel_size = kernel_size
+        self.__stride = stride
+        self.__padding = padding
+        self.__bias = bias
 
         conv_layer = nn.Conv1d(in_channels, out_channels, kernel_size, stride, padding, bias=bias)
         if kernel_initializer:
@@ -170,6 +176,20 @@ class Conv_Bn_Activation(nn.Sequential):
         out = super().forward(input)
         return out
 
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+        """
+        """
+        input_shape = [batch_size, self.__in_channels, seq_len]
+        output_shape = compute_conv_output_shape(
+            input_shape=input_shape,
+            num_filters=self.__out_channels,
+            kernel_size=self.__kernel_size,
+            stride=self.__stride,
+            pad=self.__padding,
+            channel_last=False,
+        )
+        return input_shape
+
 
 class BidirectionalLSTM(nn.Module):
     """
@@ -201,16 +221,17 @@ class StackedLSTM(nn.Sequential):
     NOTE that `batch_first` is fixed `False`
     NOTE: currently, how to correctly pass the argument `hx` between LSTM layers is not known to me, hence should be careful (and not recommended, use `nn.LSTM` and set `num_layers` instead) to use
     """
-    def __init__(self, input_size:int, hidden_sizes:Sequence[int], bias:Union[Sequence[bool], bool]=True, dropout:float=0.0, bidirectional:bool=True) -> NoReturn:
+    def __init__(self, input_size:int, hidden_sizes:Sequence[int], bias:Union[Sequence[bool], bool]=True, dropout:float=0.0, bidirectional:bool=True, return_sequences:bool=True) -> NoReturn:
         """
 
         Parameters: (to write)
         -----------
         input_size: int,
         hidden_sizes: sequence of int,
-        bias: bool, or sequence of bool,
-        dropout: float,
-        bidirectional: bool,
+        bias: bool, or sequence of bool, default True,
+        dropout: float, default 0.0,
+        bidirectional: bool, default True,
+        return_sequences: bool, default True
         """
         super().__init__()
         
@@ -219,6 +240,7 @@ class StackedLSTM(nn.Sequential):
         self._dropout = dropout
         self.bidirectional = bidirectional
         self.batch_first = False
+        self.return_sequences = return_sequences
 
         layer_name_prefix = "bidirectional_lstm" if bidirectional else "lstm"
         for idx, (hs, b) in enumerate(zip(hidden_sizes, l_bias)):
@@ -245,7 +267,7 @@ class StackedLSTM(nn.Sequential):
                 module=nn.Dropout(self._dropout),
             )
     
-    def forward(self, input:Union[Tensor, PackedSequence], hx:Optional[Tuple[Tensor, Tensor]]=None) -> Tuple[Union[Tensor, PackedSequence], Tuple[Tensor, Tensor]]:
+    def forward(self, input:Union[Tensor, PackedSequence], hx:Optional[Tuple[Tensor, Tensor]]=None) -> Union[Tensor, Tuple[Union[Tensor, PackedSequence], Tuple[Tensor, Tensor]]]:
         """
         keep up with `nn.LSTM.forward`
         """
@@ -264,7 +286,11 @@ class StackedLSTM(nn.Sequential):
             elif self._dropout == 0 and n_layers == self.num_layers-1:
                 output, hx = _input, _hx
             n_layers += 1
-        return output, hx
+        if self.return_sequences:
+            final_output = output, hx
+        else:
+            final_output = hx[0]
+        return final_output
 
 
 # ---------------------------------------------

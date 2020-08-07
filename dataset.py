@@ -275,6 +275,8 @@ class CINC2020(object):
                     for d in ld:
                         self._diagnoses_records_list[d].append(rec)
             print(f"Done in {time.time() - start} seconds!")
+            with open(dr_fp, "w") as f:
+                json.dump(self._diagnoses_records_list, f)
 
 
     @property

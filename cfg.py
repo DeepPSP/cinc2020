@@ -83,26 +83,6 @@ PlotCfg.t_offset = 60
 # terminologies of stanford ecg repo. will be adopted
 ModelCfg = ED()
 ModelCfg.classes = []
-# VGG
-ModelCfg.vgg_block = ED()
-ModelCfg.vgg_block.filter_length = 3
-ModelCfg.vgg_block.subsample_length = 1
-ModelCfg.vgg_block.activation = "mish"
-ModelCfg.vgg_block.kernel_initializer = "he_normal"
-ModelCfg.vgg_block.batch_norm = True
-ModelCfg.vgg_block.pool_kernel = 3
-ModelCfg.vgg_block.pool_stride = 3
-ModelCfg.vgg6 = ED()
-ModelCfg.vgg6.num_convs = [2,2,3,3,3]
-ModelCfg.vgg6.num_filters = [64,128,256,512,512]
-# ResNet
-ModelCfg.conv_kernel_size = 16  # TODO: adjust for different sampling frequencies
-# TI_CNN, ATI_CNN
-ModelCfg.ati_cnn = ED()
-ModelCfg.ati_cnn.cnn = "vgg6"
-ModelCfg.ati_cnn.rnn = "lstm"
-ModelCfg.ati_cnn.rnn_bidirectional = True
-ModelCfg.ati_cnn.rnn_hidden_sizes = [128,32]
 
 
 # training configurations for machine learning and deep learning
