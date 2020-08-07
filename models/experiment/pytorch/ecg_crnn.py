@@ -3,7 +3,7 @@
 import sys
 from copy import deepcopy
 from collections import OrderedDict
-from typing import Union, Optional, NoReturn
+from typing import Union, Optional, Sequence, NoReturn
 from numbers import Real
 
 import torch
@@ -20,6 +20,7 @@ from models.utils.torch_utils import (
     # AML_Attention, AML_GatedAttention,
     compute_conv_output_shape,
 )
+from utils.misc import dict_to_str
 
 
 __all__ = [
@@ -97,7 +98,7 @@ class VGG6(nn.Sequential):
         super().__init__()
         self.__in_channels = in_channels
         
-        self.config = ModelCfg.vgg6
+        self.config = deepcopy(ATI_CNN_CONFIG.cnn.vgg6)
         for idx, (nc, nf) in enumerate(zip(self.config.num_convs, self.config.num_filters)):
             module_name = f"vgg_block_{idx+1}"
             if idx == 0:
@@ -125,7 +126,10 @@ class VGG6(nn.Sequential):
     def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
         """
         """
-        for 
+        for module in self:
+            output_shape = module.compute_output_shape(seq_len, batch_size)
+            _, _, seq_len = output_shape
+        return output_shape
 
 
 class ResNetBasicBlock(nn.Module):
@@ -244,51 +248,60 @@ class ATI_CNN(nn.Module):
         self.input_len = input_len
         self.config = deepcopy(ATI_CNN_CONFIG)
         self.config.update(config)
-        print(f"self.config = {self.config}")
+        nl = "\n"
+        print(f"configuration of ATI_CNN is as follows{nl}{dict_to_str(self.config)}")
         
         cnn_choice = self.config.cnn.name.lower()
         if cnn_choice == "vgg6":
             self.cnn = VGG6(self.n_leads)
-            rnn_input_size = self.config.num_filters[-1]
+            rnn_input_size = self.config.cnn.vgg6.num_filters[-1]
         elif cnn_choice == "resnet":
             raise NotImplementedError
+        cnn_output_shape = self.cnn.compute_output_shape(input_len, batch_size=None)
+        self.cnn_output_len = cnn_output_shape[2]
+        print(f"cnn output shape (batch_size, features, seq_len) = {cnn_output_shape}")
 
-        rnn_choice = self.config.get("rnn",None) or self.config.rnn.lower()
+        rnn_choice = self.config.rnn.name.lower()
         if rnn_choice == 'lstm':
             self.rnn = StackedLSTM(
                 input_size=rnn_input_size,
-                hidden_sizes=self.config.rnn_hidden_sizes,
+                hidden_sizes=self.config.rnn.hidden_sizes,
                 bias=True,
                 dropout=0.2,
-                bidirectional=self.config.rnn_bidirectional,
-                return_sequences=self.config.rnn_retseq,
+                bidirectional=self.config.rnn.bidirectional,
+                return_sequences=self.config.rnn.retseq,
             )
-            if self.config.rnn_bidirectional:
-                clf_input_size = 2*self.config.rnn_hidden_sizes[-1]
+            if self.config.rnn.bidirectional:
+                clf_input_size = 2*self.config.rnn.hidden_sizes[-1]
             else:
-                clf_input_size = self.config.rnn_hidden_sizes[-1]
-            if self.config.rnn_retseq:
-                clf_input_size *= 
+                clf_input_size = self.config.rnn.hidden_sizes[-1]
+            if self.config.rnn.retseq:
+                clf_input_size *= self.cnn_output_len
         elif rnn_choice == 'attention':
             raise NotImplementedError
         else:
             raise NotImplementedError
         
-        if self.config.rnn_bidirectional:
-            self.clf = nn.Linear(clf_input_size, self.n_classes)
+        self.clf = nn.Linear(clf_input_size, self.n_classes)
 
 
     def forward(self, input:Tensor) -> Tensor:
         """
         """
-        x = self.cnn(input)  # batch_size, channel, seq_len
+        x = self.cnn(input)  # batch_size, channels, seq_len
         # input shape of lstm: (seq_len, batch, input_size)
-        x = x.permute(2,0,1)  # seq_len, batch_size, channel
-        x,_ = self.rnn(x)
+        x = x.permute(2,0,1)  # seq_len, batch_size, channels
+        x = self.rnn(x)
         # the directions can be separated using 
         # output.view(seq_len, batch, num_directions, hidden_size), 
         # with forward and backward being direction 0 and 1 respectively
-        x = x[-1, ...]  # `return_sequences=False`
+        if self.config.rnn.retseq:
+            x, _ = x
+            x = x.permute(1,0,2)
+            batch_size, seq_len, hidden_size = x.size()
+            x = x.view(batch_size, seq_len*hidden_size)
+        else:
+            x = x[-1, ...]  # `return_sequences=False`, of shape (batch_size, channels)
         pred = self.clf(x)
         return pred
 

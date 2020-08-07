@@ -2,6 +2,12 @@
 """
 from easydict import EasyDict as ED
 
+
+__all__ = [
+    "ATI_CNN_CONFIG",
+]
+
+
 ATI_CNN_CONFIG = ED()
 
 # cnn part
@@ -32,9 +38,9 @@ ATI_CNN_CONFIG.rnn = ED()
 ATI_CNN_CONFIG.rnn.name = 'lstm'
 
 if ATI_CNN_CONFIG.rnn.name == 'lstm':
-    ModelCfg.ati_cnn.rnn_bidirectional = True
-    ModelCfg.ati_cnn.rnn_retseq = False
-    ModelCfg.ati_cnn.rnn_hidden_sizes = [128,32]
+    ATI_CNN_CONFIG.rnn.bidirectional = True
+    ATI_CNN_CONFIG.rnn.retseq = False
+    ATI_CNN_CONFIG.rnn.hidden_sizes = [128,32]
 elif ATI_CNN_CONFIG.rnn.name == 'attention':
     pass
 else:

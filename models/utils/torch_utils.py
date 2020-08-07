@@ -204,7 +204,7 @@ class BidirectionalLSTM(nn.Module):
 
     def forward(self, input:Tensor) -> Tensor:
         recurrent, _ = self.lstm(input)
-        T, b, h = recurrent.size()
+        T, b, h = recurrent.size()  # seq_len, batch_size, hidden_size
         t_rec = recurrent.view(T * b, h)
 
         output = self.embedding(t_rec)  # [T * b, nOut]
