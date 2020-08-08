@@ -81,7 +81,10 @@ PlotCfg.t_offset = 60
 
 # configurations for building deep learning models
 # terminologies of stanford ecg repo. will be adopted
+# NOTE: has been moved to the folder `model_configs`
 ModelCfg = ED()
+ModelCfg.fs = 500
+ModelCfg.spacing = 1000 / ModelCfg.fs
 ModelCfg.classes = []
 
 

@@ -13,6 +13,7 @@ import torch.nn.functional as F
 
 from cfg import ModelCfg
 from model_configs.ati_cnn import ATI_CNN_CONFIG
+from model_configs.cpsc import CPSC_CONFIG
 from models.utils.torch_utils import (
     Mish, Swish, Activations,
     Conv_Bn_Activation,
@@ -39,7 +40,7 @@ class VGGBlock(nn.Sequential):
         self.__in_channels = in_channels
         self.__out_channels = out_channels
 
-        self.config = ATI_CNN_CONFIG.cnn.vgg_block
+        self.config = deepcopy(ATI_CNN_CONFIG.cnn.vgg_block)
 
         self.add_module(
             "block_1",
@@ -306,28 +307,64 @@ class ATI_CNN(nn.Module):
         return pred
 
 
-# class ATI_CNN(nn.Module):
-#     """
-#     """
-#     def __init__(self, classes:list, input_len:int, **config):
-#         """
-#         """
-#         super().__init__()
-#         self.classes = classes
-#         self.nb_classes = len(classes)
-#         self.nb_leads = 12
-#         self.input_len = input_len
-#         cnn_choice = cnn.lower()
+class CPSCBlock(nn.Sequential):
+    """
+    the best model of CPSC2018
+    """
+    def __init__(self, filter_lengths:Sequence[int], subsample_lengths:Sequence[int], **kwargs) -> NoReturn:
+        """
+        """
+        super().__init__()
+        self.__num_convs = len(filter_lengths)
+        self.__in_channels = 12
+        self.__out_channels = 12
 
-#         if cnn_choice == 'vgg':
-#             self.cnn = VGG6(self.nb_leads)
-#         elif cnn_choice == 'resnet':
-#             raise NotImplementedError
+        self.config = deepcopy(CPSC_CONFIG.cnn.cpsc_block)
+        for idx, (kernel_size, stride) in enumerate(zip(filter_lengths[:-1], subsample_lengths[:-1])):
+            self.add_module(
+                f"baby_{idx+1}",
+                Conv_Bn_Activation(
+                    self.__in_channels, self.__out_channels,
+                    kernel_size=kernel_size,
+                    stride=stride,
+                    activation=self.config.activation,
+                    kernel_initializer=self.config.kernel_initializer,
+                    bn=self.config.batch_norm,
+                )
+            )
+        self.add_module(
+            "giant",
+            Conv_Bn_Activation(
+                self.__in_channels, self.__out_channels,
+                kernel_size=filter_lengths[-1],
+                stride=subsample_lengths[-1],
+                activation=self.config.activation,
+                kernel_initializer=self.config.kernel_initializer,
+                bn=self.config.batch_norm,
+            )
+        )
+
+    def forward(self, input):
+        """
+        """
+        raise NotImplementedError
 
 
-#     def forward(self, input:Tensor) -> Tensor:
-#         """
-#         """
-#         x = self.cnn(input)
+class CPSC(nn.Module):
+    """
+    """
+    def __init__(self, classes:list, input_len:int, **config):
+        super().__init__()
+        self.classes = classes
+        self.n_classes = len(classes)
+        self.n_leads = 12
+        self.input_len = input_len
+        self.config = deepcopy(CPSC_CONFIG)
+        self.config.update(config)
+        nl = "\n"
+        print(f"configuration of ATI_CNN is as follows{nl}{dict_to_str(self.config)}")
 
-        # NOT finished yet
+    def forward(self, input:Tensor) -> Tensor:
+        """
+        """
+        raise NotImplementedError

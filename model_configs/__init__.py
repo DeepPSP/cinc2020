@@ -10,7 +10,9 @@ Problems:
     1.2. large scale:
         network depth, and block structures (e.g. ResNet v.s. VGG);
         upsampling?
-2. RNN: choice between LSTM and attention
+2. RNN:
+    2.1. choice between LSTM and attention
+    2.2. use the last state for the last classifying layer or use the whole sequence
 
 Frequency bands:
 ----------------

@@ -1,6 +1,17 @@
 """
+the model of (attention-based) time-incremental CNN
+
+the cnn layers of this model has a constant kernel size 3,
+but keep increasing the number of channels
 """
+from copy import deepcopy
+
 from easydict import EasyDict as ED
+
+from .cnn import (
+    vgg_block_basic, vgg_block_mish, vgg_block_swish,
+    vgg6,
+)
 
 
 __all__ = [
@@ -14,18 +25,19 @@ ATI_CNN_CONFIG = ED()
 ATI_CNN_CONFIG.cnn = ED()
 ATI_CNN_CONFIG.cnn.name = 'vgg6'
 
+
 if ATI_CNN_CONFIG.cnn.name == 'vgg6':
-    ATI_CNN_CONFIG.cnn.vgg_block = ED()
-    ATI_CNN_CONFIG.cnn.vgg_block.filter_length = 3
-    ATI_CNN_CONFIG.cnn.vgg_block.subsample_length = 1
-    ATI_CNN_CONFIG.cnn.vgg_block.activation = "mish"
-    ATI_CNN_CONFIG.cnn.vgg_block.kernel_initializer = "he_normal"
-    ATI_CNN_CONFIG.cnn.vgg_block.batch_norm = True
-    ATI_CNN_CONFIG.cnn.vgg_block.pool_kernel = 3
-    ATI_CNN_CONFIG.cnn.vgg_block.pool_stride = 3
-    ATI_CNN_CONFIG.cnn.vgg6 = ED()
-    ATI_CNN_CONFIG.cnn.vgg6.num_convs = [2,2,3,3,3]
-    ATI_CNN_CONFIG.cnn.vgg6.num_filters = [64,128,256,512,512]
+    ATI_CNN_CONFIG.cnn.vgg_block = deepcopy(vgg_block_basic)
+    ATI_CNN_CONFIG.cnn.vgg6 = deepcopy(vgg6)
+elif ATI_CNN_CONFIG.cnn.name == 'vgg6_mish':
+    ATI_CNN_CONFIG.cnn.vgg_block = deepcopy(vgg_block_mish)
+    ATI_CNN_CONFIG.cnn.vgg6 = deepcopy(vgg6)
+elif ATI_CNN_CONFIG.cnn.name == 'vgg6_swish':
+    ATI_CNN_CONFIG.cnn.vgg_block = deepcopy(vgg_block_swish)
+    ATI_CNN_CONFIG.cnn.vgg6 = deepcopy(vgg6)
+elif ATI_CNN_CONFIG.cnn.name == 'vgg6_dilation':  # not finished
+    ATI_CNN_CONFIG.cnn.vgg_block = deepcopy(vgg_block_basic)
+    ATI_CNN_CONFIG.cnn.vgg6 = deepcopy(vgg6)
 elif ATI_CNN_CONFIG.cnn.name == 'resnet':  # NOT finished
     ATI_CNN_CONFIG.cnn.resnet_block = ED()
     ATI_CNN_CONFIG.cnn.resnet_bottleneck = ED()

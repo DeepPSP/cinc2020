@@ -91,7 +91,7 @@ Activations.swish = Swish
 Activations.relu = nn.ReLU
 Activations.leaky = nn.LeakyReLU
 Activations.leaky_relu = Activations.leaky
-Activations.linear = None
+# Activations.linear = None
 
 
 # ---------------------------------------------
@@ -99,7 +99,7 @@ Activations.linear = None
 class Conv_Bn_Activation(nn.Sequential):
     """
     """
-    def __init__(self, in_channels:int, out_channels:int, kernel_size:int, stride:int, bn:Union[bool,nn.Module]=True, activation:Optional[Union[str,nn.Module]]=None, kernel_initializer:Optional[Union[str,callable]]=None, bias:bool=True) -> NoReturn:
+    def __init__(self, in_channels:int, out_channels:int, kernel_size:int, stride:int, bn:Union[bool,nn.Module]=True, activation:Optional[Union[str,nn.Module]]=None, kernel_initializer:Optional[Union[str,callable]]=None, bias:bool=True, **kwargs) -> NoReturn:
         """
 
         Parameters:
@@ -134,13 +134,15 @@ class Conv_Bn_Activation(nn.Sequential):
         self.__stride = stride
         self.__padding = padding
         self.__bias = bias
+        self.__kw_activation = kwargs.get("kw_activation", {})
+        self.__kw_initializer = kwargs.get("kw_initializer", {})
 
         conv_layer = nn.Conv1d(in_channels, out_channels, kernel_size, stride, padding, bias=bias)
         if kernel_initializer:
             if callable(kernel_initializer):
                 kernel_initializer(conv_layer.weight)
             elif isinstance(kernel_initializer, str) and kernel_initializer.lower() in Initializers.keys():
-                Initializers[kernel_initializer.lower()](conv_layer.weight)
+                Initializers[kernel_initializer.lower()](conv_layer.weight, **self.__kw_initializer)
             else:  # TODO: add more activations
                 raise ValueError(f"initializer {kernel_initializer} not supported")
         self.add_module("conv1d", conv_layer)
@@ -159,7 +161,7 @@ class Conv_Bn_Activation(nn.Sequential):
             act_layer = activation
             act_name = f"activation_{type(act_layer).__name__}"
         elif isinstance(activation, str) and activation.lower() in Activations.keys():
-            act_layer = Activations[activation.lower()]()
+            act_layer = Activations[activation.lower()](**self.__kw_activation)
             act_name = f"activation_{activation.lower()}"
         else:
             print(f"activate error !!! {sys._getframe().f_code.co_filename} {sys._getframe().f_code.co_name} {sys._getframe().f_lineno}")
