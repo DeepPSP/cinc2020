@@ -19,6 +19,7 @@ from models.utils.torch_utils import (
     Conv_Bn_Activation,
     StackedLSTM,
     # AML_Attention, AML_GatedAttention,
+    AttentionWithContext,
     compute_conv_output_shape,
 )
 from utils.misc import dict_to_str
@@ -311,13 +312,14 @@ class CPSCBlock(nn.Sequential):
     """
     the best model of CPSC2018
     """
-    def __init__(self, filter_lengths:Sequence[int], subsample_lengths:Sequence[int], **kwargs) -> NoReturn:
+    def __init__(self, filter_lengths:Sequence[int], subsample_lengths:Sequence[int], dropout:Optional[float]=None, **kwargs) -> NoReturn:
         """
         """
         super().__init__()
         self.__num_convs = len(filter_lengths)
         self.__in_channels = 12
         self.__out_channels = 12
+        self.__dropout = dropout
 
         self.config = deepcopy(CPSC_CONFIG.cnn.cpsc_block)
         for idx, (kernel_size, stride) in enumerate(zip(filter_lengths[:-1], subsample_lengths[:-1])):
@@ -328,6 +330,7 @@ class CPSCBlock(nn.Sequential):
                     kernel_size=kernel_size,
                     stride=stride,
                     activation=self.config.activation,
+                    kw_activation=self.config.kw_activation,
                     kernel_initializer=self.config.kernel_initializer,
                     bn=self.config.batch_norm,
                 )
@@ -339,19 +342,28 @@ class CPSCBlock(nn.Sequential):
                 kernel_size=filter_lengths[-1],
                 stride=subsample_lengths[-1],
                 activation=self.config.activation,
+                kw_activation=self.config.kw_activation,
                 kernel_initializer=self.config.kernel_initializer,
                 bn=self.config.batch_norm,
             )
         )
+        if self.__dropout is not None and self.__dropout > 0:
+            self.add_module(
+                "dropout",
+                nn.Dropout(self.__dropout),
+            )
 
-    def forward(self, input):
+    def forward(self, input:Tensor) -> Tensor:
         """
+        keep up with `nn.Sequential.forward`
         """
-        raise NotImplementedError
+        out = super().forward(input)
+        return out
 
 
-class CPSC(nn.Module):
+class CPSC(nn.Sequential):
     """
+    SOTA model of the CPSC2018 challenge
     """
     def __init__(self, classes:list, input_len:int, **config):
         super().__init__()
@@ -361,8 +373,56 @@ class CPSC(nn.Module):
         self.input_len = input_len
         self.config = deepcopy(CPSC_CONFIG)
         self.config.update(config)
-        nl = "\n"
-        print(f"configuration of ATI_CNN is as follows{nl}{dict_to_str(self.config)}")
+        print(f"configuration of CPSC is as follows\n{dict_to_str(self.config)}")
+
+        cnn_choice = self.config.cnn.name.lower()
+        if cnn_choice == 'cpsc_2018':
+            self.cnn = nn.Sequential()
+            cnn_config = self.config.cnn.cpsc
+            for blk_idx, (blk_fl, blk_s, blk_d) in enumerate(zip(cnn_config.filter_lengths, cnn_config.strides, cnn_config.dropouts)):
+                self.cnn.add_module(
+                    f"cpsc_block_{blk_idx+1}",
+                    CPSCBlock(
+                        filter_lengths=blk_fl,
+                        subsample_lengths=blk_s,
+                        dropout=blk_d,
+                    )
+                )
+        else:
+            raise NotImplementedError
+
+        self.rnn = nn.Sequential()
+        self.rnn.add_module(
+            "bidirectional_gru",
+            nn.GRU(12, bidirectional=True),
+        )
+        self.rnn.add_module(
+            "leaky",
+            Activations["leaky"](negative_slope=0.2),
+        )
+        self.rnn.add_module(
+            "dropout",
+            nn.Dropout(0.2),
+        )
+        self.rnn.add_module(
+            "attention",
+            AttentionWithContext(),
+        )
+        self.rnn.add_module(
+            "batch_normalization",
+            nn.BatchNorm1d(),
+        )
+        self.rnn.add_module(
+            "leaky",
+            Activations["leaky"](negative_slope=0.2),
+        )
+        self.rnn.add_module(
+            "dropout",
+            nn.Dropout(0.2),
+        )
+
+        # self.clf = nn.Linear()  # TODO: set correct the in-and-out-features
+        
 
     def forward(self, input:Tensor) -> Tensor:
         """

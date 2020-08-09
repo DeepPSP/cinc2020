@@ -14,7 +14,7 @@ __all__ = [
     "resnet_block_basic",
     "resnet",
     "cpsc_block_basic", "cpsc_block_mish", "cpsc_block_swish",
-    "cpsc_cnn",
+    "cpsc_2018",
 ]
 
 
@@ -51,6 +51,7 @@ cpsc_block_basic = ED()
 cpsc_block_basic.activation = "leaky"
 cpsc_block_basic.kw_activation = ED(negative_slope=0.3)
 cpsc_block_basic.batch_norm = False
+cpsc_block_basic.kernel_initializer = "he_normal"
 
 cpsc_block_mish = deepcopy(cpsc_block_basic)
 cpsc_block_mish.activation = "mish"
@@ -60,22 +61,22 @@ cpsc_block_swish = deepcopy(cpsc_block_basic)
 cpsc_block_swish.activation = "swish"
 del cpsc_block_swish.kw_activation
 
-cpsc_cnn = ED()
-cpsc_cnn.filter_lengths = [
+cpsc_2018 = ED()
+cpsc_2018.filter_lengths = [
     [3, 3, 24],
     [3, 3, 24],
     [3, 3, 24],
     [3, 3, 24],
     [3, 3, 48],
 ]
-cpsc_cnn.strides = [
+cpsc_2018.strides = [
     [1, 1, 2],
     [1, 1, 2],
     [1, 1, 2],
     [1, 1, 2],
     [1, 1, 2],
 ]
-cpsc_cnn.dropouts = [0.2, 0.2, 0.2, 0.2, 0.2]
+cpsc_2018.dropouts = [0.2, 0.2, 0.2, 0.2, 0.2]
 
 
 # TODO: add more

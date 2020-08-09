@@ -12,7 +12,7 @@ from easydict import EasyDict as ED
 
 from .cnn import (
     cpsc_block_basic,
-    cpsc_cnn,
+    cpsc_2018,
 )
 
 
@@ -26,11 +26,11 @@ CPSC_CONFIG = ED()
 
 # cnn part
 CPSC_CONFIG.cnn = ED()
-CPSC_CONFIG.cnn.name = "cpsc"
+CPSC_CONFIG.cnn.name = "cpsc_2018"
 
-if CPSC_CONFIG.cnn.name == "cpsc":
+if CPSC_CONFIG.cnn.name == "cpsc_2018":
     CPSC_CONFIG.cnn.cpsc_block = deepcopy(cpsc_block_basic)
-    CPSC_CONFIG.cnn.cpsc = deepcopy(cpsc_cnn)
+    CPSC_CONFIG.cnn.cpsc = deepcopy(cpsc_2018)
 else:
     pass
 
