@@ -47,7 +47,7 @@ __all__ = [
     "LPR", "LQT", "QAb", "TAb", "TInv",  # wave morphology
     "LAD", "RAD",  # axis
     "Brady", "LQRSV",  # qrs (RR interval, amplitude)
-    "SA", "SB", "SNR", "STach",  # sinus
+    "SA", "SB", "NSR", "STach",  # sinus
     "PR",  # pacer
     "STD", "STE",  # ST segments
 ]
@@ -337,7 +337,7 @@ SA = ED({  # morphology
         "https://www.healthline.com/health/sinus-arrhythmia",
     ],
     "knowledge": [
-        "sinus rhythm (SNR), with a beat-to-beat variation (more than 120 ms) in the PP interval, producing an irregular ventricular rate",
+        "sinus rhythm (NSR), with a beat-to-beat variation (more than 120 ms) in the PP interval, producing an irregular ventricular rate",
         "PP interval gradually lengthens and shortens in a cyclical fashion, usually corresponding to the phases of the respiratory cycle",
         "normal sinus P waves (upright in leads I and II) with a constant morphology (i.e. not PAC)",
         "constant PR interval (i.e. not Mobitz I AV block)",
@@ -351,11 +351,11 @@ SB = ED({  # rr, morphology
         "https://en.wikipedia.org/wiki/Sinus_bradycardia",
     ],
     "knowledge": [
-        "sinus rhythm (SNR); with a resting heart rate of < 60 bpm in adults (Brady)",
+        "sinus rhythm (NSR); with a resting heart rate of < 60 bpm in adults (Brady)",
     ],
 })
 
-SNR = ED({  # rr, morphology
+NSR = ED({  # rr, morphology
     "fullname": "sinus rhythm",  # the NORMAL rhythm
     "url": [
         "https://litfl.com/normal-sinus-rhythm-ecg-library/",
@@ -376,7 +376,7 @@ STach = ED({  # rr, morphology,
         "https://en.wikipedia.org/wiki/Sinus_tachycardia",
     ],
     "knowledge": [
-        "sinus rhythm (SNR), with a resting heart rate of > 100 bpm in adults",
+        "sinus rhythm (NSR), with a resting heart rate of > 100 bpm in adults",
     ],
 })
 

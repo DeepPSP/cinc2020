@@ -21,7 +21,7 @@ __all__ = [
 ]
 
 
-# NOTE that 'SNR' is the 'Normal' rhythm
+# NOTE that 'NSR' is the 'Normal' rhythm
 Dx_map = pd.read_csv(StringIO("""dx,SNOMED code,Abbreviation
 1st degree av block,270492004,IAVB
 2nd degree av block,195042002,IIAVB
@@ -103,7 +103,7 @@ s t changes,55930002,STC
 shortened pr interval,49578007,SPRI
 sinus arrhythmia,427393009,SA
 sinus bradycardia,426177001,SB
-sinus rhythm,426783006,SNR
+sinus rhythm,426783006,NSR
 sinus tachycardia,427084000,STach
 st depression,429622005,STD
 st elevation,164931005,STE
@@ -151,7 +151,7 @@ right axis deviation,47665007,RAD,0,1,0,0,343,83,427,
 right bundle branch block,59118001,RBBB,1857,1,2,0,0,542,2402,We score 713427006 and 59118001 as the same diagnosis.
 sinus arrhythmia,427393009,SA,0,11,2,0,772,455,1240,
 sinus bradycardia,426177001,SB,0,45,0,0,637,1677,2359,
-sinus rhythm,426783006,SNR,918,4,0,80,18092,1752,20846,
+sinus rhythm,426783006,NSR,918,4,0,80,18092,1752,20846,
 sinus tachycardia,427084000,STach,0,303,11,1,826,1261,2402,
 supraventricular premature beats,63593006,SVPB,0,53,4,0,157,1,215,We score 284470004 and 63593006 as the same diagnosis.
 t wave abnormal,164934002,TAb,0,22,0,0,2345,2306,4673,

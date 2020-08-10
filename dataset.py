@@ -573,7 +573,7 @@ class CINC2020(object):
             diag_dict['diagnosis_fullname'] = dx_mapping_all[selection]['Dx'].tolist()
         # if not keep_original:
         #     for idx, d in enumerate(ann_dict['diagnosis_abbr']):
-        #         if d in ['Normal', 'SNR']:
+        #         if d in ['Normal', 'NSR']:
         #             ann_dict['diagnosis_abbr'] = ['N']
         return diag_dict, diag_scored_dict
 
