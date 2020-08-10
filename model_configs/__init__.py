@@ -31,8 +31,8 @@ P wave: 60 - 134 ms
 T wave: 116 - 240 ms
 which roughly corr. to the following frequency bands:
 QRS complex: 7 - 15 Hz
-P wave: 7 - 17 ms
-T wave: 4 - 9 ms
+P wave: 7 - 17 Hz
+T wave: 4 - 9 Hz
 NOTE that there are records in ludb that there are no onsets (offsets) of certain waves.
 in this case, the duration is from the peaks to the offsets (onsets)
 
@@ -42,6 +42,8 @@ References:
 [2] Elgendi, Mohamed, Mirjam Jonkman, and Friso De Boer. "Frequency Bands Effects on QRS Detection." BIOSIGNALS 2003 (2010): 2002.
 [3] Tereshchenko, Larisa G., and Mark E. Josephson. "Frequency content and characteristics of ventricular conduction." Journal of electrocardiology 48.6 (2015): 933-937.
 [4] https://physionet.org/content/ludb/1.0.0/
+[5] Kalyakulina, Alena, et al. "Lobachevsky University Electrocardiography Database" (version 1.0.0). PhysioNet (2020), https://doi.org/10.13026/qweb-sr17.
+[6] Kalyakulina, A.I., Yusipov, I.I., Moskalenko, V.A., Nikolskiy, A.V., Kozlov, A.A., Kosonogov, K.A., Zolotykh, N.Yu., Ivanchenko, M.V.: LU electrocardio-graphy database: a new open-access validation tool for delineation algorithms
 """
 
 from .ati_cnn import *
