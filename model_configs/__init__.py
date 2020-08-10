@@ -14,8 +14,8 @@ Problems:
     2.1. choice between LSTM and attention
     2.2. use the last state for the last classifying layer or use the whole sequence
 
-Frequency bands:
-----------------
+Frequency bands (from literature):
+----------------------------------
 QRS complex: 8 - 25 Hz
 P wave: 5 - 20 Hz
 T wave: 2.5 - 7 Hz
@@ -23,14 +23,25 @@ notch: 30 - 50 Hz (?)
 NOTE that different literatures have different conlusions,
 the above takes into considerations of many literatures
 
-TODO: experiment on frequency analysis using the whole CINC2020 training data,
-or using the (annotations of) ludb (Lobachevsky University Electrocardiography Database)
+Frequency bands (from ludb ref. [4]):
+-------------------------------------
+from the annotations of ludb, the [0.05, 0.95] percentile of the durations of waves are
+QRS complex: 70 - 144 ms
+P wave: 60 - 134 ms
+T wave: 116 - 240 ms
+which roughly corr. to the following frequency bands:
+QRS complex: 7 - 15 Hz
+P wave: 7 - 17 ms
+T wave: 4 - 9 ms
+NOTE that there are records in ludb that there are no onsets (offsets) of certain waves.
+in this case, the duration is from the peaks to the offsets (onsets)
 
 References:
 -----------
 [1] Lin, Chia-Hung. "Frequency-domain features for ECG beat discrimination using grey relational analysis-based classifier." Computers & Mathematics with Applications 55.4 (2008): 680-690.
 [2] Elgendi, Mohamed, Mirjam Jonkman, and Friso De Boer. "Frequency Bands Effects on QRS Detection." BIOSIGNALS 2003 (2010): 2002.
 [3] Tereshchenko, Larisa G., and Mark E. Josephson. "Frequency content and characteristics of ventricular conduction." Journal of electrocardiology 48.6 (2015): 933-937.
+[4] https://physionet.org/content/ludb/1.0.0/
 """
 
 from .ati_cnn import *

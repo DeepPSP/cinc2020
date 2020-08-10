@@ -381,12 +381,14 @@ class CINC2020(object):
             rec_fp = os.path.join(self.db_dirs[tranche], f'{rec}.{self.rec_ext}')
             data = loadmat(rec_fp)
             header_info = self.load_ann(rec, raw=False)['df_leads']
-            baselines = header_info['adc_zero'].values.reshape(data.shape[0],-1)
+            baselines = header_info['baseline'].values.reshape(data.shape[0],-1)
             adc_gain = header_info['adc_gain'].values.reshape(data.shape[0],-1)
             data = np.asarray(data['val']-baselines, dtype=np.float64) / adc_gain
         elif backend.lower() == 'wfdb':
             rec_fp = os.path.join(self.db_dirs[tranche], rec)
             data = np.asarray(wfdb.rdrecord(rec_fp).p_signal.T, dtype=np.float64)
+        else:
+            raise ValueError(f"backend `{backend.lower()}` not supported for loading data")
 
         if leads and isinstance(leads, str):
             leads_ind = [self.all_leads.index(leads)]
@@ -438,7 +440,7 @@ class CINC2020(object):
         elif backend.lower() == 'naive':
             ann_dict = self._load_ann_naive(header_data)
         else:
-            raise ValueError(f"backend {backend.lower()} not supported for loading annotations")
+            raise ValueError(f"backend `{backend.lower()}` not supported for loading annotations")
         return ann_dict
 
 
@@ -543,8 +545,7 @@ class CINC2020(object):
         diag_scored_dict: dict,
             the scored items in `diag_dict`
         """
-        diag_dict = {}
-        diag_scored_dict = {}
+        diag_dict, diag_scored_dict = {}, {}
         try:
             diag_dict['diagnosis_code'] = [int(item) for item in l_Dx]
             # selection = dx_mapping_all['SNOMED CT Code'].isin(diag_dict['diagnosis_code'])
