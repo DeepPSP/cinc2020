@@ -144,7 +144,7 @@ class Conv_Bn_Activation(nn.Sequential):
             elif isinstance(kernel_initializer, str) and kernel_initializer.lower() in Initializers.keys():
                 Initializers[kernel_initializer.lower()](conv_layer.weight, **self.__kw_initializer)
             else:  # TODO: add more activations
-                raise ValueError(f"initializer {kernel_initializer} not supported")
+                raise ValueError(f"initializer `{kernel_initializer}` not supported")
         self.add_module("conv1d", conv_layer)
 
         if bn:

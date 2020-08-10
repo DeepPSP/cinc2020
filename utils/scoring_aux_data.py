@@ -243,7 +243,7 @@ def load_weights(classes:Sequence[Union[int,str]]=None, return_fmt:str='np') -> 
         mat.columns = list(map(str, classes))
         mat.index = list(map(str, classes))
     else:
-        raise ValueError(f"format of {return_fmt} is not supported!")
+        raise ValueError(f"format of `{return_fmt}` is not supported!")
     
     return mat
 
@@ -272,7 +272,7 @@ def normalize_class(c:Union[str,int], ensure_scored:bool=False) -> str:
     except:
         nc = c
     if ensure_scored and nc not in df_weights_abbr.columns:
-        raise ValueError(f"class {c} not among the scored classes")
+        raise ValueError(f"class `{c}` not among the scored classes")
     return nc
 
 

@@ -291,6 +291,9 @@ class CINC2020(object):
     def _set_logger(self, prefix:Optional[str]=None) -> NoReturn:
         """ finished, checked,
 
+        config the logger,
+        currently not used,
+
         Parameters:
         -----------
         prefix: str, optional,
@@ -453,7 +456,8 @@ class CINC2020(object):
             path to the annotation (header) file, without file extension
         header_data: list of str,
             list of lines read directly from a header file,
-            complementary to data read using `wfdb.rdheader` if applicable
+            complementary to data read using `wfdb.rdheader` if applicable,
+            this data will be used, since `datetime` is not well parsed by `wfdb.rdheader`
 
         Returns:
         --------
@@ -739,7 +743,8 @@ class CINC2020(object):
             name of the record
         data: ndarray, optional,
             12-lead ecg signal to plot,
-            if given, data of `rec` will not be used
+            if given, data of `rec` will not be used,
+            this is useful when plotting filtered data
         ticks_granularity: int, default 0,
             the granularity to plot axis ticks, the higher the more
         leads: str or list of str, optional,
@@ -934,7 +939,7 @@ class CINC2020(object):
         # unsupported = [item for item in d if item not in dx_mapping_all['Abbreviation']]
         unsupported = [item for item in d if item not in dx_mapping_scored['Abbreviation'].values]
         assert len(unsupported) == 0, \
-            f"{unsupported} {'is' if len(unsupported)==1 else 'are'} not supported!"
+            f"`{unsupported}` {'is' if len(unsupported)==1 else 'are'} not supported!"
         for idx, item in enumerate(d):
             # pp.pprint(eval(f"EAK.{item}"))
             print(dict_to_str(eval(f"EAK.{item}")))

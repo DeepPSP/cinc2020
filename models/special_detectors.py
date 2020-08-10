@@ -160,7 +160,7 @@ def electrical_axis_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real
     """
     decision_method = method or FeatureCfg.axis_method
     decision_method = decision_method.lower()
-    assert decision_method in ['2-lead', '3-lead',], f"Method {decision_method} not supported!"
+    assert decision_method in ['2-lead', '3-lead',], f"Method `{decision_method}` not supported!"
 
     if sig_fmt.lower() in ['channel_first', 'lead_first']:
         s = filtered_sig.copy()
