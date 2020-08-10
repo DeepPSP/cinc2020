@@ -479,9 +479,11 @@ class CINC2020(object):
         ann_dict['diagnosis'], ann_dict['diagnosis_scored'] = self._parse_diagnosis(l_Dx)
 
         df_leads = pd.DataFrame()
-        for k in ['filename', 'fmt', 'byte_offset', 'adc_gain', 'adc_res', 'adc_zero', 'baseline', 'init_value', 'checksum', 'block_size', 'sig_name']:
+        for k in ['file_name', 'fmt', 'byte_offset', 'adc_gain', 'units', 'adc_res', 'adc_zero', 'baseline', 'init_value', 'checksum', 'block_size', 'sig_name']:
             df_leads[k] = header_reader.__dict__[k]
-        df_leads = df_leads.rename(colums={'sig_name': 'lead_name'})
+        df_leads = df_leads.rename(columns={'sig_name': 'lead_name', 'units':'adc_units', 'file_name':'filename',})
+        df_leads.index = df_leads['lead_name']
+        df_leads.index.name = None
         ann_dict['df_leads'] = df_leads
 
         return ann_dict
@@ -589,15 +591,15 @@ class CINC2020(object):
             infomation of each leads in the format of DataFrame
         """
         df_leads = pd.read_csv(io.StringIO('\n'.join(l_leads_data)), delim_whitespace=True, header=None)
-        df_leads.columns = ['filename', 'fmt+byte_offset', 'adc_gain', 'adc_res', 'adc_zero', 'init_value', 'checksum', 'block_size', 'lead_name',]
+        df_leads.columns = ['filename', 'fmt+byte_offset', 'adc_gain+units', 'adc_res', 'adc_zero', 'init_value', 'checksum', 'block_size', 'lead_name',]
         df_leads['fmt'] = df_leads['fmt+byte_offset'].apply(lambda s: s.split('+')[0])
         df_leads['byte_offset'] = df_leads['fmt+byte_offset'].apply(lambda s: s.split('+')[1])
-        df_leads['adc_gain'] = df_leads['adc_gain'].apply(lambda s: s.split('/')[0])
-        df_leads['units'] = df_leads['units'].apply(lambda s: s.split('/')[1])
+        df_leads['adc_gain'] = df_leads['adc_gain+units'].apply(lambda s: s.split('/')[0])
+        df_leads['adc_units'] = df_leads['adc_gain+units'].apply(lambda s: s.split('/')[1])
         for k in ['byte_offset', 'adc_gain', 'adc_res', 'adc_zero', 'init_value', 'checksum',]:
             df_leads[k] = df_leads[k].apply(lambda s: int(s))
         df_leads['baseline'] = df_leads['adc_zero']
-        df_leads = df_leads[['filename', 'fmt', 'byte_offset', 'adc_gain', 'adc_res', 'adc_zero', 'baseline', 'init_value', 'checksum', 'block_size', 'lead_name']]
+        df_leads = df_leads[['filename', 'fmt', 'byte_offset', 'adc_gain', 'adc_units', 'adc_res', 'adc_zero', 'baseline', 'init_value', 'checksum', 'block_size', 'lead_name']]
         df_leads.index = df_leads['lead_name']
         df_leads.index.name = None
         return df_leads
