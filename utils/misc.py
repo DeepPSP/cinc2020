@@ -1,6 +1,8 @@
 """
 """
 import os
+import re
+from glob import glob
 from copy import deepcopy
 from typing import Union, Optional, List, Dict, Sequence, NoReturn, Any
 from numbers import Real, Number
@@ -13,6 +15,8 @@ np.set_printoptions(precision=5, suppress=True)
 
 __all__ = [
     "get_record_list_recursive",
+    "get_record_list_recursive2",
+    "get_record_list_recursive3",
     "dict_to_str",
     "str2bool",
     "diff_with_step",
@@ -57,6 +61,94 @@ def get_record_list_recursive(db_dir:str, rec_ext:str) -> List[str]:
     res = [os.path.splitext(item)[0].replace(db_dir, "") for item in res if item.endswith(rec_ext)]
     res = sorted(res)
 
+    return res
+
+
+def get_record_list_recursive2(db_dir:str, rec_pattern:str) -> List[str]:
+    """ finished, checked,
+
+    get the list of records in `db_dir` recursively,
+    for example, there are two folders 'patient1', 'patient2' in `db_dir`,
+    and there are records 'A0001', 'A0002', ... in 'patient1'; 'B0001', 'B0002', ... in 'patient2',
+    then the output would be 'patient1{sep}A0001', ..., 'patient2{sep}B0001', ...,
+    sep is determined by the system
+
+    Parameters:
+    -----------
+    db_dir: str,
+        the parent (root) path of the whole database
+    rec_pattern: str,
+        pattern of the record filenames, e.g. 'A*.mat'
+
+    Returns:
+    --------
+    res: list of str,
+        list of records, in lexicographical order
+    """
+    res = []
+    db_dir = os.path.join(db_dir, "tmp").replace("tmp", "")  # make sure `db_dir` ends with a sep
+    roots = [db_dir]
+    while len(roots) > 0:
+        new_roots = []
+        for r in roots:
+            tmp = [os.path.join(r, item) for item in os.listdir(r)]
+            # res += [item for item in tmp if os.path.isfile(item)]
+            res += glob(os.path.join(r, rec_pattern), recursive=False)
+            new_roots += [item for item in tmp if os.path.isdir(item)]
+        roots = deepcopy(new_roots)
+    res = [os.path.splitext(item)[0].replace(db_dir, "") for item in res]
+    res = sorted(res)
+
+    return res
+
+
+def get_record_list_recursive3(db_dir:str, rec_patterns:Union[str,Dict[str,str]]) -> Union[List[str], Dict[str, List[str]]]:
+    """ finished, checked,
+
+    get the list of records in `db_dir` recursively,
+    for example, there are two folders 'patient1', 'patient2' in `db_dir`,
+    and there are records 'A0001', 'A0002', ... in 'patient1'; 'B0001', 'B0002', ... in 'patient2',
+    then the output would be 'patient1{sep}A0001', ..., 'patient2{sep}B0001', ...,
+    sep is determined by the system
+
+    Parameters:
+    -----------
+    db_dir: str,
+        the parent (root) path of the whole database
+    rec_patterns: str or dict,
+        pattern of the record filenames, e.g. "A(?:\d+).mat",
+        or patterns of several subsets, e.g. `{"A": "A(?:\d+).mat"}`
+
+    Returns:
+    --------
+    res: list of str,
+        list of records, in lexicographical order
+    """
+    if isinstance(rec_patterns, str):
+        res = []
+    elif isinstance(rec_patterns, dict):
+        res = {k:[] for k in rec_patterns.keys()}
+    db_dir = os.path.join(db_dir, "tmp").replace("tmp", "")  # make sure `db_dir` ends with a sep
+    roots = [db_dir]
+    while len(roots) > 0:
+        new_roots = []
+        for r in roots:
+            tmp = [os.path.join(r, item) for item in os.listdir(r)]
+            # res += [item for item in tmp if os.path.isfile(item)]
+            if isinstance(rec_patterns, str):
+                res += list(filter(re.compile(rec_patterns).search, tmp))
+            elif isinstance(rec_patterns, dict):
+                for k in rec_patterns.keys():
+                    res[k] += list(filter(re.compile(rec_patterns[k]).search, tmp))
+            new_roots += [item for item in tmp if os.path.isdir(item)]
+        roots = deepcopy(new_roots)
+    if isinstance(rec_patterns, str):
+        res = [os.path.splitext(item)[0].replace(db_dir, "") for item in res]
+        res = sorted(res)
+    elif isinstance(rec_patterns, dict):
+        for k in rec_patterns.keys():
+            res[k] = [os.path.splitext(item)[0].replace(db_dir, "") for item in res[k]]
+            res[k] = sorted(res[k])
     return res
 
 

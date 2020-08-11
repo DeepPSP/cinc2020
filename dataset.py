@@ -19,6 +19,8 @@ from easydict import EasyDict as ED
 import utils
 from utils.misc import (
     get_record_list_recursive,
+    get_record_list_recursive2,
+    get_record_list_recursive3,
     dict_to_str,
     ms2samples,
 )
@@ -148,24 +150,27 @@ class CINC2020(object):
         self.rec_ext = 'mat'
         self.ann_ext = 'hea'
 
-        self.db_dir_base = db_dir
-        self.db_dirs = ED({
-            "A": os.path.join(self.db_dir_base, "Training_WFDB"),
-            "B": os.path.join(self.db_dir_base, "Training_2"),
-            "C": os.path.join(self.db_dir_base, "Training_StPetersburg"),
-            "D": os.path.join(self.db_dir_base, "Training_PTB"),
-            "E": os.path.join(self.db_dir_base, "WFDB"),
-            "F": os.path.join(self.db_dir_base, "Training_E", "WFDB"),
-        })
-
-        self._all_records = None
-        self._ls_rec()
-        self._diagnoses_records_list = None
-        self._ls_diagnoses_records()
-
+        self.db_tranches = list("ABCDEF")
         self.rec_prefix = ED({
             "A": "A", "B": "Q", "C": "I", "D": "S", "E": "HR", "F": "E",
         })
+
+        self.db_dir_base = db_dir
+        # self.db_dirs = ED({
+        #     "A": os.path.join(self.db_dir_base, "Training_WFDB"),
+        #     "B": os.path.join(self.db_dir_base, "Training_2"),
+        #     "C": os.path.join(self.db_dir_base, "Training_StPetersburg"),
+        #     "D": os.path.join(self.db_dir_base, "Training_PTB"),
+        #     "E": os.path.join(self.db_dir_base, "WFDB"),
+        #     "F": os.path.join(self.db_dir_base, "Training_E", "WFDB"),
+        # })
+        self.db_dirs = ED({tranche:"" for tranche in self.db_tranches})
+        self._all_records = None
+        self._ls_rec()  # loads file system structures into self.db_dirs and self._all_records
+
+        self._diagnoses_records_list = None
+        self._ls_diagnoses_records()
+
         """
         prefixes can be obtained using the following code:
         >>> pfs = ED({k:set() for k in "ABCDEF"})
@@ -231,16 +236,33 @@ class CINC2020(object):
         if os.path.isfile(record_list_fp):
             with open(record_list_fp, "r") as f:
                 self._all_records = json.load(f)
+            for tranche in self.db_tranches:
+                self.db_dirs[tranche] = os.path.join(self.db_dir_base, os.path.dirname(self._all_records[tranche][0]))
+                self._all_records[tranche] = [os.path.basename(f) for f in self._all_records[tranche]]
         else:
             print("Please wait patiently to let the reader find all records of all the tranches...")
             start = time.time()
-            self._all_records = ED({
-                tranche: get_record_list_recursive(self.db_dirs[tranche], self.rec_ext) \
-                    for tranche in "ABCDEF"
-            })
+            rec_patterns_with_ext = {
+                tranche: f"{self.rec_prefix[tranche]}(?:\d+).{self.rec_ext}" \
+                    for tranche in self.db_tranches
+            }
+            self._all_records = \
+                get_record_list_recursive3(self.db_dir_base, rec_patterns_with_ext)
+            to_save = deepcopy(self._all_records)
+            for tranche in self.db_tranches:
+                tmp_dirname = [ os.path.dirname(f) for f in self._all_records[tranche] ]
+                if len(set(tmp_dirname)) != 1:
+                    if len(set(tmp_dirname)) > 1:
+                        raise ValueError(f"records of tranche {tranche} are stored in several folders!")
+                    else:
+                        raise ValueError(f"no record found for tranche {tranche}!")
+                self.db_dirs[tranche] = os.path.join(self.db_dir_base, tmp_dirname[0])
+                self._all_records[tranche] = [os.path.basename(f) for f in self._all_records[tranche]]
             print(f"Done in {time.time() - start} seconds!")
-            with open(record_list_fp, "w") as f:
-                json.dump(self._all_records, f)
+            with open(os.path.join(self.db_dir_base, fn), "w") as f:
+                json.dump(to_save, f)
+            with open(os.path.join(utils._BASE_DIR, "utils", fn), "w") as f:
+                json.dump(to_save, f)
 
 
     @property
