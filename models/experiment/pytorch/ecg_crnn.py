@@ -27,6 +27,7 @@ from utils.misc import dict_to_str
 
 __all__ = [
     "ATI_CNN",
+    "CPSC",
 ]
 
 
@@ -313,9 +314,9 @@ class ATI_CNN(nn.Module):
         return pred
 
 
-class CPSCBlock(nn.Sequential):
+class CPSCMiniBlock(nn.Sequential):
     """
-    the best model of CPSC2018
+    building block of the SOTA model of CPSC2018
     """
     def __init__(self, filter_lengths:Sequence[int], subsample_lengths:Sequence[int], dropout:Optional[float]=None, **kwargs) -> NoReturn:
         """
@@ -374,6 +375,41 @@ class CPSCBlock(nn.Sequential):
                 break
             output_shape = module.compute_output_shape(seq_len, batch_size)
             _, _, seq_len = output_shape
+            n_layers += 1
+        return output_shape
+
+
+class CPSCBlock(nn.Sequential):
+    """
+    CNN part of the SOTA model of the CPSC2018 challenge
+    """
+    def __init__(self, filter_lengths:Sequence[int], subsample_lengths:Sequence[int], dropouts:Optional[float]=None, **kwargs) -> NoReturn:
+        """
+        """
+        super().__init__()
+        for blk_idx, (blk_fl, blk_s, blk_d) in enumerate(zip(filter_lengths, subsample_lengths, dropouts)):
+            self.add_module(
+                f"cpsc_mini_block_{blk_idx+1}",
+                CPSCMiniBlock(
+                    filter_lengths=blk_fl,
+                    subsample_lengths=blk_s,
+                    dropout=blk_d,
+                )
+            )
+
+    def forward(self, input:Tensor) -> Tensor:
+        """
+        keep up with `nn.Sequential.forward`
+        """
+        out = super().forward(input)
+        return out
+    
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+        """
+        """
+        for module in self:
+            output_shape = module.compute_output_shape(seq_len, batch_size)
+            _, _, seq_len = output_shape
         return output_shape
 
 
@@ -393,21 +429,16 @@ class CPSC(nn.Sequential):
 
         cnn_choice = self.config.cnn.name.lower()
         if cnn_choice == 'cpsc_2018':
-            self.cnn = nn.Sequential()
             cnn_config = self.config.cnn.cpsc
-            for blk_idx, (blk_fl, blk_s, blk_d) in enumerate(zip(cnn_config.filter_lengths, cnn_config.strides, cnn_config.dropouts)):
-                self.cnn.add_module(
-                    f"cpsc_block_{blk_idx+1}",
-                    CPSCBlock(
-                        filter_lengths=blk_fl,
-                        subsample_lengths=blk_s,
-                        dropout=blk_d,
-                    )
-                )
+            self.cnn = CPSCBlock(
+                filter_lengths=cnn_config.filter_lengths,
+                subsample_lengths=cnn_config.strides,
+                dropouts=cnn_config.dropouts,
+            )
         else:
             raise NotImplementedError
 
-        cnn_output_shape = self.cnn.compute_output_shape()
+        cnn_output_shape = self.cnn.compute_output_shape(self.input_len)
 
         self.rnn = nn.Sequential()
         self.rnn.add_module(
