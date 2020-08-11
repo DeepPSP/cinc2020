@@ -203,6 +203,11 @@ class ResNetBasicBlock(nn.Module):
 
         return out
 
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+        """
+        """
+        raise NotImplementedError
+
 
 class ResNetBottleneck(nn.Module):
     """
@@ -319,7 +324,7 @@ class CPSCBlock(nn.Sequential):
         self.__num_convs = len(filter_lengths)
         self.__in_channels = 12
         self.__out_channels = 12
-        self.__dropout = dropout
+        self.__dropout = dropout or 0.0
 
         self.config = deepcopy(CPSC_CONFIG.cnn.cpsc_block)
         for idx, (kernel_size, stride) in enumerate(zip(filter_lengths[:-1], subsample_lengths[:-1])):
@@ -347,7 +352,7 @@ class CPSCBlock(nn.Sequential):
                 bn=self.config.batch_norm,
             )
         )
-        if self.__dropout is not None and self.__dropout > 0:
+        if self.__dropout > 0:
             self.add_module(
                 "dropout",
                 nn.Dropout(self.__dropout),
@@ -359,6 +364,17 @@ class CPSCBlock(nn.Sequential):
         """
         out = super().forward(input)
         return out
+
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+        """
+        """
+        n_layers = 0
+        for module in self:
+            if n_layers >= self.__num_convs:
+                break
+            output_shape = module.compute_output_shape(seq_len, batch_size)
+            _, _, seq_len = output_shape
+        return output_shape
 
 
 class CPSC(nn.Sequential):
@@ -391,10 +407,12 @@ class CPSC(nn.Sequential):
         else:
             raise NotImplementedError
 
+        cnn_output_shape = self.cnn.compute_output_shape()
+
         self.rnn = nn.Sequential()
         self.rnn.add_module(
             "bidirectional_gru",
-            nn.GRU(12, bidirectional=True),
+            nn.GRU(input_size=12, hidden_size=12, bidirectional=True),
         )
         self.rnn.add_module(
             "leaky",
@@ -406,11 +424,11 @@ class CPSC(nn.Sequential):
         )
         self.rnn.add_module(
             "attention",
-            AttentionWithContext(),
+            AttentionWithContext(12, 12),
         )
         self.rnn.add_module(
             "batch_normalization",
-            nn.BatchNorm1d(),
+            nn.BatchNorm1d(12),
         )
         self.rnn.add_module(
             "leaky",

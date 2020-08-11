@@ -190,7 +190,7 @@ class Conv_Bn_Activation(nn.Sequential):
             pad=self.__padding,
             channel_last=False,
         )
-        return input_shape
+        return output_shape
 
 
 class BidirectionalLSTM(nn.Module):
@@ -367,7 +367,8 @@ class AML_GatedAttention(nn.Module):
 
 
 class AttentionWithContext(nn.Module):
-    """
+    """ finished, NOT checked,
+
     from CPSC0236
     """
     def __init__(self, in_channels:int, out_channels:int, bias:bool=True, initializer:str='glorot_uniform'):
