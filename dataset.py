@@ -288,7 +288,7 @@ class CINC2020(object):
             with open(dr_fp, "r") as f:
                 self._diagnoses_records_list = json.load(f)
         else:
-            print("Please wait patiently to let the reader list records for each diagnosis...")
+            print("Please wait several minutes patiently to let the reader list records for each diagnosis...")
             start = time.time()
             self._diagnoses_records_list = {d: [] for d in df_weights_abbr.columns.values.tolist()}
             for tranche, l_rec in self.all_records.items():
