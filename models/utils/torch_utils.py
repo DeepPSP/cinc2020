@@ -100,7 +100,7 @@ class Conv_Bn_Activation(nn.Sequential):
     """
     """
     def __init__(self, in_channels:int, out_channels:int, kernel_size:int, stride:int, bn:Union[bool,nn.Module]=True, activation:Optional[Union[str,nn.Module]]=None, kernel_initializer:Optional[Union[str,callable]]=None, bias:bool=True, **kwargs) -> NoReturn:
-        """
+        """ finished, checked,
 
         Parameters:
         -----------
@@ -171,7 +171,7 @@ class Conv_Bn_Activation(nn.Sequential):
         if act_layer:
             self.add_module(act_name, act_layer)
 
-    def forward(self, input):
+    def forward(self, input:Tensor) -> Tensor:
         """
         just use the forward function of `nn.Sequential`
         """
@@ -197,14 +197,20 @@ class BidirectionalLSTM(nn.Module):
     """
     from crnn_torch of references.ati_cnn
     """
-    def __init__(self, input_size:int, hidden_size:int, output_size:int):
+    def __init__(self, input_size:int, hidden_size:int, output_size:int) -> NoReturn:
         """
+
+        Parameters:
+        -----------
+        to write
         """
         super().__init__()
         self.lstm = nn.LSTM(input_size, hidden_size, bidirectional=True)
         self.embedding = nn.Linear(hidden_size * 2, output_size)
 
     def forward(self, input:Tensor) -> Tensor:
+        """
+        """
         recurrent, _ = self.lstm(input)
         T, b, h = recurrent.size()  # seq_len, batch_size, hidden_size
         t_rec = recurrent.view(T * b, h)
@@ -373,6 +379,10 @@ class AttentionWithContext(nn.Module):
     """
     def __init__(self, in_channels:int, out_channels:int, bias:bool=True, initializer:str='glorot_uniform'):
         """
+
+        Parameters:
+        -----------
+        to write
         """
         super().__init__()
         self.supports_masking = True
@@ -570,6 +580,187 @@ class MultiheadAttention(nn.Module):
                 attn_mask=attn_mask)
 
 
+class DoubleConv(nn.Sequential):
+    """
+
+    building blocks of UNet
+    
+    References:
+    -----------
+    https://github.com/milesial/Pytorch-UNet/blob/master/unet/unet_parts.py
+    """
+
+    def __init__(self, in_channels:int, out_channels:int, filter_length:int, activation:Union[str,nn.Module]='relu', mid_channels:Optional[int]=None) -> NoReturn:
+        """
+
+        Parameters:
+        -----------
+        to write
+        """
+        super().__init__()
+        self.__in_channels = in_channels
+        self.__mid_channels = mid_channels if mid_channels is not None else out_channels
+        self.__out_channels = out_channels
+        self.__kernel_size = filter_length
+
+        self.add_module(
+            "conv_bn_activation_1",
+            Conv_Bn_Activation(
+                in_channels=self.__in_channels,
+                out_channels=self.__mid_channels,
+                kernel_size=self.__kernel_size,
+                bn=True,
+                activation=activation,
+            ),
+        )
+        self.add_module(
+            "conv_bn_activation_2",
+            Conv_Bn_Activation(
+                in_channels=self.__mid_channels,
+                out_channels=self.__out_channels,
+                kernel_size=self.__kernel_size,
+                bn=True,
+                activation=activation,
+            )
+        )
+
+    def forward(self, input:Tensor) -> Tensor:
+        """
+        """
+        out = super().forward(input)
+        return out
+
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+        """
+        """
+        _seq_len = seq_len
+        for module in self:
+            output_shape = module.compute_output_shape(_seq_len, batch_size)
+            _, _, _seq_len = output_shape
+        return output_shape
+
+
+class DownDoubleConv(nn.Sequential):
+    """
+    Downscaling with maxpool then double conv
+    
+    References:
+    -----------
+    https://github.com/milesial/Pytorch-UNet/blob/master/unet/unet_parts.py
+    """
+    def __init__(self, down_scale:int, in_channels:int, out_channels:int, filter_length:int, activation:Union[str,nn.Module]='relu', mid_channels:Optional[int]=None) -> NoReturn:
+        """
+
+        Parameters:
+        -----------
+        to write
+        """
+        super().__init__()
+        self.__down_scale = down_scale
+        self.__in_channels = in_channels
+        self.__mid_channels = mid_channels if mid_channels is not None else out_channels
+        self.__out_channels = out_channels
+        self.__kernel_size = filter_length
+
+        self.add_module(
+            "max_pool",
+            nn.MaxPool1d(self.__down_scale),
+        )
+        self.add_module(
+            "double_conv",
+            DoubleConv(
+                in_channels=self.__in_channels,
+                out_channels=self.__out_channels,
+                filter_length=self.__kernel_size,
+                activation=activation,
+                mid_channels=self.__mid_channels,
+            ),
+        )
+
+    def forward(self, input:Tensor) -> Tensor:
+        """
+        """
+        out = super().forward(input)
+        return out
+
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+        """
+        """
+        _seq_len = seq_len
+        for idx, module in enumerate(self):
+            if idx == 0:  # max pool
+                output_shape = compute_conv_output_shape(
+                    input_shape=[batch_size, self.__in_channels, _seq_len]
+                )
+            elif idx == 1:  # double conv
+                output_shape = module.compute_output_shape(_seq_len, batch_size)
+            _, _, _seq_len = output_shape
+        return output_shape
+
+
+class UpDoubleConv(nn.Module):
+    """
+    Upscaling then double conv
+    
+    References:
+    -----------
+    https://github.com/milesial/Pytorch-UNet/blob/master/unet/unet_parts.py
+    """
+    def __init__(self, up_scale:int, in_channels:int, out_channels:int, filter_length:int, activation:Union[str,nn.Module]='relu', mode:str='bilinear', mid_channels:Optional[int]=None) -> NoReturn:
+        """
+        Parameters:
+        -----------
+        to write
+        """
+        super().__init__()
+        self.__up_scale = up_scale
+        self.__in_channels = in_channels
+        self.__mid_channels = mid_channels if mid_channels is not None else in_channels // 2
+        self.__out_channels = out_channels
+        self.__kernel_size = filter_length
+
+        raise NotImplementedError
+        # the following has to be checked
+        # if bilinear, use the normal convolutions to reduce the number of channels
+        if bilinear:
+            self.up = nn.Upsample(
+                scale_factor=self.__up_scale,
+                mode=mode, align_corners=True,
+            )
+            self.conv = DoubleConv(
+                in_channels=self.__in_channels,
+                out_channels=self.__out_channels,
+                filter_length=self.__kernel_size,
+                activation=activation,
+                mid_channels=self.__mid_channels,
+            )
+        else:
+            self.up = nn.ConvTranspose1d(in_channels , in_channels // 2, kernel_size=2, stride=2)
+            self.conv = DoubleConv(in_channels, out_channels)
+
+    def forward(self, x1:Tensor, x2:Tensor) -> Tensor:
+        """
+        """
+        raise NotImplementedError
+        x1 = self.up(x1)
+        # input is CHW
+        diffY = x2.size()[2] - x1.size()[2]
+        diffX = x2.size()[3] - x1.size()[3]
+
+        x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2,
+                        diffY // 2, diffY - diffY // 2])
+        # if you have padding issues, see
+        # https://github.com/HaiyongJiang/U-Net-Pytorch-Unstructured-Buggy/commit/0e854509c2cea854e247a9c615f175f76fbb2e3a
+        # https://github.com/xiaopeng-liao/Pytorch-UNet/commit/8ebac70e633bac59fc22bb5195e513d5832fb3bd
+        x = torch.cat([x2, x1], dim=1)
+        return self.conv(x)
+
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+        """
+        """
+        raise NotImplementedError
+
+
 def compute_conv_output_shape(input_shape:Sequence[Union[int, type(None)]], num_filters:Optional[int]=None, kernel_size:Union[Sequence[int], int]=1, stride:Union[Sequence[int], int]=1, pad:Union[Sequence[int], int]=0, dilation:Union[Sequence[int], int]=1, channel_last:bool=False) -> Tuple[Union[int, type(None)]]:
     """ finished, checked,
 
@@ -587,7 +778,7 @@ def compute_conv_output_shape(input_shape:Sequence[Union[int, type(None)]], num_
     stride: int, or sequence of int, default 1,
         stride (down-sampling length) of the layer, should be compatible with `input_shape`
     pad: int, or sequence of int, default 0,
-        pad length of the layer, should be compatible with `input_shape`
+        pad length(s) of the layer, should be compatible with `input_shape`
     dilation: int, or sequence of int, default 1,
         dilation of the layer, should be compatible with `input_shape`
     channel_last: bool, default False,
@@ -645,8 +836,8 @@ def compute_conv_output_shape(input_shape:Sequence[Union[int, type(None)]], num_
     else:
         _input_shape = input_shape[2:]
     output_shape = [
-        floor( ( ( input_len + 2*p - d*(k-1) - 1 ) / s ) + 1 ) \
-            for input_len, p, d, k, s in zip(_input_shape, _pad, _dilation, _kernel_size, _stride)
+        floor( ( ( i + 2*p - d*(k-1) - 1 ) / s ) + 1 ) \
+            for i, p, d, k, s in zip(_input_shape, _pad, _dilation, _kernel_size, _stride)
     ]
     if channel_last:
         output_shape = tuple([input_shape[0]] + output_shape + [num_filters])
