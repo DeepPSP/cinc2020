@@ -58,40 +58,54 @@ class AttentionWithContext(Layer):
 
     def build(self, input_shape):
         assert len(input_shape) == 3
+        print(f"AttentionWithContext input_shape = {input_shape}")
         self.W = self.add_weight(shape=(input_shape[-1], input_shape[-1],),
                                  initializer=self.init,
                                  name='{}_W'.format(self.name),
                                  regularizer=self.W_regularizer,
                                  constraint=self.W_constraint)
+        print(f"AttentionWithContext W.shape = {self.W.shape}")
         if self.bias:
             self.b = self.add_weight(shape=(input_shape[-1],),
                                      initializer='zero',
                                      name='{}_b'.format(self.name),
                                      regularizer=self.b_regularizer,
                                      constraint=self.b_constraint)
+            print(f"AttentionWithContext b.shape = {self.b.shape}")
             self.u = self.add_weight(shape=(input_shape[-1],),
                                  initializer=self.init,
                                  name='{}_u'.format(self.name),
                                  regularizer=self.u_regularizer,
                                  constraint=self.u_constraint)
+            print(f"AttentionWithContext u.shape = {self.u.shape}")
         super(AttentionWithContext, self).build(input_shape)
 
     def compute_mask(self, input, input_mask=None):
         return None
 
     def call(self, x, mask=None):
+        print(f"AttentionWithContext forward: x.shape = {x.shape}, W.shape = {self.W.shape}")
         uit = dot_product(x, self.W)
+        print(f"AttentionWithContext forward: uit.shape = {uit.shape}")
         if self.bias:
             uit += self.b
         uit = K.tanh(uit)
         ait = dot_product(uit, self.u)
+        print(f"AttentionWithContext forward: ait.shape = {ait.shape}")
         a = K.exp(ait)
         if mask is not None:
             a *= K.cast(mask, K.floatx())
+        print(f"AttentionWithContext forward: without `keepdims`, sum(a).shape = {K.sum(a, axis=1).shape}")
+        print(f"AttentionWithContext forward: with `keepdims`, sum(a).shape = {K.sum(a, axis=1, keepdims=True).shape}")
         a /= K.cast(K.sum(a, axis=1, keepdims=True) + K.epsilon(), K.floatx())
+        print(f"AttentionWithContext forward: a.shape = {a.shape} before `expand_dims`")
         a = K.expand_dims(a)
+        print(f"AttentionWithContext forward: a.shape = {a.shape} after `expand_dims`")
         weighted_input = x * a
-        return K.sum(weighted_input, axis=1)
+        print(f"AttentionWithContext forward: weighted_input.shape = {weighted_input.shape}")
+        out = K.sum(weighted_input, axis=1)
+        print(f"AttentionWithContext forward: out.shape = {out.shape}")
+        return out
 
     def compute_output_shape(self, input_shape):
         return input_shape[0], input_shape[-1]

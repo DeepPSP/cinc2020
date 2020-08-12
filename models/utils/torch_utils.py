@@ -97,7 +97,9 @@ Activations.leaky_relu = Activations.leaky
 # ---------------------------------------------
 # basic building blocks of CNN
 class Conv_Bn_Activation(nn.Sequential):
-    """
+    """ finished, checked
+
+    1d convolution --> batch normalization (optional) -- > activation (optional)
     """
     def __init__(self, in_channels:int, out_channels:int, kernel_size:int, stride:int, bn:Union[bool,nn.Module]=True, activation:Optional[Union[str,nn.Module]]=None, kernel_initializer:Optional[Union[str,callable]]=None, bias:bool=True, **kwargs) -> NoReturn:
         """ finished, checked,
@@ -179,7 +181,19 @@ class Conv_Bn_Activation(nn.Sequential):
         return out
 
     def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
-        """
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        seq_len: int,
+            length of the 1d sequence
+        batch_size: int, optional,
+            the batch size, can be None
+
+        Returns:
+        --------
+        output_shape: sequence,
+            the output shape of this `Conv_Bn_Activation` layer, given `seq_len` and `batch_size`
         """
         input_shape = [batch_size, self.__in_channels, seq_len]
         output_shape = compute_conv_output_shape(
@@ -202,7 +216,12 @@ class BidirectionalLSTM(nn.Module):
 
         Parameters:
         -----------
-        to write
+        input_size: int,
+            the number of features in the input
+        hidden_size: int,
+            the number of features in the hidden state
+        output_size: int,
+            the number of features in the ouput
         """
         super().__init__()
         self.lstm = nn.LSTM(input_size, hidden_size, bidirectional=True)
@@ -235,16 +254,21 @@ class StackedLSTM(nn.Sequential):
         Parameters: (to write)
         -----------
         input_size: int,
+            the number of features in the input
         hidden_sizes: sequence of int,
+            the number of features in the hidden state of each LSTM layer
         bias: bool, or sequence of bool, default True,
+            use bias weights or not
         dropout: float, default 0.0,
+            if non-zero, introduces a `Dropout` layer on the outputs of each
+            LSTM layer except the last layer, with dropout probability equal to this value
         bidirectional: bool, default True,
         return_sequences: bool, default True
         """
         super().__init__()
         
-        self.num_layers = len(hidden_sizes)
-        l_bias = bias if isinstance(bias, Sequence) else [bias for _ in range(self.num_layers)]
+        self.num_lstm_layers = len(hidden_sizes)
+        l_bias = bias if isinstance(bias, Sequence) else [bias for _ in range(self.num_lstm_layers)]
         self._dropout = dropout
         self.bidirectional = bidirectional
         self.batch_first = False
@@ -269,11 +293,11 @@ class StackedLSTM(nn.Sequential):
                     bidirectional=self.bidirectional,
                 )
             )
-        if self._dropout > 0:
-            self.add_module(
-                name="dropout",
-                module=nn.Dropout(self._dropout),
-            )
+            if self._dropout > 0 and idx < self.num_lstm_layers-1:
+                self.add_module(
+                    name=f"dropout_{idx+1}",
+                    module=nn.Dropout(self._dropout),
+                )
     
     def forward(self, input:Union[Tensor, PackedSequence], hx:Optional[Tuple[Tensor, Tensor]]=None) -> Union[Tensor, Tuple[Union[Tensor, PackedSequence], Tuple[Tensor, Tensor]]]:
         """
@@ -281,23 +305,24 @@ class StackedLSTM(nn.Sequential):
         """
         n_layers = 0
         _input, _hx = input, hx
+        div = 2 if self._dropout > 0 else 1
         for module in self:
-            if n_layers < self.num_layers:
+            n_lstm, res = divmod(n_layers, div)
+            if res == 1:
+                _input = module(_input)
+                print(f"module = {type(module).__name__}")
+            else:
                 # print(f"n_layers = {n_layers}, input shape = {_input.shape}")
-                if n_layers > 0:
+                if n_lstm > 0:
                     _hx = None
                 _input, _hx = module(_input, _hx)
+                print(f"module = {type(module).__name__}")
                 # print(f"n_layers = {n_layers}, input shape = {_input.shape}")
-            if n_layers == self.num_layers and self._dropout > 0:
-                output = module(_input)
-                hx = output[-1:,...], _hx[1]  # TODO
-            elif self._dropout == 0 and n_layers == self.num_layers-1:
-                output, hx = _input, _hx
             n_layers += 1
         if self.return_sequences:
-            final_output = output, hx
+            final_output = _input, _hx
         else:
-            final_output = hx[0]
+            final_output = _hx[0]
         return final_output
 
 
@@ -373,7 +398,7 @@ class AML_GatedAttention(nn.Module):
 
 
 class AttentionWithContext(nn.Module):
-    """ finished, NOT checked,
+    """ finished, checked,
 
     from CPSC0236
     """
@@ -390,12 +415,15 @@ class AttentionWithContext(nn.Module):
         self.bias = bias
 
         self.W = Parameter(torch.Tensor(out_channels, out_channels))
+        print(f"AttentionWithContext W.shape = {self.W.shape}")
         self.init(self.W)
 
         if self.bias:
             self.b = Parameter(torch.Tensor(out_channels))
+            print(f"AttentionWithContext b.shape = {self.b.shape}")
             # Initializers['zeros'](self.b)
             self.u = Parameter(torch.Tensor(out_channels))
+            print(f"AttentionWithContext u.shape = {self.u.shape}")
             # self.init(self.u)
         else:
             self.register_parameter('b', None)
@@ -409,17 +437,23 @@ class AttentionWithContext(nn.Module):
     def forward(self, input:Tensor, mask:Optional[Tensor]=None) -> Tensor:
         """
         """
+        print(f"AttentionWithContext forward: input.shape = {input.shape}, W.shape = {self.W.shape}")
         uit = torch.tensordot(input, self.W, dims=1)
+        print(f"AttentionWithContext forward: uit.shape = {uit.shape}")
         if self.bias:
             uit += self.b
         uit = torch.tanh(uit)
         ait = torch.tensordot(uit, self.u, dims=1)
+        print(f"AttentionWithContext forward: ait.shape = {ait.shape}")
         a = torch.exp(ait)
         if mask is not None:
             a = a * mask
-        a = _true_divide(a, torch.sum(a, dim=1) + torch.finfo(torch.float).eps)
+        a = _true_divide(a, torch.sum(a, dim=1, keepdim=True) + torch.finfo(torch.float).eps)
+        print(f"AttentionWithContext forward: a.shape = {a.shape}")
         weighted_input = input * a[...,np.newaxis]
-        output = torch.sum(weighted_input, axis=1)
+        print(f"AttentionWithContext forward: weighted_input.shape = {weighted_input.shape}")
+        output = torch.sum(weighted_input, dim=1)
+        print(f"AttentionWithContext forward: output.shape = {output.shape}")
         return output
 
 
