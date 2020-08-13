@@ -11,7 +11,7 @@ from cfg import ModelCfg
 __all__ = [
     "vgg_block_basic", "vgg_block_mish", "vgg_block_swish",
     "vgg6",
-    "resnet_block_basic",
+    "resnet_block_basic", "resnet_block_stanford",
     "resnet",
     "cpsc_block_basic", "cpsc_block_mish", "cpsc_block_swish",
     "cpsc_2018",
@@ -24,8 +24,7 @@ vgg_block_basic.filter_length = 3
 vgg_block_basic.subsample_length = 1
 vgg_block_basic.dilation = 1
 vgg_block_basic.batch_norm = True
-vgg_block_basic.pool_kernel = 3
-vgg_block_basic.pool_stride = 3
+vgg_block_basic.pool_size = 3
 vgg_block_basic.kernel_initializer = "he_normal"
 vgg_block_basic.activation = "relu"
 
@@ -42,6 +41,16 @@ vgg6.num_filters = [64, 128, 256, 512, 512]
 
 # ResNet
 resnet_block_basic = ED()
+
+resnet_block_stanford = ED()
+resnet_block_stanford.subsample_lengths = [1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2]
+resnet_block_stanford.filter_length = 16
+resnet_block_stanford.num_filters_start = 32
+resnet_block_stanford.init = "he_normal"
+resnet_block_stanford.activation = "relu"
+resnet_block_stanford.dropout = 0.2
+resnet_block_stanford.num_skip = 2
+resnet_block_stanford.increase_channels_at = 4
 
 resent = ED()
 

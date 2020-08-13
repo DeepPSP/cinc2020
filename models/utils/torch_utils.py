@@ -17,11 +17,13 @@ from easydict import EasyDict as ED
 __all__ = [
     "Mish", "Swish",
     "Initializers", "Activations",
-    "Conv_Bn_Activation",
+    "Bn_Activation", "Conv_Bn_Activation",
     "BidirectionalLSTM", "StackedLSTM",
     "AML_Attention", "AML_GatedAttention",
     "AttentionWithContext",
     "MultiheadAttention",
+    "DoubleConv",
+    "UpDoubleConv", "DownDoubleConv",
     "compute_conv_output_shape",
 ]
 
@@ -96,6 +98,51 @@ Activations.leaky_relu = Activations.leaky
 
 # ---------------------------------------------
 # basic building blocks of CNN
+class Bn_Activation(nn.Sequential):
+    """ finished, checked
+
+    batch normalization -- > activation
+    """
+    def __init__(self, num_features:int, activation:Optional[Union[str,nn.Module]]=None, kw_activation:Optional[dict]=None, dropout:float=0.0) -> NoReturn:
+        """
+        """
+        super().__init__()
+        self.__num_features = num_features
+        self.__kw_activation = kw_activation or {}
+        self.__dropout = dropout
+        if callable(activation):
+            act_layer = activation
+            act_name = f"activation_{type(act_layer).__name__}"
+        elif isinstance(activation, str) and activation.lower() in Activations.keys():
+            act_layer = Activations[activation.lower()](**self.__kw_activation)
+            act_name = f"activation_{activation.lower()}"
+
+        self.add_module(
+            "batch_norm",
+            nn.BatchNorm1d(num_features),
+        )
+        self.add_module(
+            act_name,
+            act_layer,
+        )
+        if self.__dropout > 0:
+            self.add_module(
+                "dropout",
+                nn.Dropout(self.__dropout),
+            )
+    
+    def forward(self, input:Tensor) -> Tensor:
+        """
+        """
+        output = super().forward(input)
+        return output
+
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+        """
+        """
+        return (batch_size, self.__num_features, seq_len)
+
+
 class Conv_Bn_Activation(nn.Sequential):
     """ finished, checked
 

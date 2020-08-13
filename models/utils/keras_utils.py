@@ -35,7 +35,7 @@ def Mish(x:tf.Tensor) -> tf.Tensor:
 
 class AttentionWithContext(Layer):
     """
-    from CPSC0236
+    from 0236 of CPSC2018 challenge
     """
     def __init__(self,
                  W_regularizer=None, u_regularizer=None, b_regularizer=None,

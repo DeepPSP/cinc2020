@@ -49,6 +49,8 @@ def resnet_block(
     from keras.layers import MaxPooling1D
     from keras.layers.core import Lambda
 
+    print(f"{block_index}-th resnet block input shape = {layer.shape}")
+
     def zeropad(x):
         y = K.zeros_like(x)
         return K.concatenate([x, y], axis=2)
@@ -60,10 +62,12 @@ def resnet_block(
         return tuple(shape)
 
     shortcut = MaxPooling1D(pool_size=subsample_length)(layer)
+    print(f"{block_index}-th resnet block shortcut shape = {shortcut.shape}")
     zero_pad = (block_index % params["conv_increase_channels_at"]) == 0 \
         and block_index > 0
     if zero_pad is True:
         shortcut = Lambda(zeropad, output_shape=zeropad_output_shape)(shortcut)
+        print(f"{block_index}-th resnet block zero-padded shortcut shape = {shortcut.shape}")
 
     for i in range(params["conv_num_skip"]):
         if not (block_index == 0 and i == 0):
@@ -77,7 +81,9 @@ def resnet_block(
             num_filters,
             subsample_length if i == 0 else 1,
             **params)
+    print(f"{block_index}-th resnet block layer shape after all cba = {layer.shape}")
     layer = Add()([shortcut, layer])
+    print(f"{block_index}-th resnet block output shape = {layer.shape}")
     return layer
 
 def get_num_filters_at_index(index, num_start_filters, **params):

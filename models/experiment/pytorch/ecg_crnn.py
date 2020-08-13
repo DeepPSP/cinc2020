@@ -18,7 +18,7 @@ from model_configs.ati_cnn import ATI_CNN_CONFIG
 from model_configs.cpsc import CPSC_CONFIG
 from models.utils.torch_utils import (
     Mish, Swish, Activations,
-    Conv_Bn_Activation,
+    Bn_Activation, Conv_Bn_Activation,
     StackedLSTM,
     # AML_Attention, AML_GatedAttention,
     AttentionWithContext,
@@ -36,7 +36,7 @@ __all__ = [
 class VGGBlock(nn.Sequential):
     """
     """
-    def __init__(self, num_convs:int, in_channels:int, out_channels:int, **kwargs) -> NoReturn:
+    def __init__(self, num_convs:int, in_channels:int, out_channels:int, **config) -> NoReturn:
         """
         """
         super().__init__()
@@ -44,10 +44,12 @@ class VGGBlock(nn.Sequential):
         self.__in_channels = in_channels
         self.__out_channels = out_channels
 
-        self.config = deepcopy(ATI_CNN_CONFIG.cnn.vgg_block)
+        # self.config = deepcopy(ATI_CNN_CONFIG.cnn.vgg_block)
+        # self.config.update(config)
+        self.config = ED(config)
 
         self.add_module(
-            "block_1",
+            "cba_1",
             Conv_Bn_Activation(
                 in_channels, out_channels,
                 kernel_size=self.config.filter_length,
@@ -59,7 +61,7 @@ class VGGBlock(nn.Sequential):
         )
         for idx in range(num_convs-1):
             self.add_module(
-                f"block_{idx+2}",
+                f"cba_{idx+2}",
                 Conv_Bn_Activation(
                     out_channels, out_channels,
                     kernel_size=self.config.filter_length,
@@ -71,7 +73,7 @@ class VGGBlock(nn.Sequential):
             )
         self.add_module(
             "max_pool",
-            nn.MaxPool1d(self.config.pool_kernel, self.config.pool_stride)
+            nn.MaxPool1d(self.config.pool_size)
         )
 
     def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
@@ -97,13 +99,15 @@ class VGGBlock(nn.Sequential):
 class VGG6(nn.Sequential):
     """
     """
-    def __init__(self, in_channels:int):
+    def __init__(self, in_channels:int, **config):
         """
         """
         super().__init__()
         self.__in_channels = in_channels
         
-        self.config = deepcopy(ATI_CNN_CONFIG.cnn.vgg6)
+        # self.config = deepcopy(ATI_CNN_CONFIG.cnn.vgg6)
+        self.config = ED(config)
+
         for idx, (nc, nf) in enumerate(zip(self.config.num_convs, self.config.num_filters)):
             module_name = f"vgg_block_{idx+1}"
             if idx == 0:
@@ -117,6 +121,7 @@ class VGG6(nn.Sequential):
                     num_convs=nc,
                     in_channels=module_in_channels,
                     out_channels=module_out_channels,
+                    **(config.block),
                 )
             )
 
@@ -134,6 +139,82 @@ class VGG6(nn.Sequential):
         for module in self:
             output_shape = module.compute_output_shape(seq_len, batch_size)
             _, _, seq_len = output_shape
+        return output_shape
+
+
+class ResNetStanfordBlock(nn.Module):
+    """
+    """
+    def __init__(self, in_channels:int, num_filters:int, pool_size:int, stride:int=1, dilation:Real=1, block_index:int, **config) -> NoReturn:
+        """
+
+        Parameters:
+        -----------
+        to write
+        """
+        super().__init__()
+        self.__in_channels = in_channels
+        self.__out_channels = num_filters
+        self.__pool_size = pool_size
+        self.__stride = stride
+        self.__dilation = dilation
+        self.__block_index = block_index
+        self.config = ED(config)
+
+        self.short_cut = nn.MaxPool1d(self.__pool_size)
+        self.__zero_pad = (block_index % self.config.increase_channels_at) == 0 \
+            and block_index > 0
+        
+        self.main_stream = nn.Sequential()
+        num_cba_layer = 1
+        cba_in_channels = self.__in_channels
+        for i in range(self.config.num_skip):
+            if not (block_index == 0 and i == 0):
+                self.main_stream.add_module(
+                    "ba",
+                    Bn_Activation(
+                        num_features=self.__in_channels,
+                        activation=self.config.activation,
+                        dropout=self.config.dropout,
+                    ),
+                )
+            self.main_stream.add_module(
+                f"cba_{num_cba_layer}",
+                Conv_Bn_Activation(
+                    in_channels=cba_in_channels,
+                    out_channels=self.__out_channels,
+                    kernel_size=self.config.filter_length,
+                    stride = (self.__stride if i == 0 else 1),
+                    activation=self.config.activation,
+                    kernel_initializer=self.config.init,
+                )
+            )
+            num_cba_layer += 1
+            cba_in_channels = self.__out_channels
+
+    def forward(self, input:Tensor) -> Tensor:
+        """
+        """
+        sc = self.short_cut.forward(input)
+        if self.__zero_pad:
+            sc = self.zero_pad(sc)
+        output = self.main_stream.forward(input) + sc
+        return output
+
+    def zero_pad(self, x:Tensor) -> Tensor:
+        """
+        """
+        out = torch.zeros_like(x)
+        out = torch.cat((x, out), dim=1)
+        return out
+
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+        """
+        """
+        _seq_len = seq_len
+        for module in self.main_stream:
+            output_shape = module.compute_output_shape(_seq_len, batch_size)
+            _, _, _seq_len = output_shape
         return output_shape
 
 
@@ -155,6 +236,10 @@ class ResNetBasicBlock(nn.Module):
 
     def __init__(self, in_channels:int, out_channels:int, stride:int=1, downsample:Optional[nn.Module]=None, groups:int=1, base_width:int=64, dilation:Real=1, norm_layer:Optional[nn.Module]=None, **kwargs) -> NoReturn:
         """
+
+        Parameters:
+        -----------
+        to write
         """
         super().__init__()
         if norm_layer is None:
@@ -166,7 +251,7 @@ class ResNetBasicBlock(nn.Module):
         # Both self.conv1 and self.downsample layers downsample the input when stride != 1
 
         # NOTE that in ref. [2], the conv3x3 and the conv1x1 layers both have `bias = False`
-        self.conv_bn_activation_1 = Conv_Bn_Activation(
+        self.cba_1 = Conv_Bn_Activation(
             in_channels=in_channels,
             out_channels=out_channels,
             kernel_size=3,
@@ -176,7 +261,7 @@ class ResNetBasicBlock(nn.Module):
             kernel_initializer='he_normal',
             bias=False,
         )
-        self.conv_bn_activation_2 = Conv_Bn_Activation(
+        self.cba_2 = Conv_Bn_Activation(
             in_channels=out_channels,
             out_channels=out_channels,
             kernel_size=3,
@@ -195,8 +280,8 @@ class ResNetBasicBlock(nn.Module):
         """
         identity = input
 
-        out = self.conv_bn_activation_1(input)
-        out = self.conv_bn_activation_2(out)
+        out = self.cba_1(input)
+        out = self.cba_2(out)
 
         if self.downsample is not None:
             identity = self.downsample(input)
@@ -263,7 +348,7 @@ class ATI_CNN(nn.Module):
         
         cnn_choice = self.config.cnn.name.lower()
         if cnn_choice == "vgg6":
-            self.cnn = VGG6(self.n_leads)
+            self.cnn = VGG6(self.n_leads, **(self.config.cnn.vgg6))
             rnn_input_size = self.config.cnn.vgg6.num_filters[-1]
         elif cnn_choice == "resnet":
             raise NotImplementedError

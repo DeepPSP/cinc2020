@@ -27,17 +27,17 @@ ATI_CNN_CONFIG.cnn.name = 'vgg6'
 
 
 if ATI_CNN_CONFIG.cnn.name == 'vgg6':
-    ATI_CNN_CONFIG.cnn.vgg_block = deepcopy(vgg_block_basic)
     ATI_CNN_CONFIG.cnn.vgg6 = deepcopy(vgg6)
+    ATI_CNN_CONFIG.cnn.vgg6.block = deepcopy(vgg_block_basic)
 elif ATI_CNN_CONFIG.cnn.name == 'vgg6_mish':
-    ATI_CNN_CONFIG.cnn.vgg_block = deepcopy(vgg_block_mish)
     ATI_CNN_CONFIG.cnn.vgg6 = deepcopy(vgg6)
+    ATI_CNN_CONFIG.cnn.vgg6.block = deepcopy(vgg_block_mish)
 elif ATI_CNN_CONFIG.cnn.name == 'vgg6_swish':
-    ATI_CNN_CONFIG.cnn.vgg_block = deepcopy(vgg_block_swish)
     ATI_CNN_CONFIG.cnn.vgg6 = deepcopy(vgg6)
+    ATI_CNN_CONFIG.cnn.vgg6.block = deepcopy(vgg_block_swish)
 elif ATI_CNN_CONFIG.cnn.name == 'vgg6_dilation':  # not finished
-    ATI_CNN_CONFIG.cnn.vgg_block = deepcopy(vgg_block_basic)
     ATI_CNN_CONFIG.cnn.vgg6 = deepcopy(vgg6)
+    ATI_CNN_CONFIG.cnn.vgg6.block = deepcopy(vgg_block_basic)
 elif ATI_CNN_CONFIG.cnn.name == 'resnet':  # NOT finished
     ATI_CNN_CONFIG.cnn.resnet_block = ED()
     ATI_CNN_CONFIG.cnn.resnet_bottleneck = ED()
