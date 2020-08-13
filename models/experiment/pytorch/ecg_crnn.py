@@ -12,6 +12,7 @@ import torch
 from torch import nn
 from torch import Tensor
 import torch.nn.functional as F
+from easydict import EasyDict as ED
 
 from cfg import ModelCfg
 from model_configs.ati_cnn import ATI_CNN_CONFIG
@@ -104,26 +105,22 @@ class VGG6(nn.Sequential):
         """
         super().__init__()
         self.__in_channels = in_channels
-        
         # self.config = deepcopy(ATI_CNN_CONFIG.cnn.vgg6)
         self.config = ED(config)
 
+        module_in_channels = in_channels
         for idx, (nc, nf) in enumerate(zip(self.config.num_convs, self.config.num_filters)):
             module_name = f"vgg_block_{idx+1}"
-            if idx == 0:
-                module_in_channels = in_channels
-            else:
-                module_in_channels = self.config.num_filters[idx-1]
-            module_out_channels = nf
             self.add_module(
                 name=module_name,
                 module=VGGBlock(
                     num_convs=nc,
                     in_channels=module_in_channels,
-                    out_channels=module_out_channels,
+                    out_channels=nf,
                     **(config.block),
                 )
             )
+            module_in_channels = nf
 
     def forward(self, input):
         """
@@ -145,20 +142,23 @@ class VGG6(nn.Sequential):
 class ResNetStanfordBlock(nn.Module):
     """
     """
-    def __init__(self, in_channels:int, num_filters:int, pool_size:int, stride:int=1, dilation:Real=1, block_index:int, **config) -> NoReturn:
+    def __init__(self, block_index:int, in_channels:int, num_filters:int, subsample_length:int, dilation:Real=1, **config) -> NoReturn:
         """
+
+        the main stream uses `subsample_length` as stride to perform down-sampling,
+        the short cut uses `subsample_length` as pool size to perform down-sampling,
 
         Parameters:
         -----------
         to write
         """
         super().__init__()
+        self.__block_index = block_index
         self.__in_channels = in_channels
         self.__out_channels = num_filters
-        self.__pool_size = pool_size
-        self.__stride = stride
+        self.__pool_size = subsample_length
+        self.__stride = subsample_length
         self.__dilation = dilation
-        self.__block_index = block_index
         self.config = ED(config)
 
         self.short_cut = nn.MaxPool1d(self.__pool_size)
@@ -216,6 +216,60 @@ class ResNetStanfordBlock(nn.Module):
             output_shape = module.compute_output_shape(_seq_len, batch_size)
             _, _, _seq_len = output_shape
         return output_shape
+
+
+class ResNetStanford(nn.Sequential):
+    """
+    """
+    def __init__(self, in_channels:int, **config):
+        """
+        """
+        super().__init__()
+        self.__in_channels = in_channels
+        self.config = ED(config)
+
+        self.add_module(
+            "cba_1",
+            Conv_Bn_Activation(
+                in_channels=self.__in_channels,
+                out_channels=self.config.num_filters_start,
+                kernel_size=self.config.filter_length,
+                stride=1,
+                bn=True,
+                activation=self.config.activation,
+                kernel_initializer=self.config.init,
+            )
+        )
+
+        module_in_channels = self.config.num_filters_start
+        for idx, subsample_length in enumerate(self.config.conv_subsample_lengths):
+            num_filters = self.get_num_filters_at_index(idx, self.config.num_filters_start)
+            self.add_module(
+                f"resnet_block_{idx}",
+                ResNetStanfordBlock(
+                    block_index=idx,
+                    in_channels=module_in_channels,
+                    num_filters=num_filters,
+                    subsample_length=subsample_length,
+                    **self.config,
+                )
+            )
+
+    def forward(self, input:Tensor) -> Tensor:
+        """
+        """
+        output = super().forward(input)
+        return output
+
+    def get_num_filters_at_index(self, index:int, num_start_filters:int):
+        """
+        """
+        return 2**int(index / self.config.increase_channels_at) * num_start_filters
+
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+        """
+        """
+        raise NotImplementedError
 
 
 class ResNetBasicBlock(nn.Module):
