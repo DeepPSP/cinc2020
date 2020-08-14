@@ -6,7 +6,7 @@ import sys
 from copy import deepcopy
 from collections import OrderedDict
 from typing import Union, Optional, Sequence, NoReturn
-from numbers import Real
+from numbers import Real, Number
 
 import torch
 from torch import nn
@@ -36,9 +36,24 @@ __all__ = [
 
 class VGGBlock(nn.Sequential):
     """
+    building blocks of the CNN feature extractor `VGG6`
     """
     def __init__(self, num_convs:int, in_channels:int, out_channels:int, **config) -> NoReturn:
-        """
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        num_convs: int,
+            number of convolutional layers of this block
+        in_channels: int,
+            number of channels in the input
+        out_channels: int,
+            number of channels produced by the convolutional layers
+        config: dict,
+            other parameters, including
+            filter length (kernel size), activation choices,
+            weight initializer, batch normalization choices, etc. for the convolutional layers;
+            and pool size for the pooling layer
         """
         super().__init__()
         self.__num_convs = num_convs
@@ -78,7 +93,19 @@ class VGGBlock(nn.Sequential):
         )
 
     def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
-        """
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        seq_len: int,
+            length of the 1d sequence
+        batch_size: int, optional,
+            the batch size, can be None
+
+        Returns:
+        --------
+        output_shape: sequence,
+            the output shape of this block, given `seq_len` and `batch_size`
         """
         num_layers = 0
         for module in self:
@@ -99,9 +126,15 @@ class VGGBlock(nn.Sequential):
 
 class VGG6(nn.Sequential):
     """
+    CNN feature extractor of the CRNN models proposed in refs of `ATI_CNN`
     """
-    def __init__(self, in_channels:int, **config):
-        """
+    def __init__(self, in_channels:int, **config) -> NoReturn:
+        """ finished, checked,
+        
+        Parameters:
+        -----------
+        in_channels: int,
+            number of channels in the input
         """
         super().__init__()
         self.__in_channels = in_channels
@@ -131,7 +164,19 @@ class VGG6(nn.Sequential):
         return input
 
     def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
-        """
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        seq_len: int,
+            length of the 1d sequence
+        batch_size: int, optional,
+            the batch size, can be None
+
+        Returns:
+        --------
+        output_shape: sequence,
+            the output shape of this block, given `seq_len` and `batch_size`
         """
         for module in self:
             output_shape = module.compute_output_shape(seq_len, batch_size)
@@ -141,16 +186,35 @@ class VGG6(nn.Sequential):
 
 class ResNetStanfordBlock(nn.Module):
     """
+    building blocks of the CNN feature extractor `ResNetStanford`
     """
-    def __init__(self, block_index:int, in_channels:int, num_filters:int, subsample_length:int, dilation:Real=1, **config) -> NoReturn:
-        """
+    def __init__(self, block_index:int, in_channels:int, num_filters:int, subsample_length:int, dilation:int=1, **config) -> NoReturn:
+        """ finished, checked,
 
         the main stream uses `subsample_length` as stride to perform down-sampling,
         the short cut uses `subsample_length` as pool size to perform down-sampling,
 
         Parameters:
         -----------
-        to write
+        block_index: int,
+            index of the block in the whole sequence of `ResNetStanford`
+        in_channels: int,
+            number of features (channels) of the input
+        num_filters: int,
+            number of filters for the convolutional layers
+        subsample_length: int,
+            subsample length,
+            including pool size for short cut, and stride for the top convolutional layer
+        dilation: int,
+            dilation for convolutional layers
+        config: dict,
+            other parameters, including
+            filter length (kernel size), activation choices, weight initializer, dropout,
+            and short cut patterns, etc.
+
+        Issues:
+        -------
+        1. even kernel size would case mismatch of shapes of main stream and short cut
         """
         super().__init__()
         self.__block_index = block_index
@@ -160,10 +224,10 @@ class ResNetStanfordBlock(nn.Module):
         self.__stride = subsample_length
         self.__dilation = dilation
         self.config = ED(config)
+        self.__num_convs = self.config.num_skip
 
         self.short_cut = nn.MaxPool1d(self.__pool_size)
-        self.__zero_pad = (block_index % self.config.increase_channels_at) == 0 \
-            and block_index > 0
+        self.__zero_pad = ((block_index % self.config.increase_channels_at) == 0 and block_index > 0)
         
         self.main_stream = nn.Sequential()
         num_cba_layer = 1
@@ -195,21 +259,40 @@ class ResNetStanfordBlock(nn.Module):
     def forward(self, input:Tensor) -> Tensor:
         """
         """
+        print(f"forwarding in the {self.__block_index}-th `ResNetStanfordBlock`...")
+        args = {k.split("__")[1]:v for k,v in self.__dict__.items() if isinstance(v, Number) and '__' in k}
+        print(f"input arguments:\n{args}")
+        print(f"input shape = {input.shape}")
         sc = self.short_cut.forward(input)
         if self.__zero_pad:
             sc = self.zero_pad(sc)
-        output = self.main_stream.forward(input) + sc
+        output = self.main_stream.forward(input)
+        print(f"shape of short_cut output = {sc.shape}, shape of main stream output = {output.shape}")
+        output = output +sc
         return output
 
     def zero_pad(self, x:Tensor) -> Tensor:
         """
         """
+        print(f"input shape of the zero_pad layer is {x.shape}")
         out = torch.zeros_like(x)
         out = torch.cat((x, out), dim=1)
         return out
 
     def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
-        """
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        seq_len: int,
+            length of the 1d sequence
+        batch_size: int, optional,
+            the batch size, can be None
+
+        Returns:
+        --------
+        output_shape: sequence,
+            the output shape of this block, given `seq_len` and `batch_size`
         """
         _seq_len = seq_len
         for module in self.main_stream:
@@ -220,6 +303,12 @@ class ResNetStanfordBlock(nn.Module):
 
 class ResNetStanford(nn.Sequential):
     """
+    the model proposed in ref. [1] and implemented in ref. [2]
+
+    References:
+    -----------
+    [1]
+    [2]
     """
     def __init__(self, in_channels:int, **config):
         """
@@ -227,6 +316,8 @@ class ResNetStanford(nn.Sequential):
         super().__init__()
         self.__in_channels = in_channels
         self.config = ED(config)
+
+        print(f"configuration of ResNetStanford is as follows\n{dict_to_str(self.config)}")
 
         self.add_module(
             "cba_1",
@@ -242,7 +333,7 @@ class ResNetStanford(nn.Sequential):
         )
 
         module_in_channels = self.config.num_filters_start
-        for idx, subsample_length in enumerate(self.config.conv_subsample_lengths):
+        for idx, subsample_length in enumerate(self.config.subsample_lengths):
             num_filters = self.get_num_filters_at_index(idx, self.config.num_filters_start)
             self.add_module(
                 f"resnet_block_{idx}",
@@ -254,6 +345,9 @@ class ResNetStanford(nn.Sequential):
                     **self.config,
                 )
             )
+            module_in_channels = num_filters
+            # if idx % self.config.increase_channels_at == 0 and idx > 0:
+            #     module_in_channels *= 2
 
     def forward(self, input:Tensor) -> Tensor:
         """
@@ -261,15 +355,27 @@ class ResNetStanford(nn.Sequential):
         output = super().forward(input)
         return output
 
-    def get_num_filters_at_index(self, index:int, num_start_filters:int):
+    def get_num_filters_at_index(self, index:int, num_start_filters:int) -> int:
         """
+
+        Parameters:
+        -----------
+        to write
+
+        Returns:
+        --------
+        to write
         """
         return 2**int(index / self.config.increase_channels_at) * num_start_filters
 
     def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
         """
         """
-        raise NotImplementedError
+        _seq_len = seq_len
+        for module in self:
+            output_shape = module.compute_output_shape(_seq_len, batch_size)
+            _, _, _seq_len = output_shape
+        return output_shape
 
 
 class ResNetBasicBlock(nn.Module):
@@ -347,23 +453,31 @@ class ResNetBasicBlock(nn.Module):
 
     def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
         """
+
+        Parameters:
+        -----------
+        to write
         """
         raise NotImplementedError
 
 
 class ResNetBottleneck(nn.Module):
     """
+    to write
     """
     __name__ = "ResNetBottleneck"
     expansion = 4
 
     def __init__(self, in_channels:int, out_channels:int, stride:int=1, downsample:Optional[nn.Module]=None, groups:int=1, base_width:int=64, dilation:Real=1, norm_layer:Optional[nn.Module]=None, **kwargs) -> NoReturn:
-        """
+        """ NOT finished, NOT checked,
+
+        Parameters:
+        -----------
         """
         super().__init__()
         raise NotImplementedError
 
-    def forward(self, input):
+    def forward(self, input:Tensor) -> Tensor:
         """
         """
         raise NotImplementedError
@@ -371,6 +485,7 @@ class ResNetBottleneck(nn.Module):
 
 class ResNet(nn.Module):
     """
+    to write
     """
     def __init__(self, in_channels:int):
         """
@@ -386,9 +501,20 @@ class ResNet(nn.Module):
 
 class ATI_CNN(nn.Module):
     """
+
+    CRNN models proposed in the following refs.
+
+    References:
+    -----------
+    [1]
+    [2]
     """
-    def __init__(self, classes:list, input_len:int, **config):
-        """
+    def __init__(self, classes:list, input_len:int, **config) -> NoReturn:
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        to write
         """
         super().__init__()
         self.classes = classes
@@ -397,8 +523,7 @@ class ATI_CNN(nn.Module):
         self.input_len = input_len
         self.config = deepcopy(ATI_CNN_CONFIG)
         self.config.update(config)
-        nl = "\n"
-        print(f"configuration of ATI_CNN is as follows{nl}{dict_to_str(self.config)}")
+        print(f"configuration of ATI_CNN is as follows\n{dict_to_str(self.config)}")
         
         cnn_choice = self.config.cnn.name.lower()
         if cnn_choice == "vgg6":
@@ -457,10 +582,14 @@ class ATI_CNN(nn.Module):
 
 class CPSCMiniBlock(nn.Sequential):
     """
-    building block of the SOTA model of CPSC2018
+    building block of the SOTA model of CPSC2018 challenge
     """
     def __init__(self, filter_lengths:Sequence[int], subsample_lengths:Sequence[int], dropout:Optional[float]=None, **kwargs) -> NoReturn:
         """
+
+        Parameters:
+        -----------
+        to write
         """
         super().__init__()
         self.__num_convs = len(filter_lengths)
@@ -525,7 +654,11 @@ class CPSCBlock(nn.Sequential):
     CNN part of the SOTA model of the CPSC2018 challenge
     """
     def __init__(self, filter_lengths:Sequence[int], subsample_lengths:Sequence[int], dropouts:Optional[float]=None, **kwargs) -> NoReturn:
-        """
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        to write
         """
         super().__init__()
         for blk_idx, (blk_fl, blk_s, blk_d) in enumerate(zip(filter_lengths, subsample_lengths, dropouts)):
@@ -558,7 +691,9 @@ class CPSC(nn.Sequential):
     """
     SOTA model of the CPSC2018 challenge
     """
-    def __init__(self, classes:list, input_len:int, **config):
+    def __init__(self, classes:list, input_len:int, **config) -> NoReturn:
+        """
+        """
         super().__init__()
         self.classes = classes
         self.n_classes = len(classes)

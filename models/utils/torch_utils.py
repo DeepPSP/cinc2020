@@ -103,8 +103,19 @@ class Bn_Activation(nn.Sequential):
 
     batch normalization -- > activation
     """
-    def __init__(self, num_features:int, activation:Optional[Union[str,nn.Module]]=None, kw_activation:Optional[dict]=None, dropout:float=0.0) -> NoReturn:
-        """
+    def __init__(self, num_features:int, activation:Union[str,nn.Module], kw_activation:Optional[dict]=None, dropout:float=0.0) -> NoReturn:
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        num_features: int,
+            number of features (channels) of the input (and output)
+        activation: str or Module,
+            name of the activation or an activation `Module`
+        kw_activation: dict, optional,
+            key word arguments for `activation`
+        dropout: float, default 0.0,
+            if non-zero, introduces a `Dropout` layer at the end of the block
         """
         super().__init__()
         self.__num_features = num_features
@@ -138,7 +149,19 @@ class Bn_Activation(nn.Sequential):
         return output
 
     def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
-        """
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        seq_len: int,
+            length of the 1d sequence
+        batch_size: int, optional,
+            the batch size, can be None
+
+        Returns:
+        --------
+        output_shape: sequence,
+            the output shape of this `Bn_Activation` layer, given `seq_len` and `batch_size`
         """
         return (batch_size, self.__num_features, seq_len)
 
@@ -173,7 +196,7 @@ class Conv_Bn_Activation(nn.Sequential):
             a function to initialize kernel weights of the convolution,
             or name or the initialzer, can be one of the keys of Initializers
         bias: bool, default True,
-            If True, adds a learnable bias to the output
+            if True, adds a learnable bias to the output
         """
         super().__init__()
         padding = (kernel_size - 1) // 2  # 'same' padding when stride = 1
@@ -259,7 +282,7 @@ class BidirectionalLSTM(nn.Module):
     from crnn_torch of references.ati_cnn
     """
     def __init__(self, input_size:int, hidden_size:int, output_size:int) -> NoReturn:
-        """
+        """ finished, checked,
 
         Parameters:
         -----------
@@ -292,13 +315,15 @@ class StackedLSTM(nn.Sequential):
 
     stacked LSTM, which allows different hidden sizes for each LSTM layer
 
-    NOTE that `batch_first` is fixed `False`
-    NOTE: currently, how to correctly pass the argument `hx` between LSTM layers is not known to me, hence should be careful (and not recommended, use `nn.LSTM` and set `num_layers` instead) to use
+    NOTE:
+    -----
+    1. `batch_first` is fixed `False`
+    2. currently, how to correctly pass the argument `hx` between LSTM layers is not known to me, hence should be careful (and not recommended, use `nn.LSTM` and set `num_layers` instead) to use
     """
     def __init__(self, input_size:int, hidden_sizes:Sequence[int], bias:Union[Sequence[bool], bool]=True, dropout:float=0.0, bidirectional:bool=True, return_sequences:bool=True) -> NoReturn:
-        """
+        """ finished, checked,
 
-        Parameters: (to write)
+        Parameters:
         -----------
         input_size: int,
             the number of features in the input
@@ -308,9 +333,9 @@ class StackedLSTM(nn.Sequential):
             use bias weights or not
         dropout: float, default 0.0,
             if non-zero, introduces a `Dropout` layer on the outputs of each
-            LSTM layer except the last layer, with dropout probability equal to this value
+            LSTM layer EXCEPT the last layer, with dropout probability equal to this value
         bidirectional: bool, default True,
-        return_sequences: bool, default True
+        return_sequences: bool, default True,
         """
         super().__init__()
         
@@ -348,7 +373,7 @@ class StackedLSTM(nn.Sequential):
     
     def forward(self, input:Union[Tensor, PackedSequence], hx:Optional[Tuple[Tensor, Tensor]]=None) -> Union[Tensor, Tuple[Union[Tensor, PackedSequence], Tuple[Tensor, Tensor]]]:
         """
-        keep up with `nn.LSTM.forward`
+        keep up with `nn.LSTM.forward`, parameters ref. `nn.LSTM.forward`
         """
         n_layers = 0
         _input, _hx = input, hx
@@ -447,14 +472,21 @@ class AML_GatedAttention(nn.Module):
 class AttentionWithContext(nn.Module):
     """ finished, checked,
 
-    from CPSC0236
+    from 0236 of CPSC2018 challenge
     """
     def __init__(self, in_channels:int, out_channels:int, bias:bool=True, initializer:str='glorot_uniform'):
-        """
+        """ finished, checked
 
         Parameters:
         -----------
-        to write
+        in_channels: int,
+            number of channels in the input signal
+        out_channels: int,
+            number of channels produced by the convolution
+        bias: bool, default True,
+            if True, adds a learnable bias to the output
+        initializer: str, default 'glorot_uniform',
+            weight initializer
         """
         super().__init__()
         self.supports_masking = True
@@ -478,11 +510,19 @@ class AttentionWithContext(nn.Module):
 
     def compute_mask(self, input:Tensor, input_mask:Optional[Tensor]=None):
         """
+
+        Parameters:
+        -----------
+        to write
         """
         return None
 
     def forward(self, input:Tensor, mask:Optional[Tensor]=None) -> Tensor:
         """
+
+        Parameters:
+        -----------
+        to write
         """
         print(f"AttentionWithContext forward: input.shape = {input.shape}, W.shape = {self.W.shape}")
         uit = torch.tensordot(input, self.W, dims=1)
@@ -672,11 +712,21 @@ class DoubleConv(nn.Sequential):
     """
 
     def __init__(self, in_channels:int, out_channels:int, filter_length:int, activation:Union[str,nn.Module]='relu', mid_channels:Optional[int]=None) -> NoReturn:
-        """
+        """ finished, NOT checked,
 
         Parameters:
         -----------
-        to write
+        in_channels: int,
+            number of channels in the input
+        out_channels: int,
+            number of channels produced by the last convolutional layer
+        filter_length: int,
+            length of the filters (kernel size)
+        activation: str or Module, default 'relu',
+            activation of the convolutional layers
+        mid_channels: int, optional,
+            number of channels produced by the first convolutional layer,
+            defaults to `out_channels`
         """
         super().__init__()
         self.__in_channels = in_channels
@@ -712,7 +762,19 @@ class DoubleConv(nn.Sequential):
         return out
 
     def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
-        """
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        seq_len: int,
+            length of the 1d sequence
+        batch_size: int, optional,
+            the batch size, can be None
+
+        Returns:
+        --------
+        output_shape: sequence,
+            the output shape of this `DoubleConv` layer, given `seq_len` and `batch_size`
         """
         _seq_len = seq_len
         for module in self:
@@ -730,11 +792,21 @@ class DownDoubleConv(nn.Sequential):
     https://github.com/milesial/Pytorch-UNet/blob/master/unet/unet_parts.py
     """
     def __init__(self, down_scale:int, in_channels:int, out_channels:int, filter_length:int, activation:Union[str,nn.Module]='relu', mid_channels:Optional[int]=None) -> NoReturn:
-        """
+        """ finished, NOT checked,
 
         Parameters:
         -----------
-        to write
+        in_channels: int,
+            number of channels in the input
+        out_channels: int,
+            number of channels produced by the last convolutional layer
+        filter_length: int,
+            length of the filters (kernel size)
+        activation: str or Module, default 'relu',
+            activation of the convolutional layers
+        mid_channels: int, optional,
+            number of channels produced by the first convolutional layer,
+            defaults to `out_channels`
         """
         super().__init__()
         self.__down_scale = down_scale
@@ -765,7 +837,19 @@ class DownDoubleConv(nn.Sequential):
         return out
 
     def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
-        """
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        seq_len: int,
+            length of the 1d sequence
+        batch_size: int, optional,
+            the batch size, can be None
+
+        Returns:
+        --------
+        output_shape: sequence,
+            the output shape of this `DownDoubleConv` layer, given `seq_len` and `batch_size`
         """
         _seq_len = seq_len
         for idx, module in enumerate(self):
@@ -788,10 +872,25 @@ class UpDoubleConv(nn.Module):
     https://github.com/milesial/Pytorch-UNet/blob/master/unet/unet_parts.py
     """
     def __init__(self, up_scale:int, in_channels:int, out_channels:int, filter_length:int, activation:Union[str,nn.Module]='relu', mode:str='bilinear', mid_channels:Optional[int]=None) -> NoReturn:
-        """
+        """ NOT finished, NOT checked,
+
         Parameters:
         -----------
-        to write
+        up_scale: int,
+            scale of up sampling
+        in_channels: int,
+            number of channels in the input
+        out_channels: int,
+            number of channels produced by the convolutional layers
+        filter_length: int,
+            length of the filters (kernel size)
+        activation: str or Module, default 'relu',
+            activation of the convolutional layers
+        mode: str, default 'bilinear',
+            mode of up sampling
+        mid_channels: int, optional,
+            number of channels produced by the first convolutional layer,
+            defaults to `out_channels`
         """
         super().__init__()
         self.__up_scale = up_scale
@@ -803,38 +902,42 @@ class UpDoubleConv(nn.Module):
         raise NotImplementedError
         # the following has to be checked
         # if bilinear, use the normal convolutions to reduce the number of channels
-        if bilinear:
-            self.up = nn.Upsample(
-                scale_factor=self.__up_scale,
-                mode=mode, align_corners=True,
-            )
-            self.conv = DoubleConv(
-                in_channels=self.__in_channels,
-                out_channels=self.__out_channels,
-                filter_length=self.__kernel_size,
-                activation=activation,
-                mid_channels=self.__mid_channels,
-            )
-        else:
-            self.up = nn.ConvTranspose1d(in_channels , in_channels // 2, kernel_size=2, stride=2)
-            self.conv = DoubleConv(in_channels, out_channels)
+        # if bilinear:
+        #     self.up = nn.Upsample(
+        #         scale_factor=self.__up_scale,
+        #         mode=mode, align_corners=True,
+        #     )
+        #     self.conv = DoubleConv(
+        #         in_channels=self.__in_channels,
+        #         out_channels=self.__out_channels,
+        #         filter_length=self.__kernel_size,
+        #         activation=activation,
+        #         mid_channels=self.__mid_channels,
+        #     )
+        # else:
+        #     self.up = nn.ConvTranspose1d(in_channels , in_channels // 2, kernel_size=2, stride=2)
+        #     self.conv = DoubleConv(in_channels, out_channels)
 
     def forward(self, x1:Tensor, x2:Tensor) -> Tensor:
         """
+
+        Parameters:
+        -----------
+        to write
         """
         raise NotImplementedError
-        x1 = self.up(x1)
-        # input is CHW
-        diffY = x2.size()[2] - x1.size()[2]
-        diffX = x2.size()[3] - x1.size()[3]
+        # x1 = self.up(x1)
+        # # input is CHW
+        # diffY = x2.size()[2] - x1.size()[2]
+        # diffX = x2.size()[3] - x1.size()[3]
 
-        x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2,
-                        diffY // 2, diffY - diffY // 2])
-        # if you have padding issues, see
-        # https://github.com/HaiyongJiang/U-Net-Pytorch-Unstructured-Buggy/commit/0e854509c2cea854e247a9c615f175f76fbb2e3a
-        # https://github.com/xiaopeng-liao/Pytorch-UNet/commit/8ebac70e633bac59fc22bb5195e513d5832fb3bd
-        x = torch.cat([x2, x1], dim=1)
-        return self.conv(x)
+        # x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2,
+        #                 diffY // 2, diffY - diffY // 2])
+        # # if you have padding issues, see
+        # # https://github.com/HaiyongJiang/U-Net-Pytorch-Unstructured-Buggy/commit/0e854509c2cea854e247a9c615f175f76fbb2e3a
+        # # https://github.com/xiaopeng-liao/Pytorch-UNet/commit/8ebac70e633bac59fc22bb5195e513d5832fb3bd
+        # x = torch.cat([x2, x1], dim=1)
+        # return self.conv(x)
 
     def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
         """

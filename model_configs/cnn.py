@@ -44,7 +44,7 @@ resnet_block_basic = ED()
 
 resnet_block_stanford = ED()
 resnet_block_stanford.subsample_lengths = [1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2]
-resnet_block_stanford.filter_length = 16
+resnet_block_stanford.filter_length = 17
 resnet_block_stanford.num_filters_start = 32
 resnet_block_stanford.init = "he_normal"
 resnet_block_stanford.activation = "relu"

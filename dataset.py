@@ -676,8 +676,8 @@ class CINC2020(object):
 
         get the sampling frequency of a record
 
-        Paramters:
-        ----------
+        Parameters:
+        -----------
         rec: str,
             name of the record
 
