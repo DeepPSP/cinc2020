@@ -403,16 +403,16 @@ class CINC2020(object):
         """
         assert data_format.lower() in ['channel_first', 'lead_first', 'channel_last', 'lead_last']
         tranche = self._get_tranche(rec)
-        if backend.lower() == 'scipy':
+        if backend.lower() == 'wfdb':
+            rec_fp = os.path.join(self.db_dirs[tranche], rec)
+            data = np.asarray(wfdb.rdrecord(rec_fp).p_signal.T, dtype=np.float64)
+        elif backend.lower() == 'scipy':
             rec_fp = os.path.join(self.db_dirs[tranche], f'{rec}.{self.rec_ext}')
-            data = loadmat(rec_fp)
+            data = loadmat(rec_fp)['val']
             header_info = self.load_ann(rec, raw=False)['df_leads']
             baselines = header_info['baseline'].values.reshape(data.shape[0],-1)
             adc_gain = header_info['adc_gain'].values.reshape(data.shape[0],-1)
-            data = np.asarray(data['val']-baselines, dtype=np.float64) / adc_gain
-        elif backend.lower() == 'wfdb':
-            rec_fp = os.path.join(self.db_dirs[tranche], rec)
-            data = np.asarray(wfdb.rdrecord(rec_fp).p_signal.T, dtype=np.float64)
+            data = np.asarray(data-baselines, dtype=np.float64) / adc_gain
         else:
             raise ValueError(f"backend `{backend.lower()}` not supported for loading data")
 
