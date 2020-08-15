@@ -26,6 +26,13 @@ from models.utils.torch_utils import (
 from utils.misc import dict_to_str
 
 
+__all__ = [
+    # CRNN structure 1
+    "ATI_CNN",
+    "VGGBlock", "VGG6",
+]
+
+
 class VGGBlock(nn.Sequential):
     """
     building blocks of the CNN feature extractor `VGG6`

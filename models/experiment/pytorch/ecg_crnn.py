@@ -27,8 +27,14 @@ from utils.misc import dict_to_str
 
 
 __all__ = [
+    # CRNN structure 1
     "ATI_CNN",
+    "VGGBlock", "VGG6",
+    "ResNetStanfordBlock", "ResNetStanford",
+    "ResNetBasicBlock", "ResNetBottleneck", "ResNet",
+    # CRNN structure 2
     "CPSC",
+    "CPSCMiniBlock", "CPSCBlock",
 ]
 
 
