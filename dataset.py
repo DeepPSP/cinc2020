@@ -129,6 +129,7 @@ class CINC2020(object):
     [3] https://physionet.org/content/incartdb/1.0.0/
     [4] https://physionet.org/content/ptbdb/1.0.0/
     [5] https://physionet.org/content/ptb-xl/1.0.1/
+    [6] https://storage.cloud.google.com/physionet-challenge-2020-12-lead-ecg-public/
     """
     def __init__(self, db_dir:str, working_dir:Optional[str]=None, verbose:int=2, **kwargs):
         """

@@ -205,7 +205,7 @@ def electrical_axis_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real
             axis = 'LAD'
         elif not lead_I_positive and lead_aVF_positive:
             axis = 'RAD'
-        else:
+        else:  # if `rpeaks` is empty, all conditions are False
             axis = 'normal'  # might also include extreme axis
     elif decision_method == '3-lead':
         if lead_I_positive and not lead_II_positive and not lead_aVF_positive:
@@ -247,11 +247,15 @@ def brady_tachy_detector(rpeaks:np.ndarray, fs:Real, normal_rr_range:Optional[Se
     rr_intervals = np.diff(rpeaks)
     mean_rr = np.mean(rr_intervals)
     if verbose >= 1:
-        print(f"mean_rr = {round(samples2ms(mean_rr, fs), 1)} ms, with detailed rr_intervals (with units in ms) = {(np.vectorize(lambda item:samples2ms(item, fs))(rr_intervals)).tolist()}")
+        if len(rr_intervals) > 0:
+            print(f"mean_rr = {round(samples2ms(mean_rr, fs), 1)} ms, with detailed rr_intervals (with units in ms) = {(np.vectorize(lambda item:samples2ms(item, fs))(rr_intervals)).tolist()}")
+        else:
+            print(f"not enough r peaks for computing rr intervals")
     nrr = normal_rr_range or [FeatureCfg.tachy_threshold, FeatureCfg.brady_threshold]
     nrr = sorted(nrr)
     assert len(nrr) >= 2
     nrr = [ms2samples(nrr[0], fs), ms2samples(nrr[-1], fs)]
+    # if mean_rr is nan, then all conditions are False, hence the `else` branch is entered
     if mean_rr < nrr[0]:
         conclusion = "T"
     elif mean_rr > nrr[1]:
@@ -304,23 +308,31 @@ def LQRSV_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real, sig_fmt:
 
     l_qrs_limb_leads = []
     l_qrs_precordial_leads = []
-    for itv in l_qrs:
-        for idx in limb_lead_inds:
-            l_qrs_limb_leads.append(sig_ampl[idx, itv[0]:itv[1]].flatten())
-        for idx in precordial_lead_inds:
-            l_qrs_precordial_leads.append(sig_ampl[idx, itv[0]:itv[1]].flatten())
+    
+    if len(l_qrs) == 0:
+        # no rpeaks detected
+        low_qrs_limb_leads = [np.max(sig_ampl[idx]) <= 0.5 + FeatureCfg.lqrsv_ampl_bias for idx in limb_lead_inds]
+        low_qrs_limb_leads = sum(low_qrs_limb_leads) / len(low_qrs_limb_leads)  # to ratio
+        low_qrs_precordial_leads = [np.max(sig_ampl[idx]) <= 1 + FeatureCfg.lqrsv_ampl_bias for idx in precordial_lead_inds]
+        low_qrs_precordial_leads = sum(low_qrs_precordial_leads) / len(low_qrs_precordial_leads)
+    else:
+        for itv in l_qrs:
+            for idx in limb_lead_inds:
+                l_qrs_limb_leads.append(sig_ampl[idx, itv[0]:itv[1]].flatten())
+            for idx in precordial_lead_inds:
+                l_qrs_precordial_leads.append(sig_ampl[idx, itv[0]:itv[1]].flatten())
 
-    if verbose >= 2:
-        print("for limb leads, the qrs amplitudes are as follows:")
-        for idx, lead_name in enumerate(LimbLeads):
-            print(f"for limb lead {lead_name}, the qrs amplitudes are {[np.max(item) for item in l_qrs_limb_leads[idx*len(l_qrs): (idx+1)*len(l_qrs)]]}")
-        for idx, lead_name in enumerate(PrecordialLeads):
-            print(f"for precordial lead {lead_name}, the qrs amplitudes are {[np.max(item) for item in l_qrs_limb_leads[idx*len(l_qrs): (idx+1)*len(l_qrs)]]}")
+        if verbose >= 2:
+            print("for limb leads, the qrs amplitudes are as follows:")
+            for idx, lead_name in enumerate(LimbLeads):
+                print(f"for limb lead {lead_name}, the qrs amplitudes are {[np.max(item) for item in l_qrs_limb_leads[idx*len(l_qrs): (idx+1)*len(l_qrs)]]}")
+            for idx, lead_name in enumerate(PrecordialLeads):
+                print(f"for precordial lead {lead_name}, the qrs amplitudes are {[np.max(item) for item in l_qrs_limb_leads[idx*len(l_qrs): (idx+1)*len(l_qrs)]]}")
 
-    low_qrs_limb_leads = [np.max(item) <= 0.5 + FeatureCfg.lqrsv_ampl_bias for item in l_qrs_limb_leads]
-    low_qrs_limb_leads = sum(low_qrs_limb_leads) / len(low_qrs_limb_leads)  # to ratio
-    low_qrs_precordial_leads = [np.max(item) <= 1 + FeatureCfg.lqrsv_ampl_bias for item in l_qrs_precordial_leads]
-    low_qrs_precordial_leads = sum(low_qrs_precordial_leads) / len(low_qrs_precordial_leads)
+        low_qrs_limb_leads = [np.max(item) <= 0.5 + FeatureCfg.lqrsv_ampl_bias for item in l_qrs_limb_leads]
+        low_qrs_limb_leads = sum(low_qrs_limb_leads) / len(low_qrs_limb_leads)  # to ratio
+        low_qrs_precordial_leads = [np.max(item) <= 1 + FeatureCfg.lqrsv_ampl_bias for item in l_qrs_precordial_leads]
+        low_qrs_precordial_leads = sum(low_qrs_precordial_leads) / len(low_qrs_precordial_leads)
 
     if verbose >= 2:
         print(f"ratio of low qrs in limb leads = {low_qrs_limb_leads}")
