@@ -470,7 +470,7 @@ class ResNetBasicBlock(nn.Module):
         self.downsample = downsample
         self.stride = stride
 
-    def forward(self, input:Tensor) -> Tensor`:
+    def forward(self, input:Tensor) -> Tensor:
         """
         """
         identity = input

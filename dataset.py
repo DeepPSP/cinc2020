@@ -499,10 +499,22 @@ class CINC2020(object):
             ann_dict['age'] = int([l for l in header_reader.comments if 'Age' in l][0].split(": ")[-1])
         except:
             ann_dict['age'] = np.nan
-        ann_dict['sex'] = [l for l in header_reader.comments if 'Sex' in l][0].split(": ")[-1]
-        ann_dict['medical_prescription'] = [l for l in header_reader.comments if 'Rx' in l][0].split(": ")[-1]
-        ann_dict['history'] = [l for l in header_reader.comments if 'Hx' in l][0].split(": ")[-1]
-        ann_dict['symptom_or_surgery'] = [l for l in header_reader.comments if 'Sx' in l][0].split(": ")[-1]
+        try:
+            ann_dict['sex'] = [l for l in header_reader.comments if 'Sex' in l][0].split(": ")[-1]
+        except:
+            ann_dict['sex'] = 'Unknown'
+        try:
+            ann_dict['medical_prescription'] = [l for l in header_reader.comments if 'Rx' in l][0].split(": ")[-1]
+        except:
+            ann_dict['medical_prescription'] = 'Unknown'
+        try:
+            ann_dict['history'] = [l for l in header_reader.comments if 'Hx' in l][0].split(": ")[-1]
+        except:
+            ann_dict['history'] = 'Unknown'
+        try:
+            ann_dict['symptom_or_surgery'] = [l for l in header_reader.comments if 'Sx' in l][0].split(": ")[-1]
+        except:
+            ann_dict['symptom_or_surgery'] = 'Unknown'
 
         l_Dx = [l for l in header_reader.comments if 'Dx' in l][0].split(": ")[-1].split(",")
         ann_dict['diagnosis'], ann_dict['diagnosis_scored'] = self._parse_diagnosis(l_Dx)
@@ -544,10 +556,22 @@ class CINC2020(object):
             ann_dict['age'] = int([l for l in header_data if l.startswith('#Age')][0].split(": ")[-1])
         except:
             ann_dict['age'] = np.nan
-        ann_dict['sex'] = [l for l in header_data if l.startswith('#Sex')][0].split(": ")[-1]
-        ann_dict['medical_prescription'] = [l for l in header_data if l.startswith('#Rx')][0].split(": ")[-1]
-        ann_dict['history'] = [l for l in header_data if l.startswith('#Hx')][0].split(": ")[-1]
-        ann_dict['symptom_or_surgery'] = [l for l in header_data if l.startswith('#Sx')][0].split(": ")[-1]
+        try:
+            ann_dict['sex'] = [l for l in header_data if l.startswith('#Sex')][0].split(": ")[-1]
+        except:
+            ann_dict['sex'] = 'Unknown'
+        try:
+            ann_dict['medical_prescription'] = [l for l in header_data if l.startswith('#Rx')][0].split(": ")[-1]
+        except:
+            ann_dict['medical_prescription'] = 'Unknown'
+        try:
+            ann_dict['history'] = [l for l in header_data if l.startswith('#Hx')][0].split(": ")[-1]
+        except:
+            ann_dict['history'] = 'Unknown'
+        try:
+            ann_dict['symptom_or_surgery'] = [l for l in header_data if l.startswith('#Sx')][0].split(": ")[-1]
+        except:
+            ann_dict['symptom_or_surgery'] = 'Unknown'
 
         l_Dx = [l for l in header_data if l.startswith('#Dx')][0].split(": ")[-1].split(",")
         ann_dict['diagnosis'], ann_dict['diagnosis_scored'] = self._parse_diagnosis(l_Dx)
