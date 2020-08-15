@@ -252,7 +252,6 @@ class ATI_CNN(nn.Module):
         
         self.clf = nn.Linear(clf_input_size, self.n_classes)
 
-
     def forward(self, input:Tensor) -> Tensor:
         """
         """

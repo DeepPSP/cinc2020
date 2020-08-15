@@ -664,7 +664,6 @@ class ATI_CNN(nn.Module):
         
         self.clf = nn.Linear(clf_input_size, self.n_classes)
 
-
     def forward(self, input:Tensor) -> Tensor:
         """
         """
@@ -900,7 +899,6 @@ class CPSC(nn.Sequential):
 
         # self.clf = nn.Linear()  # TODO: set correct the in-and-out-features
         
-
     def forward(self, input:Tensor) -> Tensor:
         """
         """
