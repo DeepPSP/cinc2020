@@ -2,9 +2,7 @@
 CRNN structure models,
 for classifying ECG arrhythmias
 """
-import sys
 from copy import deepcopy
-from collections import OrderedDict
 from typing import Union, Optional, Sequence, NoReturn
 from numbers import Real, Number
 
@@ -14,7 +12,7 @@ from torch import Tensor
 import torch.nn.functional as F
 from easydict import EasyDict as ED
 
-from cfg import ModelCfg
+# from cfg import ModelCfg
 from model_configs.ati_cnn import ATI_CNN_CONFIG
 from model_configs.cpsc import CPSC_CONFIG
 from models.utils.torch_utils import (
