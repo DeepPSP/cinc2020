@@ -37,6 +37,7 @@ class VGGBlock(nn.Sequential):
     """
     building blocks of the CNN feature extractor `VGG6`
     """
+    __DEBUG__ = False
     def __init__(self, num_convs:int, in_channels:int, out_channels:int, **config) -> NoReturn:
         """ finished, checked,
 
@@ -127,6 +128,7 @@ class VGG6(nn.Sequential):
     """
     CNN feature extractor of the CRNN models proposed in refs of `ATI_CNN`
     """
+    __DEBUG__ = False
     def __init__(self, in_channels:int, **config) -> NoReturn:
         """ finished, checked,
         
@@ -197,6 +199,7 @@ class ATI_CNN(nn.Module):
     [1] Yao, Qihang, et al. "Time-Incremental Convolutional Neural Network for Arrhythmia Detection in Varied-Length Electrocardiogram." 2018 IEEE 16th Intl Conf on Dependable, Autonomic and Secure Computing, 16th Intl Conf on Pervasive Intelligence and Computing, 4th Intl Conf on Big Data Intelligence and Computing and Cyber Science and Technology Congress (DASC/PiCom/DataCom/CyberSciTech). IEEE, 2018.
     [2] Yao, Qihang, et al. "Multi-class Arrhythmia detection from 12-lead varied-length ECG using Attention-based Time-Incremental Convolutional Neural Network." Information Fusion 53 (2020): 174-182.
     """
+    __DEBUG__ = False
     def __init__(self, classes:list, input_len:int, **config) -> NoReturn:
         """ finished, checked,
 

@@ -42,6 +42,7 @@ class VGGBlock(nn.Sequential):
     """
     building blocks of the CNN feature extractor `VGG6`
     """
+    __DEBUG__ = False
     def __init__(self, num_convs:int, in_channels:int, out_channels:int, **config) -> NoReturn:
         """ finished, checked,
 
@@ -132,6 +133,7 @@ class VGG6(nn.Sequential):
     """
     CNN feature extractor of the CRNN models proposed in refs of `ATI_CNN`
     """
+    __DEBUG__ = True
     def __init__(self, in_channels:int, **config) -> NoReturn:
         """ finished, checked,
         
@@ -196,6 +198,7 @@ class ResNetStanfordBlock(nn.Module):
     """
     building blocks of the CNN feature extractor `ResNetStanford`
     """
+    __DEBUG__ = True
     def __init__(self, block_index:int, in_channels:int, num_filters:int, subsample_length:int, dilation:int=1, **config) -> NoReturn:
         """ finished, checked,
 
@@ -267,22 +270,25 @@ class ResNetStanfordBlock(nn.Module):
     def forward(self, input:Tensor) -> Tensor:
         """
         """
-        # print(f"forwarding in the {self.__block_index}-th `ResNetStanfordBlock`...")
-        # args = {k.split("__")[1]:v for k,v in self.__dict__.items() if isinstance(v, Number) and '__' in k}
-        # print(f"input arguments:\n{args}")
-        # print(f"input shape = {input.shape}")
+        if self.__DEBUG__:
+            print(f"forwarding in the {self.__block_index}-th `ResNetStanfordBlock`...")
+            args = {k.split("__")[1]:v for k,v in self.__dict__.items() if isinstance(v, Number) and '__' in k}
+            print(f"input arguments:\n{args}")
+            print(f"input shape = {input.shape}")
         sc = self.short_cut.forward(input)
         if self.__zero_pad:
             sc = self.zero_pad(sc)
         output = self.main_stream.forward(input)
-        # print(f"shape of short_cut output = {sc.shape}, shape of main stream output = {output.shape}")
+        if self.__DEBUG__:
+            print(f"shape of short_cut output = {sc.shape}, shape of main stream output = {output.shape}")
         output = output +sc
         return output
 
     def zero_pad(self, x:Tensor) -> Tensor:
         """
         """
-        # print(f"input shape of the zero_pad layer is {x.shape}")
+        if self.__DEBUG__:
+            print(f"input shape of the zero_pad layer is {x.shape}")
         out = torch.zeros_like(x)
         out = torch.cat((x, out), dim=1)
         return out
@@ -318,6 +324,7 @@ class ResNetStanford(nn.Sequential):
     [1] Hannun, Awni Y., et al. "Cardiologist-level arrhythmia detection and classification in ambulatory electrocardiograms using a deep neural network." Nature medicine 25.1 (2019): 65.
     [2] https://github.com/awni/ecg
     """
+    __DEBUG__ = True
     def __init__(self, in_channels:int, **config):
         """
         """
@@ -325,7 +332,8 @@ class ResNetStanford(nn.Sequential):
         self.__in_channels = in_channels
         self.config = ED(config)
 
-        print(f"configuration of ResNetStanford is as follows\n{dict_to_str(self.config)}")
+        if self.__DEBUG__:
+            print(f"configuration of ResNetStanford is as follows\n{dict_to_str(self.config)}")
 
         self.add_module(
             "cba_1",
@@ -416,6 +424,7 @@ class ResNetBasicBlock(nn.Module):
     1. check performances of activations other than "nn.ReLU", especially mish and swish
     2. to add
     """
+    __DEBUG__ = True
     __name__ = "ResNetBasicBlock"
     expansion = 1
 
@@ -514,6 +523,7 @@ class ResNetBottleneck(nn.Module):
     """
     to write
     """
+    __DEBUG__ = True
     __name__ = "ResNetBottleneck"
     expansion = 4
 
@@ -570,6 +580,7 @@ class ResNet(nn.Module):
     """
     to write
     """
+    __DEBUG__ = True
     def __init__(self, in_channels:int):
         """
         """
@@ -609,6 +620,7 @@ class ATI_CNN(nn.Module):
     [1] Yao, Qihang, et al. "Time-Incremental Convolutional Neural Network for Arrhythmia Detection in Varied-Length Electrocardiogram." 2018 IEEE 16th Intl Conf on Dependable, Autonomic and Secure Computing, 16th Intl Conf on Pervasive Intelligence and Computing, 4th Intl Conf on Big Data Intelligence and Computing and Cyber Science and Technology Congress (DASC/PiCom/DataCom/CyberSciTech). IEEE, 2018.
     [2] Yao, Qihang, et al. "Multi-class Arrhythmia detection from 12-lead varied-length ECG using Attention-based Time-Incremental Convolutional Neural Network." Information Fusion 53 (2020): 174-182.
     """
+    __DEBUG__ = True
     def __init__(self, classes:list, input_len:int, **config) -> NoReturn:
         """ finished, checked,
 
@@ -629,7 +641,8 @@ class ATI_CNN(nn.Module):
         self.input_len = input_len
         self.config = deepcopy(ATI_CNN_CONFIG)
         self.config.update(config)
-        print(f"configuration of ATI_CNN is as follows\n{dict_to_str(self.config)}")
+        if self.__DEBUG__:
+            print(f"configuration of ATI_CNN is as follows\n{dict_to_str(self.config)}")
         
         cnn_choice = self.config.cnn.name.lower()
         if cnn_choice == "vgg6":
@@ -639,7 +652,8 @@ class ATI_CNN(nn.Module):
             raise NotImplementedError
         cnn_output_shape = self.cnn.compute_output_shape(input_len, batch_size=None)
         self.cnn_output_len = cnn_output_shape[2]
-        print(f"cnn output shape (batch_size, features, seq_len) = {cnn_output_shape}")
+        if self.__DEBUG__:
+            print(f"cnn output shape (batch_size, features, seq_len) = {cnn_output_shape}")
 
         rnn_choice = self.config.rnn.name.lower()
         if rnn_choice == 'lstm':
@@ -689,6 +703,7 @@ class CPSCMiniBlock(nn.Sequential):
     """
     building block of the SOTA model of CPSC2018 challenge
     """
+    __DEBUG__ = True
     def __init__(self, filter_lengths:Sequence[int], subsample_lengths:Sequence[int], dropout:Optional[float]=None, **kwargs) -> NoReturn:
         """
 
@@ -776,6 +791,7 @@ class CPSCBlock(nn.Sequential):
     """
     CNN part of the SOTA model of the CPSC2018 challenge
     """
+    __DEBUG__ = True
     def __init__(self, filter_lengths:Sequence[int], subsample_lengths:Sequence[int], dropouts:Optional[float]=None, **kwargs) -> NoReturn:
         """ finished, checked,
 
@@ -832,6 +848,7 @@ class CPSC(nn.Sequential):
     """
     SOTA model of the CPSC2018 challenge
     """
+    __DEBUG__ = True
     def __init__(self, classes:list, input_len:int, **config) -> NoReturn:
         """
 
@@ -852,7 +869,8 @@ class CPSC(nn.Sequential):
         self.input_len = input_len
         self.config = deepcopy(CPSC_CONFIG)
         self.config.update(config)
-        print(f"configuration of CPSC is as follows\n{dict_to_str(self.config)}")
+        if self.__DEBUG__:
+            print(f"configuration of CPSC is as follows\n{dict_to_str(self.config)}")
 
         cnn_choice = self.config.cnn.name.lower()
         if cnn_choice == 'cpsc_2018':
