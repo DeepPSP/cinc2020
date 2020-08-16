@@ -36,3 +36,6 @@ else:
 
 
 CPSC_CONFIG.rnn = ED()
+CPSC_CONFIG.rnn.activation = "leaky"
+CPSC_CONFIG.rnn.kw_activation = ED(negative_slope=0.2)
+CPSC_CONFIG.rnn.dropout = 0.2

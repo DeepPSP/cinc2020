@@ -640,6 +640,7 @@ class ResNet(nn.Sequential):
     to write
     """
     __DEBUG__ = True
+    building_block = ResNetBasicBlock
     def __init__(self, in_channels:int, **config) -> NoReturn:
         """ finished, checked,
         
@@ -655,8 +656,8 @@ class ResNet(nn.Sequential):
         self.config = ED(config)
         if self.__DEBUG__:
             print(f"configuration of ResNet is as follows\n{dict_to_str(self.config)}")
-        self.__building_block = \
-            ResNetBasicBlock if self.config.name == 'resnet' else ResNetBottleNeck
+        # self.__building_block = \
+        #     ResNetBasicBlock if self.config.name == 'resnet' else ResNetBottleNeck
         
         self.add_module(
             "init_cba",
@@ -680,7 +681,6 @@ class ResNet(nn.Sequential):
                     kernel_size=self.config.init_pool_size,
                     stride=self.config.init_pool_stride,
                     padding=(self.config.init_pool_size-1)//2,
-                    bias=self.config.bias,
                 )
             )
 
@@ -779,7 +779,8 @@ class ATI_CNN(nn.Module):
             self.cnn = VGG6(self.n_leads, **(self.config.cnn.vgg6))
             rnn_input_size = self.config.cnn.vgg6.num_filters[-1]
         elif cnn_choice == "resnet":
-            raise NotImplementedError
+            self.cnn = ResNet(self.n_leads, **(self.config.cnn.resnet))
+            rnn_input_size = 2**len(self.config.cnn.num_blocks) * self.config.cnn.init_num_filters
         cnn_output_shape = self.cnn.compute_output_shape(input_len, batch_size=None)
         self.cnn_output_len = cnn_output_shape[2]
         if self.__DEBUG__:
@@ -1051,4 +1052,6 @@ class CPSC(nn.Sequential):
     def forward(self, input:Tensor) -> Tensor:
         """
         """
-        raise NotImplementedError
+        output = self.cnn(input)
+        output = self.rnn(output)
+        return output
