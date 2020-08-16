@@ -44,27 +44,34 @@ vgg6.num_filters = [64, 128, 256, 512, 512]
 
 
 # ResNet
-resnet_block_basic = ED()
-resnet_block_basic.increase_channels_at = 4
-resnet_block_basic.increase_channels_method = 'conv'  # or 'zero_padding'
-resnet_block_basic.num_skip = 2
-resnet_block_basic.subsample_lengths = [
-    1, 2, 1, 2,
-    1, 2, 1, 2,
-    1, 2, 1, 2,
-    1, 2, 1, 2,
+resnet = ED()
+resnet.num_blocks = [
+    2, 2, 2, 2,
 ]
-resnet_block_basic.subsample_method = 'conv'  # 'max', 'avg'
-resnet_block_basic.filter_length = 17
-resnet_block_basic.num_filters_start = 32
-resnet_block_basic.kernel_initializer = "he_normal"
-resnet_block_basic.kw_initializer = {}
-resnet_block_basic.activation = "relu"
-resnet_block_basic.kw_activation = {}
+resnet.init_filter_length = 11  # corr. to 22 ms
+resnet.kernel_initializer = "he_normal"
+resnet.kw_initializer = {}
+resnet.activation = "relu"
+resnet.kw_activation = {}
+
+resnet_block_basic = ED()
+resnet_block_basic.increase_channels_method = 'conv'  # or 'zero_padding'
+resnet_block_basic.subsample_method = 'conv'  # or 'max', 'avg'
+resnet_block_basic.filter_length = 3
+resnet_block_basic.kernel_initializer = resnet.kernel_initializer
+resnet_block_basic.kw_initializer = deepcopy(resnet.kw_initializer)
+resnet_block_basic.activation = resnet.activation
+resnet_block_basic.kw_activation = deepcopy(resnet.kw_activation)
 
 resnet_bottle_neck = ED()
+resnet_bottle_neck.kernel_initializer = resnet.kernel_initializer
+resnet_bottle_neck.kw_initializer = deepcopy(resnet.kw_initializer)
+resnet_bottle_neck.activation = resnet.activation
+resnet_bottle_neck.kw_activation = deepcopy(resnet.kw_activation)
 
-resnet = ED()
+
+# ResNet Stanford
+resnet_stanford = ED()
 
 resnet_block_stanford = ED()
 resnet_block_stanford.increase_channels_at = 4
@@ -84,8 +91,6 @@ resnet_block_stanford.kw_initializer = {}
 resnet_block_stanford.activation = "relu"
 resnet_block_stanford.kw_activation = {}
 resnet_block_stanford.dropout = 0.2
-
-resnet_stanford = ED()
 
 
 # CPSC
