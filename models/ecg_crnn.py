@@ -14,7 +14,7 @@ from easydict import EasyDict as ED
 
 # from cfg import ModelCfg
 from model_configs.ati_cnn import ATI_CNN_CONFIG
-from model_configs.cpsc import CPSC_CONFIG
+# from model_configs.cpsc import CPSC_CONFIG
 from models.utils.torch_utils import (
     Mish, Swish, Activations,
     Bn_Activation, Conv_Bn_Activation,
@@ -189,6 +189,261 @@ class VGG6(nn.Sequential):
         return output_shape
 
 
+class ResNetBasicBlock(nn.Module):
+    """
+
+    building blocks for `ResNet`, as implemented in ref. [2] of `ResNet`
+    """
+    __DEBUG__ = True
+    __name__ = "ResNetBasicBlock"
+    expansion = 1
+
+    def __init__(self, in_channels:int, num_filters:int, subsample_length:int, groups:int=1, dilation:int=1, **config) -> NoReturn:
+        """ NOT finished, NOT checked,
+
+        Parameters:
+        -----------
+        in_channels: int,
+            number of features (channels) of the input
+        num_filters: int,
+            number of filters for the convolutional layers
+        subsample_length: int,
+            subsample length,
+            including pool size for short cut, and stride for the top convolutional layer
+        groups: int, default 1,
+            pattern of connections between inputs and outputs,
+            for more details, ref. `nn.Conv1d`
+        config: dict,
+            other hyper-parameters, including
+            filter length (kernel size), activation choices, weight initializer,
+            and short cut patterns, etc.
+        """
+        super().__init__()
+        if dilation > 1:
+            raise NotImplementedError(f"Dilation > 1 not supported in {self.__name__}")
+        self.__num_convs = 2
+        self.__in_channels = in_channels
+        self.__out_channels = num_filters
+        self.__down_scale = subsample_length
+        self.__stride = subsample_length
+        self.config = ED(config)
+        if self.__DEBUG__:
+            print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
+        
+        self.__increase_channels = (self.__out_channels > self.__in_channels)
+        self.short_cut = self._make_short_cut_layer()
+
+        self.main_stream = nn.Sequential()
+        conv_in_channels = self.__in_channels
+        for i in range(self.__num_convs):
+            conv_activation = (self.config.activation if i < self.__num_convs-1 else None)
+            self.main_stream.add_module(
+                f"cba_{i}",
+                Conv_Bn_Activation(
+                    in_channels=conv_in_channels,
+                    out_channels=self.__out_channels,
+                    kernel_size=self.config.filter_length,
+                    stride=(self.__stride if i == 0 else 1),
+                    bn=True,
+                    activation=conv_activation,
+                    kw_activation=self.config.kw_activation,
+                    kernel_initializer=self.config.kernel_initializer,
+                    kw_initializer=self.config.kw_initializer,
+                    bias=self.config.bias,
+                )
+            )
+            conv_in_channels = self.__out_channels
+
+        if isinstance(self.config.activation, str):
+            self.out_activation = \
+                Activations[self.config.activation.lower()](**self.config.kw_activation)
+        else:
+            self.out_activation = \
+                self.config.activation(**self.config.kw_activation)
+    
+    def _make_short_cut_layer(self) -> Union[nn.Module, type(None)]:
+        """
+        """
+        if self.__DEBUG__:
+            print(f"__down_scale = {self.__down_scale}, __increase_channels = {self.__increase_channels}")
+        if self.__down_scale > 1 or self.__increase_channels:
+            if self.config.increase_channels_method.lower() == 'conv':
+                short_cut = DownSample(
+                    down_scale=self.__down_scale,
+                    in_channels=self.__in_channels,
+                    out_channels=self.__out_channels,
+                    bn=True,
+                    method=self.config.subsample_method,
+                )
+            if self.config.increase_channels_method.lower() == 'zero_padding':
+                bn = False if self.config.subsample_method.lower() != 'conv' else True
+                short_cut = nn.Sequential(
+                    DownSample(
+                        down_scale=self.__down_scale,
+                        in_channels=self.__in_channels,
+                        out_channels=self.__in_channels,
+                        bn=bn,
+                        method=self.config.subsample_method,
+                    ),
+                    ZeroPadding(self.__in_channels, self.__out_channels),
+                )
+        else:
+            short_cut = None
+        return short_cut
+
+    def forward(self, input:Tensor) -> Tensor:
+        """
+        """
+        identity = input
+
+        out = self.main_stream(input)
+
+        if self.short_cut is not None:
+            identity = self.short_cut(input)
+
+        out += identity
+        out = self.out_activation(out)
+
+        return out
+
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        seq_len: int,
+            length of the 1d sequence
+        batch_size: int, optional,
+            the batch size, can be None
+
+        Returns:
+        --------
+        output_shape: sequence,
+            the output shape of this block, given `seq_len` and `batch_size`
+        """
+        _seq_len = seq_len
+        for module in self.main_stream:
+            output_shape = module.compute_output_shape(_seq_len, batch_size)
+            _, _, _seq_len = output_shape
+        return output_shape
+
+
+class ResNet(nn.Sequential):
+    """
+
+    References:
+    -----------
+    [1] https://github.com/awni/ecg
+    [2] https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py
+
+    TODO:
+    -----
+    1. check performances of activations other than "nn.ReLU", especially mish and swish
+    2. to add
+    """
+    __DEBUG__ = False
+    building_block = ResNetBasicBlock
+    def __init__(self, in_channels:int, **config) -> NoReturn:
+        """ finished, checked,
+        
+        Parameters:
+        -----------
+        in_channels: int,
+            number of channels in the input
+        config: dict,
+            other hyper-parameters of the Module, ref. corresponding config file
+        """
+        super().__init__()
+        self.__in_channels = in_channels
+        self.config = ED(config)
+        if self.__DEBUG__:
+            print(f"configuration of ResNet is as follows\n{dict_to_str(self.config)}")
+        # self.__building_block = \
+        #     ResNetBasicBlock if self.config.name == 'resnet' else ResNetBottleNeck
+        
+        self.add_module(
+            "init_cba",
+            Conv_Bn_Activation(
+                in_channels=self.__in_channels,
+                out_channels=self.config.init_num_filters,
+                kernel_size=self.config.init_filter_length,
+                stride=self.config.init_conv_stride,
+                activation=self.config.activation,
+                kw_activation=self.config.kw_activation,
+                kernel_initializer=self.config.kernel_initializer,
+                kw_initializer=self.config.kw_initializer,
+                bias=self.config.bias,
+            )
+        )
+        
+        if self.config.init_pool_size > 0:
+            self.add_module(
+                "init_pool",
+                nn.MaxPool1d(
+                    kernel_size=self.config.init_pool_size,
+                    stride=self.config.init_pool_stride,
+                    padding=(self.config.init_pool_size-1)//2,
+                )
+            )
+
+        # grouped resnet (basic) blocks,
+        # number of channels are doubled at the first block of each group
+        for group_idx, nb in enumerate(self.config.num_blocks):
+            group_in_channels = (2**group_idx) * self.config.init_num_filters
+            block_in_channels = group_in_channels
+            block_num_filters = 2 * block_in_channels
+            for block_idx in range(nb):
+                block_subsample_length = self.config.subsample_length if block_idx == 0 else 1
+                self.add_module(
+                    f"block_{group_idx}_{block_idx}",
+                    self.building_block(
+                        in_channels=block_in_channels,
+                        num_filters=block_num_filters,
+                        subsample_length=block_subsample_length,
+                        groups=1,
+                        dilation=1,
+                        **(self.config.block)
+                    )
+                )
+                block_in_channels = block_num_filters
+
+    def forward(self, input):
+        """
+        """
+        output = super().forward(input)
+        return output
+
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        seq_len: int,
+            length of the 1d sequence
+        batch_size: int, optional,
+            the batch size, can be None
+
+        Returns:
+        --------
+        output_shape: sequence,
+            the output shape of this block, given `seq_len` and `batch_size`
+        """
+        _seq_len = seq_len
+        for module in self:
+            if type(module).__name__ == "MaxPool1d":
+                output_shape = compute_conv_output_shape(
+                    input_shape=(batch_size, self.config.init_filter_length, _seq_len),
+                    num_filters=self.config.init_filter_length,
+                    kernel_size=self.config.init_pool_size,
+                    stride=self.config.init_pool_stride,
+                    pad=(self.config.init_pool_size-1)//2,
+                )
+            else:
+                output_shape = module.compute_output_shape(_seq_len, batch_size)
+            _, _, _seq_len = output_shape
+        return output_shape
+
+
 class ATI_CNN(nn.Module):
     """
 
@@ -220,17 +475,20 @@ class ATI_CNN(nn.Module):
         self.input_len = input_len
         self.config = deepcopy(ATI_CNN_CONFIG)
         self.config.update(config)
-        print(f"configuration of ATI_CNN is as follows\n{dict_to_str(self.config)}")
+        if self.__DEBUG__:
+            print(f"configuration of ATI_CNN is as follows\n{dict_to_str(self.config)}")
         
         cnn_choice = self.config.cnn.name.lower()
         if cnn_choice == "vgg6":
             self.cnn = VGG6(self.n_leads, **(self.config.cnn.vgg6))
             rnn_input_size = self.config.cnn.vgg6.num_filters[-1]
         elif cnn_choice == "resnet":
-            raise NotImplementedError
+            self.cnn = ResNet(self.n_leads, **(self.config.cnn.resnet))
+            rnn_input_size = 2**len(self.config.cnn.num_blocks) * self.config.cnn.init_num_filters
         cnn_output_shape = self.cnn.compute_output_shape(input_len, batch_size=None)
         self.cnn_output_len = cnn_output_shape[2]
-        print(f"cnn output shape (batch_size, features, seq_len) = {cnn_output_shape}")
+        if self.__DEBUG__:
+            print(f"cnn output shape (batch_size, features, seq_len) = {cnn_output_shape}")
 
         rnn_choice = self.config.rnn.name.lower()
         if rnn_choice == 'lstm':

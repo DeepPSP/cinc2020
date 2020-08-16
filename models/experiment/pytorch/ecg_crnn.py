@@ -437,15 +437,7 @@ class ResNetStanford(nn.Sequential):
 class ResNetBasicBlock(nn.Module):
     """
 
-    References:
-    -----------
-    [1] https://github.com/awni/ecg
-    [2] https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py
-
-    TODO:
-    -----
-    1. check performances of activations other than "nn.ReLU", especially mish and swish
-    2. to add
+    building blocks for `ResNet`, as implemented in ref. [2] of `ResNet`
     """
     __DEBUG__ = True
     __name__ = "ResNetBasicBlock"
@@ -637,7 +629,16 @@ class ResNetBottleNeck(nn.Module):
 
 class ResNet(nn.Sequential):
     """
-    to write
+
+    References:
+    -----------
+    [1] https://github.com/awni/ecg
+    [2] https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py
+
+    TODO:
+    -----
+    1. check performances of activations other than "nn.ReLU", especially mish and swish
+    2. to add
     """
     __DEBUG__ = True
     building_block = ResNetBasicBlock
@@ -684,6 +685,8 @@ class ResNet(nn.Sequential):
                 )
             )
 
+        # grouped resnet (basic) blocks,
+        # number of channels are doubled at the first block of each group
         for group_idx, nb in enumerate(self.config.num_blocks):
             group_in_channels = (2**group_idx) * self.config.init_num_filters
             block_in_channels = group_in_channels
