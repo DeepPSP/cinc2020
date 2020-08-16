@@ -90,7 +90,9 @@ class VGGBlock(nn.Sequential):
                     kernel_size=self.config.filter_length,
                     stride=self.config.subsample_length,
                     activation=self.config.activation,
+                    kw_activation=self.config.kw_activation,
                     kernel_initializer=self.config.kernel_initializer,
+                    kw_initializer=self.config.kw_initializer,
                     bn=self.config.batch_norm,
                 )
             )
@@ -218,8 +220,6 @@ class ResNetStanfordBlock(nn.Module):
         subsample_length: int,
             subsample length,
             including pool size for short cut, and stride for the top convolutional layer
-        dilation: int,
-            dilation for convolutional layers
         config: dict,
             other hyper-parameters, including
             filter length (kernel size), activation choices, weight initializer, dropout,
@@ -235,38 +235,39 @@ class ResNetStanfordBlock(nn.Module):
         self.__out_channels = num_filters
         self.__down_scale = subsample_length
         self.__stride = subsample_length
-        self.__dilation = dilation
         self.config = ED(config)
         self.__num_convs = self.config.num_skip
         
+        self.__increase_channels = (self.__out_channels > self.__in_channels)
         self.short_cut = self._make_short_cut_layer()
         
         self.main_stream = nn.Sequential()
-        num_cba_layer = 1
-        cba_in_channels = self.__in_channels
-        for i in range(self.config.num_skip):
+        conv_in_channels = self.__in_channels
+        for i in range(self.__num_convs):
             if not (block_index == 0 and i == 0):
                 self.main_stream.add_module(
-                    "ba",
+                    f"ba_{self.__block_index}_{i}",
                     Bn_Activation(
                         num_features=self.__in_channels,
                         activation=self.config.activation,
-                        dropout=self.config.dropout,
+                        kw_activation=self.config.kw_activation,
+                        dropout=self.config.dropout if i > 0 else 0,
                     ),
                 )
             self.main_stream.add_module(
-                f"cba_{num_cba_layer}",
+                f"conv_{self.__block_index}_{i}",
                 Conv_Bn_Activation(
-                    in_channels=cba_in_channels,
+                    in_channels=conv_in_channels,
                     out_channels=self.__out_channels,
                     kernel_size=self.config.filter_length,
                     stride = (self.__stride if i == 0 else 1),
-                    activation=self.config.activation,
-                    kernel_initializer=self.config.init,
+                    bn=False,
+                    activation=None,
+                    kernel_initializer=self.config.kernel_initializer,
+                    kw_initializer=self.config.kw_initializer,
                 )
             )
-            num_cba_layer += 1
-            cba_in_channels = self.__out_channels
+            conv_in_channels = self.__out_channels
 
     def forward(self, input:Tensor) -> Tensor:
         """
@@ -276,10 +277,11 @@ class ResNetStanfordBlock(nn.Module):
             args = {k.split("__")[1]:v for k,v in self.__dict__.items() if isinstance(v, Number) and '__' in k}
             print(f"input arguments:\n{args}")
             print(f"input shape = {input.shape}")
-        sc = self.short_cut.forward(input)
-        if self.__increase_channels:
-            sc = self.increase_channels(sc)
-        output = self.main_stream.forward(input)
+        if self.short_cut:
+            sc = self.short_cut(input)
+        else:
+            sc = input
+        output = self.main_stream(input)
         if self.__DEBUG__:
             print(f"shape of short_cut output = {sc.shape}, shape of main stream output = {output.shape}")
         output = output +sc
@@ -288,7 +290,7 @@ class ResNetStanfordBlock(nn.Module):
     def _make_short_cut_layer(self) -> Union[nn.Module, type(None)]:
         """
         """
-        if self.__down_scale > 1:
+        if self.__down_scale > 1 or self.__increase_channels:
             if self.config.increase_channels_method.lower() == 'conv':
                 short_cut = DownSample(
                     down_scale=self.__down_scale,
@@ -363,7 +365,9 @@ class ResNetStanford(nn.Sequential):
                 stride=1,
                 bn=True,
                 activation=self.config.activation,
-                kernel_initializer=self.config.init,
+                kw_activation=self.config.kw_activation,
+                kernel_initializer=self.config.kernel_initializer,
+                kw_initializer=self.config.kw_initializer,
             )
         )
 
@@ -447,76 +451,107 @@ class ResNetBasicBlock(nn.Module):
     __name__ = "ResNetBasicBlock"
     expansion = 1
 
-    def __init__(self, in_channels:int, out_channels:int, stride:int=1, downsample:Optional[nn.Module]=None, groups:int=1, base_width:int=64, dilation:int=1, norm_layer:Optional[nn.Module]=None, **kwargs) -> NoReturn:
+    def __init__(self, in_channels:int, num_filters:int, subsample_length:int, groups:int=1, dilation:int=1, **config) -> NoReturn:
         """ NOT finished, NOT checked,
 
         Parameters:
         -----------
         in_channels: int,
-            number of channels in the input signal
-        out_channels: int,
-            number of channels produced by the convolution
-        stride: int,
-            stride of the convolution
-        downsample: Module, optional,
-            a layer for short cut down sampling
+            number of features (channels) of the input
+        num_filters: int,
+            number of filters for the convolutional layers
+        subsample_length: int,
+            subsample length,
+            including pool size for short cut, and stride for the top convolutional layer
         groups: int, default 1,
             pattern of connections between inputs and outputs,
             for more details, ref. `nn.Conv1d`
-        base_width:int, default 64,
-            currently not used
-        dilation: int, default 1,
-            spacing between the kernel points
-        norm_layer: Module, optional,
-            batch normalization layer
+        config: dict,
+            other hyper-parameters, including
+            filter length (kernel size), activation choices, weight initializer,
+            and short cut patterns, etc.
         """
         super().__init__()
-        if norm_layer is None:
-            norm_layer = nn.BatchNorm1d
-        # if groups != 1 or base_width != 64:  # from torchvision
-        #     raise ValueError('ResBlock only supports groups=1 and base_width=64')
         if dilation > 1:
             raise NotImplementedError(f"Dilation > 1 not supported in {self.__name__}")
-        # Both self.conv1 and self.downsample layers downsample the input when stride != 1
+        self.__in_channels = in_channels
+        self.__out_channels = num_filters
+        self.__down_scale = subsample_length
+        self.__stride = subsample_length
+        self.config = ED(config)
+        self.__num_convs = 2
+        
+        self.__increase_channels = (self.__out_channels > self.__in_channels)
+        self.short_cut = self._make_short_cut_layer()
 
-        # NOTE that in ref. [2], the conv3x3 and the conv1x1 layers both have `bias = False`
-        self.cba_1 = Conv_Bn_Activation(
-            in_channels=in_channels,
-            out_channels=out_channels,
-            kernel_size=3,
-            stride=stride,
-            bn=norm_layer,
-            activation="relu",
-            kernel_initializer='he_normal',
-            bias=False,
-        )
-        self.cba_2 = Conv_Bn_Activation(
-            in_channels=out_channels,
-            out_channels=out_channels,
-            kernel_size=3,
-            stride=1,
-            bn=norm_layer,
-            activation=None,
-            kernel_initializer="he_normal",
-            bias=False,
-        )
-        self.activation = nn.ReLU(inplace=True)
-        self.downsample = downsample
-        self.stride = stride
+        self.main_stream = nn.Sequential()
+        conv_in_channels = self.__in_channels
+        for i in range(self.__num_convs):
+            conv_activation = (self.config.activation if i < self.__num_convs-1 else None)
+            self.main_stream.add_module(
+                f"cba_{i}",
+                Conv_Bn_Activation(
+                    in_channels=conv_in_channels,
+                    out_channels=self.__out_channels,
+                    kernel_size=self.config.filter_length,
+                    stride=(self.__stride if i == 0 else 1),
+                    bn=True,
+                    activation=conv_activation,
+                    kw_activation=self.config.kw_activation,
+                    kernel_initializer=self.config.kernel_initializer,
+                    kw_initializer=self.config.kw_initializer,
+                    bias=self.config.bias,
+                )
+            )
+            conv_in_channels = self.__out_channels
+
+        if isinstance(self.config.activation, str):
+            self.out_activation = \
+                Activations[self.config.activation.lower()](**self.config.kw_activation)
+        else:
+            self.out_activation = \
+                self.config.activation(**self.config.kw_activation)
+    
+    def _make_short_cut_layer(self) -> Union[nn.Module, type(None)]:
+        """
+        """
+        if self.__down_scale > 1 or self.__increase_channels:
+            if self.config.increase_channels_method.lower() == 'conv':
+                short_cut = DownSample(
+                    down_scale=self.__down_scale,
+                    in_channels=self.__in_channels,
+                    out_channels=self.__out_channels,
+                    bn=True,
+                    method=self.config.subsample_method,
+                )
+            if self.config.increase_channels_method.lower() == 'zero_padding':
+                bn = False if self.config.subsample_method.lower() != 'conv' else True
+                short_cut = nn.Sequential(
+                    DownSample(
+                        down_scale=self.__down_scale,
+                        in_channels=self.__in_channels,
+                        out_channels=self.__in_channels,
+                        bn=bn,
+                        method=self.config.subsample_method,
+                    ),
+                    ZeroPadding(self.__in_channels, self.__out_channels),
+                )
+        else:
+            short_cut = None
+        return short_cut
 
     def forward(self, input:Tensor) -> Tensor:
         """
         """
         identity = input
 
-        out = self.cba_1(input)
-        out = self.cba_2(out)
+        out = self.main_stream(input)
 
-        if self.downsample is not None:
-            identity = self.downsample(input)
+        if self.short_cut is not None:
+            identity = self.short_cut(input)
 
         out += identity
-        out = self.activation(out)
+        out = self.out_activation(out)
 
         return out
 
@@ -535,7 +570,11 @@ class ResNetBasicBlock(nn.Module):
         output_shape: sequence,
             the output shape of this block, given `seq_len` and `batch_size`
         """
-        raise NotImplementedError
+        _seq_len = seq_len
+        for module in self.main_stream:
+            output_shape = module.compute_output_shape(_seq_len, batch_size)
+            _, _, _seq_len = output_shape
+        return output_shape
 
 
 class ResNetBottleneck(nn.Module):
@@ -595,16 +634,41 @@ class ResNetBottleneck(nn.Module):
         raise NotImplementedError
 
 
-class ResNet(nn.Module):
+class ResNet(nn.Sequential):
     """
     to write
     """
     __DEBUG__ = True
-    def __init__(self, in_channels:int):
-        """
+    def __init__(self, in_channels:int, **config) -> NoReturn:
+        """ finished, checked,
+        
+        Parameters:
+        -----------
+        in_channels: int,
+            number of channels in the input
+        config: dict,
+            other hyper-parameters of the Module, ref. corresponding config file
         """
         super().__init__()
-        raise NotImplementedError
+        self.__in_channels = in_channels
+        self.config = ED(config)
+        if self.__DEBUG__:
+            print(f"configuration of ResNet is as follows\n{dict_to_str(self.config)}")
+        
+        self.add_module(
+            "cba_init",
+            Conv_Bn_Activation(
+                in_channels=self.__in_channels,
+                out_channels=,
+                kernel_size=self.config.init_filter_length,
+                stride=,
+                activation=self.config.activation,
+                kw_activation=self.config.kw_activation,
+                kernel_initializer=self.config.kernel_initializer,
+                kw_initializer=self.config.kw_initializer,
+                bias=self.config.bias,
+            )
+        )
 
     def forward(self, input):
         """
@@ -857,9 +921,10 @@ class CPSCBlock(nn.Sequential):
         output_shape: sequence,
             the output shape of this block, given `seq_len` and `batch_size`
         """
+        _seq_len = seq_len
         for module in self:
-            output_shape = module.compute_output_shape(seq_len, batch_size)
-            _, _, seq_len = output_shape
+            output_shape = module.compute_output_shape(_seq_len, batch_size)
+            _, _, _seq_len = output_shape
         return output_shape
 
 

@@ -53,6 +53,7 @@ resnet.kernel_initializer = "he_normal"
 resnet.kw_initializer = {}
 resnet.activation = "relu"
 resnet.kw_activation = {}
+resnet.bias = False
 
 resnet_block_basic = ED()
 resnet_block_basic.increase_channels_method = 'conv'  # or 'zero_padding'
@@ -62,12 +63,14 @@ resnet_block_basic.kernel_initializer = resnet.kernel_initializer
 resnet_block_basic.kw_initializer = deepcopy(resnet.kw_initializer)
 resnet_block_basic.activation = resnet.activation
 resnet_block_basic.kw_activation = deepcopy(resnet.kw_activation)
+resnet_block_basic.bias = False
 
 resnet_bottle_neck = ED()
 resnet_bottle_neck.kernel_initializer = resnet.kernel_initializer
 resnet_bottle_neck.kw_initializer = deepcopy(resnet.kw_initializer)
 resnet_bottle_neck.activation = resnet.activation
 resnet_bottle_neck.kw_activation = deepcopy(resnet.kw_activation)
+resnet_bottle_neck.bias = False
 
 
 # ResNet Stanford
