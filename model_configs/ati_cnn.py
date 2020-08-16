@@ -9,8 +9,9 @@ from copy import deepcopy
 from easydict import EasyDict as ED
 
 from .cnn import (
-    vgg_block_basic, vgg_block_mish, vgg_block_swish,
-    vgg6,
+    vgg_block_basic, vgg_block_mish, vgg_block_swish, vgg6,
+    resnet_block_stanford, resnet_stanford,
+    resnet_block_basic, resnet_bottle_neck, resnet,
 )
 
 
@@ -38,9 +39,15 @@ elif ATI_CNN_CONFIG.cnn.name == 'vgg6_swish':
 elif ATI_CNN_CONFIG.cnn.name == 'vgg6_dilation':  # not finished
     ATI_CNN_CONFIG.cnn.vgg6 = deepcopy(vgg6)
     ATI_CNN_CONFIG.cnn.vgg6.block = deepcopy(vgg_block_basic)
-elif ATI_CNN_CONFIG.cnn.name == 'resnet':  # NOT finished
-    ATI_CNN_CONFIG.cnn.resnet_block = ED()
-    ATI_CNN_CONFIG.cnn.resnet_bottleneck = ED()
+elif ATI_CNN_CONFIG.cnn.name == 'resnet':
+    ATI_CNN_CONFIG.cnn.resnet = deepcopy(resnet)
+    ATI_CNN_CONFIG.cnn.resnet.block = deepcopy(resnet_block_basic)
+elif ATI_CNN_CONFIG.cnn.name == 'resnet_bottleneck':
+    ATI_CNN_CONFIG.cnn.resnet = deepcopy(resnet)
+    ATI_CNN_CONFIG.cnn.resnet.block = deepcopy(resnet_bottle_neck)
+elif ATI_CNN_CONFIG.cnn.name == 'resnet_stanford':
+    ATI_CNN_CONFIG.cnn.resnet = deepcopy(resnet_stanford)
+    ATI_CNN_CONFIG.cnn.resnet.block = deepcopy(resnet_block_stanford)
 else:
     pass
 

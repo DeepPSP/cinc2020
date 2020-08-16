@@ -28,7 +28,9 @@ vgg_block_basic.dilation = 1
 vgg_block_basic.batch_norm = True
 vgg_block_basic.pool_size = 3
 vgg_block_basic.kernel_initializer = "he_normal"
+vgg_block_basic.kw_initializer = {}
 vgg_block_basic.activation = "relu"
+vgg_block_basic.kw_activation = {}
 
 vgg_block_mish = deepcopy(vgg_block_basic)
 vgg_block_mish.activation = "mish"
@@ -43,18 +45,45 @@ vgg6.num_filters = [64, 128, 256, 512, 512]
 
 # ResNet
 resnet_block_basic = ED()
+resnet_block_basic.increase_channels_at = 4
+resnet_block_basic.increase_channels_method = 'conv'  # or 'zero_padding'
+resnet_block_basic.num_skip = 2
+resnet_block_basic.subsample_lengths = [
+    1, 2, 1, 2,
+    1, 2, 1, 2,
+    1, 2, 1, 2,
+    1, 2, 1, 2,
+]
+resnet_block_basic.subsample_method = 'conv'  # 'max', 'avg'
+resnet_block_basic.filter_length = 17
+resnet_block_basic.num_filters_start = 32
+resnet_block_basic.kernel_initializer = "he_normal"
+resnet_block_basic.kw_initializer = {}
+resnet_block_basic.activation = "relu"
+resnet_block_basic.kw_activation = {}
+
 resnet_bottle_neck = ED()
+
 resnet = ED()
 
 resnet_block_stanford = ED()
-resnet_block_stanford.subsample_lengths = [1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2]
+resnet_block_stanford.increase_channels_at = 4
+resnet_block_stanford.increase_channels_method = 'conv'  # or 'zero_padding'
+resnet_block_stanford.num_skip = 2
+resnet_block_stanford.subsample_lengths = [
+    1, 2, 1, 2,
+    1, 2, 1, 2,
+    1, 2, 1, 2,
+    1, 2, 1, 2,
+]
+resnet_block_stanford.subsample_method = 'conv'  # 'max', 'avg'
 resnet_block_stanford.filter_length = 17
 resnet_block_stanford.num_filters_start = 32
-resnet_block_stanford.init = "he_normal"
+resnet_block_stanford.kernel_initializer = "he_normal"
+resnet_block_stanford.kw_initializer = {}
 resnet_block_stanford.activation = "relu"
+resnet_block_stanford.kw_activation = {}
 resnet_block_stanford.dropout = 0.2
-resnet_block_stanford.num_skip = 2
-resnet_block_stanford.increase_channels_at = 4
 
 resnet_stanford = ED()
 
@@ -65,6 +94,7 @@ cpsc_block_basic.activation = "leaky"
 cpsc_block_basic.kw_activation = ED(negative_slope=0.3)
 cpsc_block_basic.batch_norm = False
 cpsc_block_basic.kernel_initializer = "he_normal"
+cpsc_block_basic.kw_initializer = {}
 
 cpsc_block_mish = deepcopy(cpsc_block_basic)
 cpsc_block_mish.activation = "mish"

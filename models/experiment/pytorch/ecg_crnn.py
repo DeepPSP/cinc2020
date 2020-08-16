@@ -18,6 +18,8 @@ from model_configs.cpsc import CPSC_CONFIG
 from models.utils.torch_utils import (
     Mish, Swish, Activations,
     Bn_Activation, Conv_Bn_Activation,
+    DownSample,
+    ZeroPadding,
     StackedLSTM,
     # AML_Attention, AML_GatedAttention,
     AttentionWithContext,
@@ -231,14 +233,13 @@ class ResNetStanfordBlock(nn.Module):
         self.__block_index = block_index
         self.__in_channels = in_channels
         self.__out_channels = num_filters
-        self.__pool_size = subsample_length
+        self.__down_scale = subsample_length
         self.__stride = subsample_length
         self.__dilation = dilation
         self.config = ED(config)
         self.__num_convs = self.config.num_skip
-
-        self.short_cut = nn.MaxPool1d(self.__pool_size)
-        self.__zero_pad = ((block_index % self.config.increase_channels_at) == 0 and block_index > 0)
+        
+        self.short_cut = self._make_short_cut_layer()
         
         self.main_stream = nn.Sequential()
         num_cba_layer = 1
@@ -276,22 +277,40 @@ class ResNetStanfordBlock(nn.Module):
             print(f"input arguments:\n{args}")
             print(f"input shape = {input.shape}")
         sc = self.short_cut.forward(input)
-        if self.__zero_pad:
-            sc = self.zero_pad(sc)
+        if self.__increase_channels:
+            sc = self.increase_channels(sc)
         output = self.main_stream.forward(input)
         if self.__DEBUG__:
             print(f"shape of short_cut output = {sc.shape}, shape of main stream output = {output.shape}")
         output = output +sc
         return output
 
-    def zero_pad(self, x:Tensor) -> Tensor:
+    def _make_short_cut_layer(self) -> Union[nn.Module, type(None)]:
         """
         """
-        if self.__DEBUG__:
-            print(f"input shape of the zero_pad layer is {x.shape}")
-        out = torch.zeros_like(x)
-        out = torch.cat((x, out), dim=1)
-        return out
+        if self.__down_scale > 1:
+            if self.config.increase_channels_method.lower() == 'conv':
+                short_cut = DownSample(
+                    down_scale=self.__down_scale,
+                    in_channels=self.__in_channels,
+                    out_channels=self.__out_channels,
+                    bn=False,
+                    method=self.config.subsample_method,
+                )
+            if self.config.increase_channels_method.lower() == 'zero_padding':
+                short_cut = nn.Sequential(
+                    DownSample(
+                        down_scale=self.__down_scale,
+                        in_channels=self.__in_channels,
+                        out_channels=self.__in_channels,
+                        bn=False,
+                        method=self.config.subsample_method,
+                    ),
+                    ZeroPadding(self.__in_channels, self.__out_channels),
+                )
+        else:
+            short_cut = None
+        return short_cut
 
     def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
         """ finished, checked,

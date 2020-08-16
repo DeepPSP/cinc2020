@@ -25,6 +25,7 @@ __all__ = [
     "AML_Attention", "AML_GatedAttention",
     "AttentionWithContext",
     "MultiheadAttention",
+    "ZeroPadding",
     "compute_conv_output_shape",
 ]
 
@@ -1044,6 +1045,55 @@ class MultiheadAttention(nn.Module):
                 training=self.training,
                 key_padding_mask=key_padding_mask, need_weights=need_weights,
                 attn_mask=attn_mask)
+
+
+class ZeroPadding(nn.Module):
+    """
+    zero padding for increasing channels,
+    degenerates to `identity` if in and out channels are equal
+    """
+    def __init__(self, in_channels:int, out_channels:int) -> NoReturn:
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        in_channels: int,
+            number of channels in the input
+        out_channels: int,
+            number of channels for the output
+        """
+        self.__in_channels = in_channels
+        self.__out_channels = out_channels
+        self.__increase_channels = out_channels - in_channels
+        assert self.__increase_channels >= 0
+
+    def forward(self, input:Tensor) -> Tensor:
+        """
+        """
+        batch_size, _, seq_len = input.shape
+        if self.__increase_channels > 0:
+            output = torch.zeros((batch_size, self.__increase_channels, seq_len))
+            output = torch.cat((input, output), dim=1)
+        else:
+            output = input
+        return output
+
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        seq_len: int,
+            length of the 1d sequence
+        batch_size: int, optional,
+            the batch size, can be None
+
+        Returns:
+        --------
+        output_shape: sequence,
+            the output shape of this `ZeroPadding` layer, given `seq_len` and `batch_size`
+        """
+        return (batch_size, self.__out_channels, seq_len)
 
 
 def compute_conv_output_shape(input_shape:Sequence[Union[int, type(None)]], num_filters:Optional[int]=None, kernel_size:Union[Sequence[int], int]=1, stride:Union[Sequence[int], int]=1, pad:Union[Sequence[int], int]=0, dilation:Union[Sequence[int], int]=1, channel_last:bool=False) -> Tuple[Union[int, type(None)]]:
