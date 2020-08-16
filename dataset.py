@@ -117,6 +117,7 @@ class CINC2020(object):
     -------
     1. reading the .hea files, baselines of all records are 0, however it is not the case if one plot the signal
     2. about half of the LAD records satisfy the '2-lead' criteria, but fail for the '3-lead' criteria, which means that their axis is (-30°, 0°) which is not truely LAD
+    3. (Aug. 15th) tranche F, the Georgia subset, has ADC gain 4880 which might be too high. Thus obtained voltages are too low. 1000 might be a suitable (correct) value of ADC gain for this tranche just as the other tranches.
 
     Usage:
     ------
@@ -959,7 +960,7 @@ class CINC2020(object):
         units: str,
             units of `data`, 'μV' or 'mV'
         """
-        _MAX_mV = 10  # 10mV
+        _MAX_mV = 20  # 20mV, seldom an ECG device has range larger than this value
         max_val = np.max(np.abs(data))
         if max_val > _MAX_mV:
             units = 'μV'
