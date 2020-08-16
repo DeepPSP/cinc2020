@@ -112,6 +112,8 @@ class CINC2020(object):
     {'A': {1000}, 'B': {1000}, 'C': {1000}, 'D': {1000}, 'E': {1000}, 'F': {4880}} {'A': {0}, 'B': {0}, 'C': {0}, 'D': {0}, 'E': {0}, 'F': {0}}
     9. the .mat files all contain digital signals, which has to be converted to physical values using adc gain, basesline, etc. in corresponding .hea files. `wfdb.rdrecord` has already done this conversion, hence greatly simplifies the data loading process.
     NOTE that there's a difference when using `wfdb.rdrecord`: data from `loadmat` are in 'channel_first' format, while `wfdb.rdrecord.p_signal` produces data in the 'channel_last' format
+    10. there're 3 equivalent (2 classes are equivalent if the corr. value in the scoring matrix is 1):
+        (RBBB, CRBBB), (PAC, SVPB), (PVC, VPB)
 
     ISSUES:
     -------
@@ -969,8 +971,33 @@ class CINC2020(object):
         return units
 
 
-    @classmethod
-    def get_arrhythmia_knowledge(cls, arrhythmias:Union[str,List[str]], **kwargs) -> NoReturn:
+    def get_tranche_class_distribution(self, tranches:Sequence[str], scored_only:bool=True) -> Dict[str, int]:
+        """
+
+        Parameters:
+        -----------
+        tranches: sequence of str,
+            tranche symbols (A-F)
+        scored_only: bool, default True,
+            only get class distributions that are scored in the CINC2020 official phase
+        
+        Returns:
+        --------
+        distribution: dict,
+            keys are abbrevations of the classes, values are appearance of corr. classes in the tranche.
+        """
+        tranche_names = [self.tranche_names[t] for t in tranches]
+        df = dx_mapping_scored if scored_only else dx_mapping_all
+        distribution = ED()
+        for _, row in df.iterrows():
+            num = (row[[tranche_names]].values).sum()
+            if num > 0:
+                distribution[row['Abbreviation']] = num
+        return distribution
+
+
+    @staticmethod
+    def get_arrhythmia_knowledge(arrhythmias:Union[str,List[str]], **kwargs) -> NoReturn:
         """ finished, checked,
 
         knowledge about ECG features of specific arrhythmias,
