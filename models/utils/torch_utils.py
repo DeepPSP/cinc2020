@@ -146,6 +146,7 @@ class Bn_Activation(nn.Sequential):
     
     def forward(self, input:Tensor) -> Tensor:
         """
+        use the forward method of `nn.Sequential`
         """
         output = super().forward(input)
         return output
@@ -248,7 +249,7 @@ class Conv_Bn_Activation(nn.Sequential):
 
     def forward(self, input:Tensor) -> Tensor:
         """
-        just use the forward function of `nn.Sequential`
+        use the forward method of `nn.Sequential`
         """
         out = super().forward(input)
         return out
@@ -345,6 +346,7 @@ class DownSample(nn.Sequential):
 
     def forward(self, input:Tensor) -> Tensor:
         """
+        use the forward method of `nn.Sequential`
         """
         output = super().forward(input)
         return output
@@ -386,7 +388,6 @@ class DoubleConv(nn.Sequential):
     -----------
     https://github.com/milesial/Pytorch-UNet/blob/master/unet/unet_parts.py
     """
-
     def __init__(self, in_channels:int, out_channels:int, filter_length:int, activation:Union[str,nn.Module]='relu', mid_channels:Optional[int]=None) -> NoReturn:
         """ finished, NOT checked,
 
@@ -411,7 +412,7 @@ class DoubleConv(nn.Sequential):
         self.__kernel_size = filter_length
 
         self.add_module(
-            "conv_bn_activation_1",
+            "cba_1",
             Conv_Bn_Activation(
                 in_channels=self.__in_channels,
                 out_channels=self.__mid_channels,
@@ -421,7 +422,7 @@ class DoubleConv(nn.Sequential):
             ),
         )
         self.add_module(
-            "conv_bn_activation_2",
+            "cba_2",
             Conv_Bn_Activation(
                 in_channels=self.__mid_channels,
                 out_channels=self.__out_channels,
@@ -433,6 +434,7 @@ class DoubleConv(nn.Sequential):
 
     def forward(self, input:Tensor) -> Tensor:
         """
+        use the forward method of `nn.Sequential`
         """
         out = super().forward(input)
         return out
@@ -618,7 +620,19 @@ class UpDoubleConv(nn.Module):
         # return self.conv(x)
 
     def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
-        """
+        """ NOT finished,
+
+        Parameters:
+        -----------
+        seq_len: int,
+            length of the 1d sequence
+        batch_size: int, optional,
+            the batch size, can be None
+
+        Returns:
+        --------
+        output_shape: sequence,
+            the output shape of this `DownDoubleConv` layer, given `seq_len` and `batch_size`
         """
         raise NotImplementedError
 
@@ -687,7 +701,7 @@ class StackedLSTM(nn.Sequential):
         
         self.num_lstm_layers = len(hidden_sizes)
         l_bias = bias if isinstance(bias, Sequence) else [bias for _ in range(self.num_lstm_layers)]
-        self._dropout = dropout
+        self.__dropout = dropout
         self.bidirectional = bidirectional
         self.batch_first = False
         self.return_sequences = return_sequences
@@ -711,10 +725,10 @@ class StackedLSTM(nn.Sequential):
                     bidirectional=self.bidirectional,
                 )
             )
-            if self._dropout > 0 and idx < self.num_lstm_layers-1:
+            if self.__dropout > 0 and idx < self.num_lstm_layers-1:
                 self.add_module(
                     name=f"dropout_{idx+1}",
-                    module=nn.Dropout(self._dropout),
+                    module=nn.Dropout(self.__dropout),
                 )
     
     def forward(self, input:Union[Tensor, PackedSequence], hx:Optional[Tuple[Tensor, Tensor]]=None) -> Union[Tensor, Tuple[Union[Tensor, PackedSequence], Tuple[Tensor, Tensor]]]:
@@ -723,7 +737,7 @@ class StackedLSTM(nn.Sequential):
         """
         n_layers = 0
         _input, _hx = input, hx
-        div = 2 if self._dropout > 0 else 1
+        div = 2 if self.__dropout > 0 else 1
         for module in self:
             n_lstm, res = divmod(n_layers, div)
             if res == 1:
@@ -757,7 +771,7 @@ class AML_Attention(nn.Module):
     [1] https://github.com/AMLab-Amsterdam/AttentionDeepMIL/blob/master/model.py#L6
     """
     def __init__(self, L:int, D:int, K:int):
-        """
+        """ NOT checked,
         """
         super().__init__()
         self.L = L
@@ -789,7 +803,7 @@ class AML_GatedAttention(nn.Module):
     [1] https://github.com/AMLab-Amsterdam/AttentionDeepMIL/blob/master/model.py#L72
     """
     def __init__(self, L:int, D:int, K:int):
-        """
+        """ NOT checked,
         """
         super().__init__()
         self.L = L
@@ -820,6 +834,7 @@ class AttentionWithContext(nn.Module):
 
     from 0236 of CPSC2018 challenge
     """
+    __DEBUG__ = False
     def __init__(self, in_channels:int, out_channels:int, bias:bool=True, initializer:str='glorot_uniform'):
         """ finished, checked
 
@@ -840,15 +855,18 @@ class AttentionWithContext(nn.Module):
         self.bias = bias
 
         self.W = Parameter(torch.Tensor(out_channels, out_channels))
-        print(f"AttentionWithContext W.shape = {self.W.shape}")
+        if self.__DEBUG__:
+            print(f"AttentionWithContext W.shape = {self.W.shape}")
         self.init(self.W)
 
         if self.bias:
             self.b = Parameter(torch.Tensor(out_channels))
-            print(f"AttentionWithContext b.shape = {self.b.shape}")
+            if self.__DEBUG__:
+                print(f"AttentionWithContext b.shape = {self.b.shape}")
             # Initializers['zeros'](self.b)
             self.u = Parameter(torch.Tensor(out_channels))
-            print(f"AttentionWithContext u.shape = {self.u.shape}")
+            if self.__DEBUG__:
+                print(f"AttentionWithContext u.shape = {self.u.shape}")
             # self.init(self.u)
         else:
             self.register_parameter('b', None)
@@ -870,23 +888,29 @@ class AttentionWithContext(nn.Module):
         -----------
         to write
         """
-        print(f"AttentionWithContext forward: input.shape = {input.shape}, W.shape = {self.W.shape}")
+        if self.__DEBUG__:
+            print(f"AttentionWithContext forward: input.shape = {input.shape}, W.shape = {self.W.shape}")
         uit = torch.tensordot(input, self.W, dims=1)
-        print(f"AttentionWithContext forward: uit.shape = {uit.shape}")
+        if self.__DEBUG__:
+            print(f"AttentionWithContext forward: uit.shape = {uit.shape}")
         if self.bias:
             uit += self.b
         uit = torch.tanh(uit)
         ait = torch.tensordot(uit, self.u, dims=1)
-        print(f"AttentionWithContext forward: ait.shape = {ait.shape}")
+        if self.__DEBUG__:
+            print(f"AttentionWithContext forward: ait.shape = {ait.shape}")
         a = torch.exp(ait)
         if mask is not None:
             a = a * mask
         a = _true_divide(a, torch.sum(a, dim=1, keepdim=True) + torch.finfo(torch.float).eps)
-        print(f"AttentionWithContext forward: a.shape = {a.shape}")
+        if self.__DEBUG__:
+            print(f"AttentionWithContext forward: a.shape = {a.shape}")
         weighted_input = input * a[...,np.newaxis]
-        print(f"AttentionWithContext forward: weighted_input.shape = {weighted_input.shape}")
+        if self.__DEBUG__:
+            print(f"AttentionWithContext forward: weighted_input.shape = {weighted_input.shape}")
         output = torch.sum(weighted_input, dim=1)
-        print(f"AttentionWithContext forward: output.shape = {output.shape}")
+        if self.__DEBUG__:
+            print(f"AttentionWithContext forward: output.shape = {output.shape}")
         return output
 
 
