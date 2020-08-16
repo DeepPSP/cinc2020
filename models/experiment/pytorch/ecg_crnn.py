@@ -33,7 +33,7 @@ __all__ = [
     "ATI_CNN",
     "VGGBlock", "VGG6",
     "ResNetStanfordBlock", "ResNetStanford",
-    "ResNetBasicBlock", "ResNetBottleneck", "ResNet",
+    "ResNetBasicBlock", "ResNetBottleNeck", "ResNet",
     # CRNN structure 2
     "CPSC",
     "CPSCMiniBlock", "CPSCBlock",
@@ -474,12 +474,14 @@ class ResNetBasicBlock(nn.Module):
         super().__init__()
         if dilation > 1:
             raise NotImplementedError(f"Dilation > 1 not supported in {self.__name__}")
+        self.__num_convs = 2
         self.__in_channels = in_channels
         self.__out_channels = num_filters
         self.__down_scale = subsample_length
         self.__stride = subsample_length
         self.config = ED(config)
-        self.__num_convs = 2
+        if self.__DEBUG__:
+            print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
         
         self.__increase_channels = (self.__out_channels > self.__in_channels)
         self.short_cut = self._make_short_cut_layer()
@@ -515,6 +517,8 @@ class ResNetBasicBlock(nn.Module):
     def _make_short_cut_layer(self) -> Union[nn.Module, type(None)]:
         """
         """
+        if self.__DEBUG__:
+            print(f"__down_scale = {self.__down_scale}, __increase_channels = {self.__increase_channels}")
         if self.__down_scale > 1 or self.__increase_channels:
             if self.config.increase_channels_method.lower() == 'conv':
                 short_cut = DownSample(
@@ -577,36 +581,33 @@ class ResNetBasicBlock(nn.Module):
         return output_shape
 
 
-class ResNetBottleneck(nn.Module):
+class ResNetBottleNeck(nn.Module):
     """
     to write
     """
     __DEBUG__ = True
-    __name__ = "ResNetBottleneck"
+    __name__ = "ResNetBottleNeck"
     expansion = 4
 
-    def __init__(self, in_channels:int, out_channels:int, stride:int=1, downsample:Optional[nn.Module]=None, groups:int=1, base_width:int=64, dilation:Real=1, norm_layer:Optional[nn.Module]=None, **kwargs) -> NoReturn:
+    def __init__(self, in_channels:int, num_filters:int, subsample_length:int, groups:int=1, dilation:int=1, **config) -> NoReturn:
         """ NOT finished, NOT checked,
 
         Parameters:
         -----------
         in_channels: int,
-            number of channels in the input signal
-        out_channels: int,
-            (together with `base_width` produces) number of filters of the convolutional layer
-        stride: int,
-            stride of the convolution
-        downsample: Module, optional,
-            a layer for short cut down sampling
+            number of features (channels) of the input
+        num_filters: int,
+            number of filters for the convolutional layers
+        subsample_length: int,
+            subsample length,
+            including pool size for short cut, and stride for the top convolutional layer
         groups: int, default 1,
             pattern of connections between inputs and outputs,
             for more details, ref. `nn.Conv1d`
-        base_width:int, default 64,
-            base out_channels
-        dilation: int, default 1,
-            spacing between the kernel points
-        norm_layer: Module, optional,
-            batch normalization layer
+        config: dict,
+            other hyper-parameters, including
+            filter length (kernel size), activation choices, weight initializer,
+            and short cut patterns, etc.
         """
         super().__init__()
         raise NotImplementedError
@@ -654,14 +655,16 @@ class ResNet(nn.Sequential):
         self.config = ED(config)
         if self.__DEBUG__:
             print(f"configuration of ResNet is as follows\n{dict_to_str(self.config)}")
+        self.__building_block = \
+            ResNetBasicBlock if self.config.name == 'resnet' else ResNetBottleNeck
         
         self.add_module(
-            "cba_init",
+            "init_cba",
             Conv_Bn_Activation(
                 in_channels=self.__in_channels,
-                out_channels=,
+                out_channels=self.config.init_num_filters,
                 kernel_size=self.config.init_filter_length,
-                stride=,
+                stride=self.config.init_conv_stride,
                 activation=self.config.activation,
                 kw_activation=self.config.kw_activation,
                 kernel_initializer=self.config.kernel_initializer,
@@ -669,11 +672,42 @@ class ResNet(nn.Sequential):
                 bias=self.config.bias,
             )
         )
+        
+        if self.config.init_pool_size > 0:
+            self.add_module(
+                "init_pool",
+                nn.MaxPool1d(
+                    kernel_size=self.config.init_pool_size,
+                    stride=self.config.init_pool_stride,
+                    padding=(self.config.init_pool_size-1)//2,
+                    bias=self.config.bias,
+                )
+            )
+
+        for group_idx, nb in enumerate(self.config.num_blocks):
+            group_in_channels = (2**group_idx) * self.config.init_num_filters
+            block_in_channels = group_in_channels
+            block_num_filters = 2 * block_in_channels
+            for block_idx in range(nb):
+                block_subsample_length = self.config.subsample_length if block_idx == 0 else 1
+                self.add_module(
+                    f"block_{group_idx}_{block_idx}",
+                    self.building_block(
+                        in_channels=block_in_channels,
+                        num_filters=block_num_filters,
+                        subsample_length=block_subsample_length,
+                        groups=1,
+                        dilation=1,
+                        **(self.config.block)
+                    )
+                )
+                block_in_channels = block_num_filters
 
     def forward(self, input):
         """
         """
-        raise NotImplementedError
+        output = super().forward(input)
+        return output
 
     def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
         """ finished, checked,
@@ -690,7 +724,20 @@ class ResNet(nn.Sequential):
         output_shape: sequence,
             the output shape of this block, given `seq_len` and `batch_size`
         """
-        raise NotImplementedError
+        _seq_len = seq_len
+        for module in self:
+            if type(module).__name__ == "MaxPool1d":
+                output_shape = compute_conv_output_shape(
+                    input_shape=(batch_size, self.config.init_filter_length, _seq_len),
+                    num_filters=self.config.init_filter_length,
+                    kernel_size=self.config.init_pool_size,
+                    stride=self.config.init_pool_stride,
+                    pad=(self.config.init_pool_size-1)//2,
+                )
+            else:
+                output_shape = module.compute_output_shape(_seq_len, batch_size)
+            _, _, _seq_len = output_shape
+        return output_shape
 
 
 class ATI_CNN(nn.Module):
