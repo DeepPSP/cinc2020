@@ -94,13 +94,20 @@ TrainCfg.db_dir = "/media/cfs/wenhao71/data/cinc2020_data/"
 TrainCfg.log_dir = os.path.join(_BASE_DIR, 'log')
 TrainCfg.checkpoints = os.path.join(_BASE_DIR, "checkpoints")
 TrainCfg.keep_checkpoint_max = 100
-TrainCfg.TRAIN_EPOCHS = 60000
+TrainCfg.TRAIN_EPOCHS = 6000
 TrainCfg.TRAIN_OPTIMIZER = "adam"  # "sgd"
 
 TrainCfg.momentum = 0.949
 TrainCfg.decay = 0.0005
 TrainCfg.learning_rate = 0.00261
 TrainCfg.max_batches = 500500
-TrainCfg.steps = [600000, 800000]
-TrainCfg.batch = 64
-
+TrainCfg.steps = [2000, 4000]
+TrainCfg.batch = 32
+TrainCfg.tranche_classes = ED{
+    "AB": ['IAVB', 'AF', 'AFL', 'IRBBB', 'LBBB', 'PAC', 'PVC', 'RBBB', 'SB', 'NSR', 'STach', 'TAb'],
+    "E": ['IAVB', 'AF', 'AFL', 'IRBBB', 'LAnFB', 'LBBB', 'NSIVCB', 'PAC', 'LPR', 'LQT', 'QAb', 'SA', 'SB', 'NSR', 'STach', 'TAb', 'TInv'],
+    "F": ['IAVB', 'AF', 'AFL', 'IRBBB', 'LAnFB', 'LBBB', 'NSIVCB', 'PAC', 'LQT', 'QAb', 'RBBB', 'SA', 'SB', 'NSR', 'STach', 'TAb', 'TInv', 'VPB'],
+}
+TrainCfg.classes = [
+    ['IAVB', 'AF', 'AFL', 'IRBBB', 'LAnFB', 'LBBB', 'NSIVCB', 'PAC', 'PVC', 'LPR', 'LQT', 'QAb', 'RBBB', 'SA', 'SB', 'NSR', 'STach', 'TAb', 'TInv']
+]

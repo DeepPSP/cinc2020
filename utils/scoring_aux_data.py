@@ -8,6 +8,7 @@ from typing import Union, Sequence, Dict
 
 import numpy as np
 import pandas as pd
+from easydict import EasyDict as ED
 
 
 __all__ = [
@@ -86,6 +87,7 @@ t wave abnormal,164934002,TAb,0,22,0,0,2345,2306,4673,
 t wave inversion,59931005,TInv,0,5,1,0,294,812,1112,
 ventricular premature beats,17338001,VPB,0,8,0,0,0,357,365,We score 427172004 and 17338001 as the same diagnosis."""))
 dx_mapping_scored = dx_mapping_scored.fillna("")
+dx_mapping_scored["SNOMED CT Code"] = dx_mapping_scored["SNOMED CT Code"].apply(str)
 
 
 dx_mapping_unscored = pd.read_csv(StringIO("""Dx,SNOMED CT Code,Abbreviation,CPSC,CPSC-Extra,StPetersburg,PTB,PTB-XL,Georgia,Total
@@ -173,6 +175,7 @@ ventricular tachycardia,164895002,VTach,0,1,1,10,0,0,12
 ventricular trigeminy,251180001,VTrig,0,4,4,0,20,1,29
 wandering atrial pacemaker,195101003,WAP,0,0,0,0,0,7,7
 wolff parkinson white pattern,74390002,WPW,0,0,4,2,80,2,88"""))
+dx_mapping_unscored["SNOMED CT Code"] = dx_mapping_unscored["SNOMED CT Code"].apply(str)
 
 
 dms = dx_mapping_scored.copy()
@@ -187,27 +190,29 @@ df_weights_snomed = df_weights  # alias
 
 
 snomed_ct_code_to_abbr = \
-    lambda i: dx_mapping_all[dx_mapping_all["SNOMED CT Code"]==int(i)]["Abbreviation"].values[0]
+    ED({row['SNOMED CT Code']:row['Abbreviation'] for _,row in dx_mapping_all.iterrows()})
+abbr_to_snomed_ct_code = ED({v:k for k,v in snomed_ct_code_to_abbr.items()})
 
 df_weights_abbr = df_weights.copy()
 
 df_weights_abbr.columns = \
-    df_weights_abbr.columns.map(lambda i: snomed_ct_code_to_abbr(i))
+    df_weights_abbr.columns.map(lambda i: snomed_ct_code_to_abbr[i])
 
 df_weights_abbr.index = \
-    df_weights_abbr.index.map(lambda i: snomed_ct_code_to_abbr(i))
+    df_weights_abbr.index.map(lambda i: snomed_ct_code_to_abbr[i])
 
 
 snomed_ct_code_to_fullname = \
-    lambda i: dx_mapping_all[dx_mapping_all["SNOMED CT Code"]==int(i)]["Dx"].values[0]
+    ED({row['SNOMED CT Code']:row['Dx'] for _,row in dx_mapping_all.iterrows()})
+fullname_to_snomed_ct_code = ED({v:k for k,v in snomed_ct_code_to_fullname.items()})
 
 df_weights_fullname = df_weights.copy()
 
 df_weights_fullname.columns = \
-    df_weights_fullname.columns.map(lambda i: snomed_ct_code_to_fullname(i))
+    df_weights_fullname.columns.map(lambda i: snomed_ct_code_to_fullname[i])
 
 df_weights_fullname.index = \
-    df_weights_fullname.index.map(lambda i: snomed_ct_code_to_fullname(i))
+    df_weights_fullname.index.map(lambda i: snomed_ct_code_to_fullname[i])
 
 
 
@@ -267,10 +272,7 @@ def normalize_class(c:Union[str,int], ensure_scored:bool=False) -> str:
     nc: str,
         the abbr. of the class
     """
-    try:
-        nc = snomed_ct_code_to_abbr(c)
-    except:
-        nc = c
+    nc = snomed_ct_code_to_abbr.get(str(c), str(c))
     if ensure_scored and nc not in df_weights_abbr.columns:
         raise ValueError(f"class `{c}` not among the scored classes")
     return nc
@@ -292,11 +294,9 @@ def get_class(snomed_ct_code:Union[str,int]) -> Dict[str,str]:
     arrhythmia_class: dict,
         containing `abbr` the abbreviation and `fullname` the full name of the arrhythmia
     """
-    code = int(snomed_ct_code)
-    row = dx_mapping_all[dx_mapping_all["SNOMED CT Code"]==code].iloc[0]
     arrhythmia_class = {
-        "abbr": row["Abbreviation"],
-        "fullname": row["Dx"],
+        "abbr": snomed_ct_code_to_abbr[str(snomed_ct_code)],
+        "fullname": snomed_ct_code_to_fullname[str(snomed_ct_code)],
     }
     return arrhythmia_class
 

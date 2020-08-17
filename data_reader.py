@@ -27,7 +27,7 @@ from utils.misc import (
 )
 from utils.scoring_aux_data import (
     dx_mapping_all, dx_mapping_scored, dx_mapping_unscored,
-    normalize_class,
+    normalize_class, abbr_to_snomed_ct_code,
 )
 from utils import ecg_arrhythmia_knowledge as EAK
 from cfg import PlotCfg
@@ -211,6 +211,13 @@ class CINC2020_Reader(object):
             'diagnosis','df_leads',
             'medical_prescription','history','symptom_or_surgery',
         ]
+        self.label_trans_dict = {
+            'CRBBB': 'RBBB', 'SVPB': 'PAC', 'VPB': 'PVC',
+            '713427006': '59118001', '63593006': '284470004', '17338001': '427172004',
+            'complete right bundle branch block': 'right bundle branch block',
+            'supraventricular premature beats': 'premature atrial contraction',
+            'ventricular premature beats': 'premature ventricular contractions',
+        }
 
 
     def get_subject_id(self, rec:str) -> int:
@@ -674,7 +681,7 @@ class CINC2020_Reader(object):
         return self.load_ann(rec, raw)
 
     
-    def get_labels(self, rec:str, scored_only:bool=True, abbr:bool=True) -> List[str]:
+    def get_labels(self, rec:str, scored_only:bool=True, abbr:bool=True, normalize:bool=True) -> List[str]:
         """ finished, checked,
 
         read labels (diagnoses or arrhythmias) of a record
@@ -687,6 +694,9 @@ class CINC2020_Reader(object):
             only get the labels that are scored in the CINC2020 official phase
         abbr: bool, default True,
             labels in abbreviations or fullnames
+        normalize: bool, default True,
+            if True, the labels will be transformed into their equavalents,
+            which are defined in ``
         
         Returns:
         --------
@@ -702,6 +712,8 @@ class CINC2020_Reader(object):
             labels = labels['diagnosis_abbr']
         else:
             labels = labels['diagnosis_fullname']
+        if normalize:
+            labels = [self.label_trans_dict.get(item, item) for item in labels]
         return labels
 
 

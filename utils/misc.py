@@ -23,6 +23,7 @@ __all__ = [
     "ms2samples",
     "samples2ms",
     "get_mask",
+    "class_weight_to_sample_weight",
     "plot_single_lead",
 ]
 
@@ -351,6 +352,44 @@ def get_mask(shape:Union[int, Sequence[int]], critical_points:np.ndarray, left_b
     elif return_fmt.lower() == "intervals":
         mask = l_itv
     return mask
+
+
+def class_weight_to_sample_weight(y:np.ndarray, class_weight:Union[str,List[float],np.ndarray,dict]='balanced') -> np.ndarray:
+    """ finished, checked,
+
+    transform class weight to sample weight
+
+    Parameters:
+    -----------
+    y: ndarray,
+        the label (class) of each sample
+    class_weight: str, or list, or ndarray, or dict, default 'balanced',
+        the weight for each sample class,
+        if is 'balanced', the class weight will automatically be given by 
+        if `y` is of string type, then `class_weight` should be a dict,
+        if `y` is of numeric type, and `class_weight` is array_like,
+        then the labels (`y`) should be continuous and start from 0
+    """
+    if not class_weight:
+        sample_weight = np.ones_like(y, dtype=float)
+        return sample_weight
+    
+    try:
+        sample_weight = y.copy().astype(int)
+    except:
+        sample_weight = y.copy()
+        assert isinstance(class_weight, dict) or class_weight.lower()=='balanced', \
+            "if `y` are of type str, then class_weight should be 'balanced' or a dict"
+    
+    if isinstance(class_weight, str) and class_weight.lower() == 'balanced':
+        classes = np.unique(y).tolist()
+        cw = compute_class_weight('balanced', classes=classes, y=y)
+        trans_func = lambda s: cw[classes.index(s)]
+    else:
+        trans_func = lambda s: class_weight[s]
+    sample_weight = np.vectorize(trans_func)(sample_weight)
+    sample_weight = sample_weight / np.max(sample_weight)
+    return sample_weight
 
 
 def plot_single_lead(t:np.ndarray, sig:np.ndarray, ax:Optional[Any]=None, ticks_granularity:int=0, **kwargs) -> NoReturn:

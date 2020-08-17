@@ -1204,3 +1204,84 @@ def compute_conv_output_shape(input_shape:Sequence[Union[int, type(None)]], num_
         output_shape = tuple([input_shape[0], num_filters] + output_shape)
 
     return output_shape
+
+
+def weighted_binary_cross_entropy(sigmoid_x:Tensor, targets:Tensor, pos_weight:Tensor, weight:Optional[Tensor]=None, size_average:bool=True, reduce:bool=True) -> Tensor:
+    """ NOT checked,
+
+    Parameters:
+    -----------
+    sigmoid_x: Tensor,
+        predicted probability of size [N,C], N sample and C Class.
+        Eg. Must be in range of [0,1], i.e. Output from Sigmoid.
+    targets: Tensor,
+        true value, one-hot-like vector of size [N,C]
+    pos_weight: Tensor,
+        Weight for postive sample
+    weight: Tensor, optional,
+    size_average: bool, default True,
+    reduce: bool, default True,
+
+    Reference (original source):
+    https://github.com/pytorch/pytorch/issues/5660#issuecomment-403770305
+    """
+    if not (targets.size() == sigmoid_x.size()):
+        raise ValueError("Target size ({}) must be the same as input size ({})".format(targets.size(), sigmoid_x.size()))
+
+    loss = -pos_weight* targets * sigmoid_x.log() - (1-targets)*(1-sigmoid_x).log()
+
+    if weight is not None:
+        loss = loss * weight
+
+    if not reduce:
+        return loss
+    elif size_average:
+        return loss.mean()
+    else:
+        return loss.sum()
+
+class WeightedBCELoss(nn.Module):
+    """ NOT checked,
+
+    Reference (original source):
+    https://github.com/pytorch/pytorch/issues/5660#issuecomment-403770305
+    """
+    def __init__(self, pos_weight:Tensor=1, weight:Optional[Tensor]=None, PosWeightIsDynamic:bool=False, WeightIsDynamic:bool=False, size_average:bool=True, reduce:bool=True) -> NoReturn:
+        """ Not checked,
+
+        Parameters:
+        -----------
+        pos_weight: Tensor, default 1,
+            Weight for postive samples. Size [1,C]
+        weight: Tensor, optional,
+            Weight for Each class. Size [1,C]
+        PosWeightIsDynamic: bool, default False,
+            If True, the pos_weight is computed on each batch.
+            If `pos_weight` is None, then it remains None.
+        WeightIsDynamic: bool, default False,
+            If True, the weight is computed on each batch.
+            If `weight` is None, then it remains None.
+        size_average: bool, default True,
+        reduce: bool, default True,
+        """
+        super().__init__()
+
+        self.register_buffer('weight', weight)
+        self.register_buffer('pos_weight', pos_weight)
+        self.size_average = size_average
+        self.reduce = reduce
+        self.PosWeightIsDynamic = PosWeightIsDynamic
+
+    def forward(self, input:Tensor, target:Tensor) -> Tensor:
+        """
+        """
+        if self.PosWeightIsDynamic:
+            positive_counts = target.sum(dim=0)
+            nBatch = len(target)
+            self.pos_weight = (nBatch - positive_counts) / (positive_counts + 1e-5)
+
+        return weighted_binary_cross_entropy(input, target,
+                                             pos_weight=self.pos_weight,
+                                             weight=self.weight,
+                                             size_average=self.size_average,
+                                             reduce=self.reduce)

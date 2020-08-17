@@ -10,6 +10,7 @@ Training strategy:
 
 2. the following classes will be determined by the special detectors:
     PR, LAD, RAD, LQRSV, Brady,
+    (potentially) SB, STach
 
 3. models will be trained for each tranche separatly:
     tranche A and B are from the same source, hence will be treated one during training,
@@ -20,12 +21,15 @@ Training strategy:
         E: {'IAVB': 797, 'AF': 1514, 'AFL': 73, 'CRBBB': 542, 'IRBBB': 1118, 'LAnFB': 1626, 'LAD': 5146, 'LBBB': 536, 'LQRSV': 182, 'NSIVCB': 789, 'PR': 296, 'PAC': 398, 'LPR': 340, 'LQT': 118, 'QAb': 548, 'RAD': 343, 'SA': 772, 'SB': 637, 'NSR': 18092, 'STach': 826, 'SVPB': 157, 'TAb': 2345, 'TInv': 294}
         F: {'IAVB': 769, 'AF': 570, 'AFL': 186, 'Brady': 6, 'CRBBB': 28, 'IRBBB': 407, 'LAnFB': 180, 'LAD': 940, 'LBBB': 231, 'LQRSV': 374, 'NSIVCB': 203, 'PAC': 639, 'LQT': 1391, 'QAb': 464, 'RAD': 83, 'RBBB': 542, 'SA': 455, 'SB': 1677, 'NSR': 1752, 'STach': 1261, 'SVPB': 1, 'TAb': 2306, 'TInv': 812, 'VPB': 357}
     hence in this manner, training classes for each tranche are as follows:
-        A+B: [IAVB', 'AF', 'AFL',  'IRBBB', 'LBBB', 'PAC', 'PVC', 'RBBB', 'SB', 'NSR', 'STach', 'TAb']
+        A+B: ['IAVB', 'AF', 'AFL',  'IRBBB', 'LBBB', 'PAC', 'PVC', 'RBBB', 'SB', 'NSR', 'STach', 'TAb']
         E: ['IAVB', 'AF', 'AFL', 'IRBBB', 'LAnFB', 'LBBB', 'NSIVCB', 'PAC', 'LPR', 'LQT', 'QAb', 'SA', 'SB', 'NSR', 'STach', 'TAb', 'TInv']
-        F: ['IAVB', 'AF', 'AFL', 'IRBBB', 'LAnFB', 'LBBB', 'NSIVCB', 'PAC', 'LQT', 'QAb', 'RBBB', 'SA', 'SB', 'NSR', 'STach', 'TAb', 'TInv', 'VPB']
+        F: ['IAVB', 'AF', 'AFL', 'IRBBB', 'LAnFB', 'LBBB', 'NSIVCB', 'PAC', 'LQT', 'QAb', 'RBBB', 'SA', 'SB', 'NSR', 'STach', 'TAb', 'TInv', 'PVC']
     tranches C, D have too few recordings (recordings of C are long), which shall not be used to train separate models?
 
-4. one model will be trained using the whole dataset
+4. one model will be trained using the whole dataset (consider excluding tranche C? good news is that tranche C mainly consists of 'Brady' and 'STach', which can be classified using the special detectors)
+        A+B+D+E+F: {'IAVB': 2394, 'AF': 3473, 'AFL': 314, 'Brady': 277, 'CRBBB': 683, 'IRBBB': 1611, 'LAnFB': 1806, 'LAD': 6086, 'LBBB': 1041, 'LQRSV': 556, 'NSIVCB': 996, 'PR': 299, 'PAC': 1726, 'PVC': 188, 'LPR': 340, 'LQT': 1513, 'QAb': 1013, 'RAD': 427, 'RBBB': 2400, 'SA': 1238, 'SB': 2359, 'NSR': 20846, 'STach': 2391, 'SVPB': 211, 'TAb': 4673, 'TInv': 1111, 'VPB': 365}
+    hence classes for training are
+        ['IAVB', 'AF', 'AFL', 'IRBBB', 'LAnFB', 'LBBB', 'NSIVCB', 'PAC', 'PVC', 'LPR', 'LQT', 'QAb', 'RBBB', 'SA', 'SB', 'NSR', 'STach', 'TAb', 'TInv']
 
 """
 import os
@@ -51,28 +55,35 @@ from easydict import EasyDict as ED
 from models.ecg_crnn import ATI_CNN
 from model_configs.ati_cnn import ATI_CNN_CONFIG
 from cfg import ModelCfg, TrainCfg
+from dataset import CINC2020
 
 
-__all__ = []
+__all__ = [
+    "train",
+]
 
 
 def train(model:nn.Module, device:torch.device, config:dict, epochs:int=5, batch_size:int=1, save_ckpt:bool=True, log_step:int=20, logger:Optional[logging.Logger]=None):
     """
+
+    Parameters:
+    -----------
+    to write
     """
-    train_dataset = ACNE04(label_path=config.train_label, cfg=config, train=True)
-    val_dataset = ACNE04(label_path=config.val_label, cfg=config, train=False)
+    train_dataset = CINC2020(config=config, train=True)
+    val_dataset = CINC2020(config=config, train=False)
 
     n_train = len(train_dataset)
     n_val = len(val_dataset)
 
     train_loader = DataLoader(
         dataset=train_dataset,
-        batch_size=config.batch // config.subdivisions,
+        batch_size=config.batch,
         shuffle=True,
         num_workers=8,
         pin_memory=True,
         drop_last=True,  # setting False would result in error
-        collate_fn=collate,
+        collate_fn=collate_fn,
     )
 
     val_loader = DataLoader(
@@ -82,13 +93,13 @@ def train(model:nn.Module, device:torch.device, config:dict, epochs:int=5, batch
         num_workers=8,
         pin_memory=True,
         drop_last=True,  # setting False would result in error
-        collate_fn=val_collate,
+        collate_fn=collate_fn,
     )
 
     writer = SummaryWriter(
-        log_dir=config.TRAIN_TENSORBOARD_DIR,
-        filename_suffix=f'OPT_{config.TRAIN_OPTIMIZER}_LR_{config.learning_rate}_BS_{config.batch}_Sub_{config.subdivisions}_Size_{config.width}',
-        comment=f'OPT_{config.TRAIN_OPTIMIZER}_LR_{config.learning_rate}_BS_{config.batch}_Sub_{config.subdivisions}_Size_{config.width}',
+        log_dir=config.log_dir,
+        filename_suffix=f'OPT_{config.TRAIN_OPTIMIZER}_LR_{config.learning_rate}_BS_{config.batch}',
+        comment=f'OPT_{config.TRAIN_OPTIMIZER}_LR_{config.learning_rate}_BS_{config.batch}',
     )
     
     max_itr = config.TRAIN_EPOCHS * n_train
@@ -98,7 +109,6 @@ def train(model:nn.Module, device:torch.device, config:dict, epochs:int=5, batch
         logger.info(f'''Starting training:
             Epochs:          {epochs}
             Batch size:      {config.batch}
-            Subdivisions:    {config.subdivisions}
             Learning rate:   {config.learning_rate}
             Training size:   {n_train}
             Validation size: {n_val}
@@ -107,8 +117,6 @@ def train(model:nn.Module, device:torch.device, config:dict, epochs:int=5, batch
             Images size:     {config.width}
             Optimizer:       {config.TRAIN_OPTIMIZER}
             Dataset classes: {config.classes}
-            Train label path:{config.train_label}
-            Pretrained:      {config.pretrained}
         ''')
 
     # learning rate setup
@@ -139,16 +147,11 @@ def train(model:nn.Module, device:torch.device, config:dict, epochs:int=5, batch
         )
     scheduler = optim.lr_scheduler.LambdaLR(optimizer, burnin_schedule)
 
-    criterion = Yolo_loss(
-        n_classes=config.classes,
-        device=device,
-        batch=config.batch // config.subdivisions,
-        iou_type=config.iou_type,
-    )
-    # scheduler = ReduceLROnPlateau(optimizer, mode='max', verbose=True, patience=6, min_lr=1e-7)
-    # scheduler = CosineAnnealingWarmRestarts(optimizer, 0.001, 1e-6, 20)
+    criterion = nn.BCELoss()
+    scheduler = ReduceLROnPlateau(optimizer, mode='max', verbose=True, patience=6, min_lr=1e-7)
+    scheduler = CosineAnnealingWarmRestarts(optimizer, 0.001, 1e-6, 20)
 
-    save_prefix = 'Yolov4_epoch'
+    save_prefix = 'ECG_CRNN_epoch'
     saved_models = deque()
     model.train()
 
@@ -157,7 +160,7 @@ def train(model:nn.Module, device:torch.device, config:dict, epochs:int=5, batch
         epoch_loss = 0
         epoch_step = 0
 
-        with tqdm(total=n_train, desc=f'Epoch {epoch + 1}/{epochs}', unit='img', ncols=100) as pbar:
+        with tqdm(total=n_train, desc=f'Epoch {epoch + 1}/{epochs}', ncols=100) as pbar:
             for i, batch in enumerate(train_loader):
                 global_step += 1
                 epoch_step += 1
@@ -208,23 +211,9 @@ def train(model:nn.Module, device:torch.device, config:dict, epochs:int=5, batch
             evaluator = evaluate(eval_model, val_loader, config, device, logger)
             del eval_model
 
-            stats = evaluator.coco_eval['bbox'].stats
-            writer.add_scalar('train/AP', stats[0], global_step)
-            writer.add_scalar('train/AP50', stats[1], global_step)
-            writer.add_scalar('train/AP75', stats[2], global_step)
-            writer.add_scalar('train/AP_small', stats[3], global_step)
-            writer.add_scalar('train/AP_medium', stats[4], global_step)
-            writer.add_scalar('train/AP_large', stats[5], global_step)
-            writer.add_scalar('train/AR1', stats[6], global_step)
-            writer.add_scalar('train/AR10', stats[7], global_step)
-            writer.add_scalar('train/AR100', stats[8], global_step)
-            writer.add_scalar('train/AR_small', stats[9], global_step)
-            writer.add_scalar('train/AR_medium', stats[10], global_step)
-            writer.add_scalar('train/AR_large', stats[11], global_step)
-
             if save_ckpt:
                 try:
-                    os.mkdir(config.checkpoints)
+                    os.makedirs(config.checkpoints, exist_ok=True)
                     if logger:
                         logger.info('Created checkpoint directory')
                 except OSError:
@@ -245,99 +234,25 @@ def train(model:nn.Module, device:torch.device, config:dict, epochs:int=5, batch
     writer.close()
 
 
+def collate_fn(batch):
+    return tuple(zip(*batch))
+
+
 @torch.no_grad()
 def evaluate(model, data_loader, cfg, device, logger=None, **kwargs):
     """ finished, tested
     """
-    # cpu_device = torch.device("cpu")
     model.eval()
-    # header = 'Test:'
 
-    coco = convert_to_coco_api(data_loader.dataset, bbox_fmt='coco')
-    coco_evaluator = CocoEvaluator(coco, iou_types = ["bbox"], bbox_fmt='coco')
-
-    for images, targets in data_loader:
-        model_input = [[cv2.resize(img, (cfg.w, cfg.h))] for img in images]
-        model_input = np.concatenate(model_input, axis=0)
-        model_input = model_input.transpose(0, 3, 1, 2)
-        model_input = torch.from_numpy(model_input).div(255.0)
-        model_input = model_input.to(device)
-        targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
-
-        if torch.cuda.is_available():
-            torch.cuda.synchronize()
-        model_time = time.time()
-        outputs = model(model_input)
-
-        # outputs = [{k: v.to(cpu_device) for k, v in t.items()} for t in outputs]
-        model_time = time.time() - model_time
-
-        # outputs = outputs.cpu().detach().numpy()
-        res = {}
-        # for img, target, output in zip(images, targets, outputs):
-        for img, target, (boxes, confs) in zip(images, targets, outputs):
-            img_height, img_width = img.shape[:2]
-            # boxes = output[...,:4].copy()  # output boxes in yolo format
-            boxes = boxes.squeeze(2).cpu().detach().numpy()
-            boxes[...,2:] = boxes[...,2:] - boxes[...,:2] # Transform [x1, y1, x2, y2] to [x1, y1, w, h]
-            boxes[...,0] = boxes[...,0]*img_width
-            boxes[...,1] = boxes[...,1]*img_height
-            boxes[...,2] = boxes[...,2]*img_width
-            boxes[...,3] = boxes[...,3]*img_height
-            boxes = torch.as_tensor(boxes, dtype=torch.float32)
-            # confs = output[...,4:].copy()
-            confs = confs.cpu().detach().numpy()
-            labels = np.argmax(confs, axis=1).flatten()
-            labels = torch.as_tensor(labels, dtype=torch.int64)
-            scores = np.max(confs, axis=1).flatten()
-            scores = torch.as_tensor(scores, dtype=torch.float32)
-            res[target["image_id"].item()] = {
-                "boxes": boxes,
-                "scores": scores,
-                "labels": labels,
-            }
-
-        debug = kwargs.get("debug", [])
-        if isinstance(debug, str):
-            debug = [debug]
-        debug = [item.lower() for item in debug]
-        if 'iou' in debug:
-            from tool.utils_iou_test import bboxes_iou_test
-            ouput_boxes = np.array(post_processing(None, 0.5, 0.5, outputs)[0])[...,:4]
-            img_height, img_width = images[0].shape[:2]
-            ouput_boxes[...,0] = ouput_boxes[...,0] * img_width
-            ouput_boxes[...,1] = ouput_boxes[...,1] * img_height
-            ouput_boxes[...,2] = ouput_boxes[...,2] * img_width
-            ouput_boxes[...,3] = ouput_boxes[...,3] * img_height
-            # coco format to yolo format
-            truth_boxes = targets[0]['boxes'].numpy().copy()
-            truth_boxes[...,:2] = truth_boxes[...,:2] + truth_boxes[...,2:]/2
-            iou = bboxes_iou_test(torch.Tensor(ouput_boxes), torch.Tensor(truth_boxes), fmt='yolo')
-            print(f"iou of first image = {iou}")
-        if len(debug) > 0:
-            return
-        
-        evaluator_time = time.time()
-        coco_evaluator.update(res)
-        evaluator_time = time.time() - evaluator_time
-
-    # gather the stats from all processes
-    coco_evaluator.synchronize_between_processes()
-
-    # accumulate predictions from all images
-    coco_evaluator.accumulate()
-    coco_evaluator.summarize()
-
-    return coco_evaluator
+    raise NotImplementedError
 
 
 def get_args(**kwargs):
     """
     """
-    pretrained_detector = '/mnt/wenhao71/workspace/yolov4_acne_torch/pretrained/yolov4.pth'
     cfg = kwargs
     parser = argparse.ArgumentParser(
-        description='Train the Model on images and target masks',
+        description='Train the Model on CINC2020',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     # parser.add_argument(
     #     '-b', '--batch-size',
@@ -349,10 +264,6 @@ def get_args(**kwargs):
         metavar='LR', type=float, nargs='?', default=0.001,
         help='Learning rate',
         dest='learning_rate')
-    parser.add_argument(
-        '-f', '--load',
-        dest='load', type=str, default=pretrained_detector,
-        help='Load model from a .pth file')
     parser.add_argument(
         '-g', '--gpu',
         metavar='G', type=str, default='0',
@@ -367,10 +278,10 @@ def get_args(**kwargs):
     #     '-pretrained',
     #     type=str, default=None,
     #     help='pretrained yolov4.conv.137')
-    parser.add_argument(
-        '-classes',
-        type=int, default=1,
-        help='dataset classes')
+    # parser.add_argument(
+    #     '-classes',
+    #     type=int, default=1,
+    #     help='dataset classes')
     # parser.add_argument(
     #     '-train_label_path',
     #     dest='train_label', type=str, default='train.txt',
