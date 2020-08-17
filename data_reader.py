@@ -34,11 +34,11 @@ from cfg import PlotCfg
 
 
 __all__ = [
-    "CINC2020",
+    "CINC2020_Reader",
 ]
 
 
-class CINC2020(object):
+class CINC2020_Reader(object):
     """ NOT Finished,
 
     Classification of 12-lead ECGs: the PhysioNet/Computing in Cardiology Challenge 2020
@@ -82,7 +82,7 @@ class CINC2020(object):
     using for example the following code:
     >>> db_dir = "/media/cfs/wenhao71/data/cinc2020_data/"
     >>> working_dir = "./working_dir"
-    >>> data_gen = CINC2020(db_dir=db_dir,working_dir=working_dir)
+    >>> data_gen = CINC2020_Reader(db_dir=db_dir,working_dir=working_dir)
     >>> set_leads = []
     >>> for tranche, l_rec in data_gen.all_records.items():
     ...     for rec in l_rec:

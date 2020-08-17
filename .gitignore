@@ -137,3 +137,5 @@ test/ati_cnn/ckpt/
 working_dir
 tmp
 temp
+checkpoints
+log

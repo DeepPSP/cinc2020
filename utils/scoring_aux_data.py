@@ -445,7 +445,7 @@ dx_cooccurrence_all is obtained via the following code
 
 >>> db_dir = "/media/cfs/wenhao71/data/cinc2020_data/"
 >>> working_dir = "./working_dir"
->>> data_gen = CINC2020(db_dir=db_dir,working_dir=working_dir)
+>>> data_gen = CINC2020_Reader(db_dir=db_dir,working_dir=working_dir)
 >>> dx_cooccurrence_all = pd.DataFrame(np.zeros((len(dx_mapping_all.Abbreviation), len(dx_mapping_all.Abbreviation)),dtype=int), columns=dx_mapping_all.Abbreviation.values)
 >>> dx_cooccurrence_all.index = dx_mapping_all.Abbreviation.values
 >>> for tranche, l_rec in data_gen.all_records.items():
