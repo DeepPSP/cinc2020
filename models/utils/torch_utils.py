@@ -104,7 +104,7 @@ Activations.leaky_relu = Activations.leaky
 class Bn_Activation(nn.Sequential):
     """ finished, checked
 
-    batch normalization -- > activation
+    batch normalization --> activation
     """
     __name__ = "Bn_Activation"
 

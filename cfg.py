@@ -90,20 +90,12 @@ ModelCfg.classes = []
 
 # training configurations for machine learning and deep learning
 TrainCfg = ED()
+
 TrainCfg.db_dir = "/media/cfs/wenhao71/data/cinc2020_data/"
 TrainCfg.log_dir = os.path.join(_BASE_DIR, 'log')
 TrainCfg.checkpoints = os.path.join(_BASE_DIR, "checkpoints")
 TrainCfg.keep_checkpoint_max = 100
-TrainCfg.TRAIN_EPOCHS = 60000
-TrainCfg.TRAIN_OPTIMIZER = "adam"  # "sgd"
 
-TrainCfg.momentum = 0.949
-TrainCfg.decay = 0.0005
-TrainCfg.learning_rate = 0.00261
-TrainCfg.burn_in = 1000
-TrainCfg.max_batches = 500500
-TrainCfg.steps = [40000, 45000]
-TrainCfg.batch = 32
 TrainCfg.tranche_class_weights = ED({
     "AB": {
         'IAVB': 828, 'AF': 1374, 'AFL': 54, 'IRBBB': 86, 'LBBB': 274, 'PAC': 742, 'PVC': 196, 'RBBB': 1971, 'SB': 45, 'NSR': 922, 'STach': 303, 'TAb': 22,
@@ -137,3 +129,17 @@ TrainCfg.class_weights = ED({
 })  # normalize so that the smallest weight equals 1
 TrainCfg.classes = list(TrainCfg.class_weights.keys())
 TrainCfg.tranches_for_training = ''  # one of '', 'AB', 'E', 'F'
+
+TrainCfg.TRAIN_EPOCHS = 60000
+TrainCfg.TRAIN_OPTIMIZER = "adam"  # "sgd"
+
+TrainCfg.momentum = 0.949
+TrainCfg.decay = 0.0005
+TrainCfg.learning_rate = 0.00261
+TrainCfg.burn_in = 1000
+TrainCfg.max_batches = 500500
+TrainCfg.steps = [40000, 45000]
+TrainCfg.batch = 32
+TrainCfg.loss = 'bce'
+
+TrainCfg.cnn_name = "resnet"

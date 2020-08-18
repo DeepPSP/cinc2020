@@ -29,9 +29,18 @@ class CINC2020(Dataset):
         self.reader = CR(db_dir=config.db_dir)
         self.tranches = tranches or self.reader.db_tranches
         self.train = train
-        raise NotImplementedError
 
     def __getitem__(self, index):
+        """
+        """
+        if not self.train:
+            return self._get_val_item(index)
+            
+        raise NotImplementedError
+
+    def _get_val_item(self, index):
+        """
+        """
         raise NotImplementedError
 
     def __len__(self):

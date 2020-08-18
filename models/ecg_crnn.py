@@ -471,16 +471,16 @@ class ECG_CRNN(nn.Module):
     __DEBUG__ = True
     __name__ = 'ECG_CRNN'
 
-    def __init__(self, classes:list, input_len:int, config:ED) -> NoReturn:
+    def __init__(self, classes:list, input_len:Optional[int]=None, config:Optional[ED]=None) -> NoReturn:
         """ finished, checked,
 
         Parameters:
         -----------
         classes: list,
             list of the classes for classification
-        input_len: int,
+        input_len: int, optional,
             sequence length (last dim.) of the input
-        config: dict,
+        config: dict, optional,
             other hyper-parameters, including kernel sizes, etc.
             ref. the corresponding config file
         """
@@ -490,7 +490,7 @@ class ECG_CRNN(nn.Module):
         self.n_leads = 12
         self.input_len = input_len
         self.config = deepcopy(ECG_CRNN_CONFIG)
-        self.config.update(config)
+        self.config.update(config or {})
         if self.__DEBUG__:
             print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
         

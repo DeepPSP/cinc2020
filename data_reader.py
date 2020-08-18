@@ -221,7 +221,7 @@ class CINC2020_Reader(object):
 
 
     def get_subject_id(self, rec:str) -> int:
-        """ not finished,
+        """ finished, checked,
 
         Parameters:
         -----------

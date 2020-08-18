@@ -88,7 +88,7 @@ def train(model:nn.Module, device:torch.device, config:dict, n_epochs:int=5, bat
 
     val_loader = DataLoader(
         dataset=val_dataset,
-        batch_size=config.batch // config.subdivisions,
+        batch_size=config.batch,
         shuffle=True,
         num_workers=8,
         pin_memory=True,
@@ -98,8 +98,8 @@ def train(model:nn.Module, device:torch.device, config:dict, n_epochs:int=5, bat
 
     writer = SummaryWriter(
         log_dir=config.log_dir,
-        filename_suffix=f'OPT_{config.TRAIN_OPTIMIZER}_LR_{config.learning_rate}_BS_{config.batch}',
-        comment=f'OPT_{config.TRAIN_OPTIMIZER}_LR_{config.learning_rate}_BS_{config.batch}',
+        filename_suffix=f'OPT_{config.cnn_name}_{config.TRAIN_OPTIMIZER}_LR_{config.learning_rate}_BS_{config.batch}',
+        comment=f'OPT_{config.cnn_name}_{config.TRAIN_OPTIMIZER}_LR_{config.learning_rate}_BS_{config.batch}',
     )
     
     max_itr = config.TRAIN_EPOCHS * n_train
@@ -269,6 +269,11 @@ def get_args(**kwargs):
         help='the tranches for training',
         dest='tranches_for_training')
     parser.add_argument(
+        '-c', '--cnn-name',
+        type=str, default='resnet',
+        help='choice of cnn feature extractor',
+        dest='cnn_name')
+    parser.add_argument(
         '-keep-checkpoint-max', type=int, default=100,
         help='maximum number of checkpoints to keep. If set 0, all checkpoints will be kept',
         dest='keep_checkpoint_max')
@@ -310,7 +315,10 @@ if __name__ == "__main__":
         classes = cfg.tranche_classes[tranches]
     else:
         classes = cfg.classes
-    model = ECG_CRNN(classes=classes, input_len=, config=ECG_CRNN_CONFIG)
+    model_config = deepcopy(ECG_CRNN_CONFIG)
+    model_config.cnn.name = cfg.cnn_name
+
+    model = ECG_CRNN(classes=classes, config=model_config)
 
     if not DAS and torch.cuda.device_count() > 1:
         model = torch.nn.DataParallel(model)

@@ -56,7 +56,7 @@ resnet.init_pool_stride = 2
 resnet.subsample_length = 2
 resnet.kernel_initializer = "he_normal"
 resnet.kw_initializer = {}
-resnet.activation = "relu"
+resnet.activation = "relu"  # "mish", "swish"
 resnet.kw_activation = {}
 resnet.bias = False
 
