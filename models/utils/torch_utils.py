@@ -41,6 +41,7 @@ else:
 # ---------------------------------------------
 # activations
 class Mish(torch.nn.Module):
+    __name__ = "Mish"
     """ The Mish activation """
     def __init__(self):
         """
@@ -55,6 +56,7 @@ class Mish(torch.nn.Module):
 
 
 class Swish(torch.nn.Module):
+    __name__ = "Swish"
     """ The Swish activation """
     def __init__(self):
         """
@@ -105,6 +107,8 @@ class Bn_Activation(nn.Sequential):
 
     batch normalization -- > activation
     """
+    __name__ = "Bn_Activation"
+
     def __init__(self, num_features:int, activation:Union[str,nn.Module], kw_activation:Optional[dict]=None, dropout:float=0.0) -> NoReturn:
         """ finished, checked,
 
@@ -175,6 +179,8 @@ class Conv_Bn_Activation(nn.Sequential):
     1d convolution --> batch normalization (optional) -- > activation (optional),
     with "same" padding
     """
+    __name__ = "Conv_Bn_Activation"
+
     def __init__(self, in_channels:int, out_channels:int, kernel_size:int, stride:int, bn:Union[bool,nn.Module]=True, activation:Optional[Union[str,nn.Module]]=None, kernel_initializer:Optional[Union[str,callable]]=None, bias:bool=True, **kwargs) -> NoReturn:
         """ finished, checked,
 
@@ -284,7 +290,9 @@ class Conv_Bn_Activation(nn.Sequential):
 class DownSample(nn.Sequential):
     """
     """
+    __name__ = "DownSample"
     __METHODS__ = ['max', 'avg', 'conv',]
+
     def __init__(self, down_scale:int, in_channels:int, out_channels:Optional[int]=None, padding:int=0, bn:Union[bool,nn.Module]=True, method:str='max') -> NoReturn:
         """ finished, checked,
 
@@ -388,6 +396,8 @@ class DoubleConv(nn.Sequential):
     -----------
     https://github.com/milesial/Pytorch-UNet/blob/master/unet/unet_parts.py
     """
+    __name__ = "DoubleConv"
+
     def __init__(self, in_channels:int, out_channels:int, filter_length:int, activation:Union[str,nn.Module]='relu', mid_channels:Optional[int]=None) -> NoReturn:
         """ finished, NOT checked,
 
@@ -469,6 +479,8 @@ class DownDoubleConv(nn.Sequential):
     -----------
     https://github.com/milesial/Pytorch-UNet/blob/master/unet/unet_parts.py
     """
+    __name__ = "DownDoubleConv"
+
     def __init__(self, down_scale:int, in_channels:int, out_channels:int, filter_length:int, activation:Union[str,nn.Module]='relu', mid_channels:Optional[int]=None, down_method:str='max') -> NoReturn:
         """ finished, NOT checked,
 
@@ -551,6 +563,8 @@ class UpDoubleConv(nn.Module):
     -----------
     https://github.com/milesial/Pytorch-UNet/blob/master/unet/unet_parts.py
     """
+    __name__ = "UpDoubleConv"
+
     def __init__(self, up_scale:int, in_channels:int, out_channels:int, filter_length:int, activation:Union[str,nn.Module]='relu', mode:str='bilinear', mid_channels:Optional[int]=None) -> NoReturn:
         """ NOT finished, NOT checked,
 
@@ -641,6 +655,8 @@ class BidirectionalLSTM(nn.Module):
     """
     from crnn_torch of references.ati_cnn
     """
+    __name__ = "BidirectionalLSTM"
+
     def __init__(self, input_size:int, hidden_size:int, output_size:int) -> NoReturn:
         """ finished, checked,
 
@@ -698,6 +714,8 @@ class StackedLSTM(nn.Sequential):
     1. `batch_first` is fixed `False`
     2. currently, how to correctly pass the argument `hx` between LSTM layers is not known to me, hence should be careful (and not recommended, use `nn.LSTM` and set `num_layers` instead) to use
     """
+    __name__ = "StackedLSTM"
+
     def __init__(self, input_size:int, hidden_sizes:Sequence[int], bias:Union[Sequence[bool], bool]=True, dropout:float=0.0, bidirectional:bool=True, return_sequences:bool=True) -> NoReturn:
         """ finished, checked,
 
@@ -812,6 +830,8 @@ class AML_Attention(nn.Module):
     -----------
     [1] https://github.com/AMLab-Amsterdam/AttentionDeepMIL/blob/master/model.py#L6
     """
+    __name__ = "AML_Attention"
+
     def __init__(self, L:int, D:int, K:int):
         """ NOT checked,
         """
@@ -844,6 +864,8 @@ class AML_GatedAttention(nn.Module):
     -----------
     [1] https://github.com/AMLab-Amsterdam/AttentionDeepMIL/blob/master/model.py#L72
     """
+    __name__ = "AML_GatedAttention"
+
     def __init__(self, L:int, D:int, K:int):
         """ NOT checked,
         """
@@ -877,6 +899,8 @@ class AttentionWithContext(nn.Module):
     from 0236 of CPSC2018 challenge
     """
     __DEBUG__ = False
+    __name__ = "AttentionWithContext"
+
     def __init__(self, in_channels:int, out_channels:int, bias:bool=True, initializer:str='glorot_uniform'):
         """ finished, checked
 
@@ -1118,6 +1142,8 @@ class ZeroPadding(nn.Module):
     zero padding for increasing channels,
     degenerates to `identity` if in and out channels are equal
     """
+    __name__ = "ZeroPadding"
+
     def __init__(self, in_channels:int, out_channels:int) -> NoReturn:
         """ finished, checked,
 
@@ -1288,6 +1314,8 @@ class WeightedBCELoss(nn.Module):
     Reference (original source):
     https://github.com/pytorch/pytorch/issues/5660#issuecomment-403770305
     """
+    __name__ = "WeightedBCELoss"
+
     def __init__(self, pos_weight:Tensor=1, weight:Optional[Tensor]=None, PosWeightIsDynamic:bool=False, WeightIsDynamic:bool=False, size_average:bool=True, reduce:bool=True) -> NoReturn:
         """ Not checked,
 

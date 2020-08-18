@@ -63,7 +63,7 @@ __all__ = [
 ]
 
 
-def train(model:nn.Module, device:torch.device, config:dict, epochs:int=5, batch_size:int=1, save_ckpt:bool=True, log_step:int=20, logger:Optional[logging.Logger]=None):
+def train(model:nn.Module, device:torch.device, config:dict, n_epochs:int=5, batch_size:int=1, save_ckpt:bool=True, log_step:int=20, logger:Optional[logging.Logger]=None):
     """
 
     Parameters:
@@ -107,7 +107,7 @@ def train(model:nn.Module, device:torch.device, config:dict, epochs:int=5, batch
     global_step = 0
     if logger:
         logger.info(f'''Starting training:
-            Epochs:          {epochs}
+            Epochs:          {n_epochs}
             Batch size:      {config.batch}
             Learning rate:   {config.learning_rate}
             Training size:   {n_train}
@@ -147,19 +147,19 @@ def train(model:nn.Module, device:torch.device, config:dict, epochs:int=5, batch
     scheduler = optim.lr_scheduler.LambdaLR(optimizer, burnin_schedule)
 
     criterion = nn.BCELoss()
-    scheduler = ReduceLROnPlateau(optimizer, mode='max', verbose=True, patience=6, min_lr=1e-7)
-    scheduler = CosineAnnealingWarmRestarts(optimizer, 0.001, 1e-6, 20)
+    # scheduler = ReduceLROnPlateau(optimizer, mode='max', verbose=True, patience=6, min_lr=1e-7)
+    # scheduler = CosineAnnealingWarmRestarts(optimizer, 0.001, 1e-6, 20)
 
     save_prefix = 'ECG_CRNN_epoch'
     saved_models = deque()
     model.train()
 
-    for epoch in range(epochs):
+    for epoch in range(n_epochs):
         model.train()
         epoch_loss = 0
         epoch_step = 0
 
-        with tqdm(total=n_train, desc=f'Epoch {epoch + 1}/{epochs}', ncols=100) as pbar:
+        with tqdm(total=n_train, desc=f'Epoch {epoch + 1}/{n_epochs}', ncols=100) as pbar:
             for i, batch in enumerate(train_loader):
                 global_step += 1
                 epoch_step += 1
@@ -267,7 +267,7 @@ def get_args(**kwargs):
         '-t', '--tranches',
         type=int, default=1,
         help='the tranches for training',
-        dest='tranche_for_training')
+        dest='tranches_for_training')
     parser.add_argument(
         '-keep-checkpoint-max', type=int, default=100,
         help='maximum number of checkpoints to keep. If set 0, all checkpoints will be kept',
@@ -288,7 +288,7 @@ def get_args(**kwargs):
 DAS = True
 
 if __name__ == "__main__":
-    cfg = get_args(**Cfg)
+    cfg = get_args(**TrainCfg)
     # os.environ["CUDA_VISIBLE_DEVICES"] = cfg.gpu
     if not DAS:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -305,7 +305,12 @@ if __name__ == "__main__":
     print(f"Using torch of version {torch.__version__}")
     print(f'with configuration {cfg}')
 
-    model = ECG_CRNN()
+    tranches = cfg.tranche_for_training
+    if tranches:
+        classes = cfg.tranche_classes[tranches]
+    else:
+        classes = cfg.classes
+    model = ECG_CRNN(classes=classes, input_len=, config=ECG_CRNN_CONFIG)
 
     if not DAS and torch.cuda.device_count() > 1:
         model = torch.nn.DataParallel(model)
@@ -318,7 +323,7 @@ if __name__ == "__main__":
         train(
             model=model,
             config=cfg,
-            epochs=cfg.TRAIN_EPOCHS,
+            n_epochs=cfg.TRAIN_EPOCHS,
             device=device,
             logger=logger,
         )

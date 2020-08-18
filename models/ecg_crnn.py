@@ -38,6 +38,8 @@ class VGGBlock(nn.Sequential):
     building blocks of the CNN feature extractor `VGG6`
     """
     __DEBUG__ = False
+    __name__ = "VGGBlock"
+
     def __init__(self, num_convs:int, in_channels:int, out_channels:int, **config) -> NoReturn:
         """ finished, checked,
 
@@ -63,6 +65,8 @@ class VGGBlock(nn.Sequential):
         # self.config = deepcopy(ECG_CRNN_CONFIG.cnn.vgg_block)
         # self.config.update(config)
         self.config = ED(config)
+        if self.__DEBUG__:
+            print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
 
         self.add_module(
             "cba_1",
@@ -71,7 +75,9 @@ class VGGBlock(nn.Sequential):
                 kernel_size=self.config.filter_length,
                 stride=self.config.subsample_length,
                 activation=self.config.activation,
+                kw_activation=self.config.kw_activation,
                 kernel_initializer=self.config.kernel_initializer,
+                kw_initializer=self.config.kw_initializer,
                 bn=self.config.batch_norm,
             )
         )
@@ -83,7 +89,9 @@ class VGGBlock(nn.Sequential):
                     kernel_size=self.config.filter_length,
                     stride=self.config.subsample_length,
                     activation=self.config.activation,
+                    kw_activation=self.config.kw_activation,
                     kernel_initializer=self.config.kernel_initializer,
+                    kw_initializer=self.config.kw_initializer,
                     bn=self.config.batch_norm,
                 )
             )
@@ -116,8 +124,8 @@ class VGGBlock(nn.Sequential):
                 output_shape = compute_conv_output_shape(
                     input_shape=[batch_size, self.__out_channels, seq_len],
                     num_filters=self.__out_channels,
-                    kernel_size=self.config.pool_kernel,
-                    stride=self.config.pool_stride,
+                    kernel_size=self.config.pool_size,
+                    stride=self.config.pool_size,
                     channel_last=False,
                 )
             num_layers += 1
@@ -128,7 +136,9 @@ class VGG6(nn.Sequential):
     """
     CNN feature extractor of the CRNN models proposed in refs of `ATI_CNN`
     """
-    __DEBUG__ = False
+    __DEBUG__ = True
+    __name__ = "VGG6"
+
     def __init__(self, in_channels:int, **config) -> NoReturn:
         """ finished, checked,
         
@@ -145,6 +155,8 @@ class VGG6(nn.Sequential):
         self.__in_channels = in_channels
         # self.config = deepcopy(ECG_CRNN_CONFIG.cnn.vgg6)
         self.config = ED(config)
+        if self.__DEBUG__:
+            print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
 
         module_in_channels = in_channels
         for idx, (nc, nf) in enumerate(zip(self.config.num_convs, self.config.num_filters)):
@@ -155,7 +167,7 @@ class VGG6(nn.Sequential):
                     num_convs=nc,
                     in_channels=module_in_channels,
                     out_channels=nf,
-                    **(config.block),
+                    **(self.config.block),
                 )
             )
             module_in_channels = nf
@@ -265,7 +277,7 @@ class ResNetBasicBlock(nn.Module):
         """
         """
         if self.__DEBUG__:
-            print(f"__down_scale = {self.__down_scale}, __increase_channels = {self.__increase_channels}")
+            print(f"down_scale = {self.__down_scale}, increase_channels = {self.__increase_channels}")
         if self.__down_scale > 1 or self.__increase_channels:
             if self.config.increase_channels_method.lower() == 'conv':
                 short_cut = DownSample(
@@ -342,7 +354,9 @@ class ResNet(nn.Sequential):
     2. to add
     """
     __DEBUG__ = False
+    __name__ = "ResNet"
     building_block = ResNetBasicBlock
+
     def __init__(self, in_channels:int, **config) -> NoReturn:
         """ finished, checked,
         
@@ -357,7 +371,7 @@ class ResNet(nn.Sequential):
         self.__in_channels = in_channels
         self.config = ED(config)
         if self.__DEBUG__:
-            print(f"configuration of ResNet is as follows\n{dict_to_str(self.config)}")
+            print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
         # self.__building_block = \
         #     ResNetBasicBlock if self.config.name == 'resnet' else ResNetBottleNeck
         
@@ -454,7 +468,7 @@ class ECG_CRNN(nn.Module):
     [1] Yao, Qihang, et al. "Time-Incremental Convolutional Neural Network for Arrhythmia Detection in Varied-Length Electrocardiogram." 2018 IEEE 16th Intl Conf on Dependable, Autonomic and Secure Computing, 16th Intl Conf on Pervasive Intelligence and Computing, 4th Intl Conf on Big Data Intelligence and Computing and Cyber Science and Technology Congress (DASC/PiCom/DataCom/CyberSciTech). IEEE, 2018.
     [2] Yao, Qihang, et al. "Multi-class Arrhythmia detection from 12-lead varied-length ECG using Attention-based Time-Incremental Convolutional Neural Network." Information Fusion 53 (2020): 174-182.
     """
-    __DEBUG__ = False
+    __DEBUG__ = True
     __name__ = 'ECG_CRNN'
 
     def __init__(self, classes:list, input_len:int, config:ED) -> NoReturn:
@@ -476,15 +490,16 @@ class ECG_CRNN(nn.Module):
         self.n_leads = 12
         self.input_len = input_len
         self.config = deepcopy(ECG_CRNN_CONFIG)
+        self.config.update(config)
         if self.__DEBUG__:
-            print(f"configuration of ECG_CRNN is as follows\n{dict_to_str(self.config)}")
+            print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
         
         cnn_choice = self.config.cnn.name.lower()
         if cnn_choice == "vgg6":
-            self.cnn = VGG6(self.n_leads, **(self.config.cnn.vgg6))
+            self.cnn = VGG6(self.n_leads, **(self.config.cnn[cnn_choice]))
             rnn_input_size = self.config.cnn.vgg6.num_filters[-1]
         elif cnn_choice == "resnet":
-            self.cnn = ResNet(self.n_leads, **(self.config.cnn.resnet))
+            self.cnn = ResNet(self.n_leads, **(self.config.cnn[cnn_choice]))
             rnn_input_size = 2**len(self.config.cnn.num_blocks) * self.config.cnn.init_num_filters
         cnn_output_shape = self.cnn.compute_output_shape(input_len, batch_size=None)
         # self.cnn_output_len = cnn_output_shape[2]

@@ -44,7 +44,9 @@ class VGGBlock(nn.Sequential):
     """
     building blocks of the CNN feature extractor `VGG6`
     """
-    __DEBUG__ = False
+    __DEBUG__ = True
+    __name__ = "VGGBlock"
+
     def __init__(self, num_convs:int, in_channels:int, out_channels:int, **config) -> NoReturn:
         """ finished, checked,
 
@@ -67,9 +69,11 @@ class VGGBlock(nn.Sequential):
         self.__in_channels = in_channels
         self.__out_channels = out_channels
 
-        # self.config = deepcopy(ATI_CNN_CONFIG.cnn.vgg_block)
+        # self.config = deepcopy(ECG_CRNN_CONFIG.cnn.vgg_block)
         # self.config.update(config)
         self.config = ED(config)
+        if self.__DEBUG__:
+            print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
 
         self.add_module(
             "cba_1",
@@ -78,7 +82,9 @@ class VGGBlock(nn.Sequential):
                 kernel_size=self.config.filter_length,
                 stride=self.config.subsample_length,
                 activation=self.config.activation,
+                kw_activation=self.config.kw_activation,
                 kernel_initializer=self.config.kernel_initializer,
+                kw_initializer=self.config.kw_initializer,
                 bn=self.config.batch_norm,
             )
         )
@@ -125,8 +131,8 @@ class VGGBlock(nn.Sequential):
                 output_shape = compute_conv_output_shape(
                     input_shape=[batch_size, self.__out_channels, seq_len],
                     num_filters=self.__out_channels,
-                    kernel_size=self.config.pool_kernel,
-                    stride=self.config.pool_stride,
+                    kernel_size=self.config.pool_size,
+                    stride=self.config.pool_size,
                     channel_last=False,
                 )
             num_layers += 1
@@ -138,6 +144,8 @@ class VGG6(nn.Sequential):
     CNN feature extractor of the CRNN models proposed in refs of `ATI_CNN`
     """
     __DEBUG__ = True
+    __name__ = "VGG6"
+
     def __init__(self, in_channels:int, **config) -> NoReturn:
         """ finished, checked,
         
@@ -152,8 +160,10 @@ class VGG6(nn.Sequential):
         """
         super().__init__()
         self.__in_channels = in_channels
-        # self.config = deepcopy(ATI_CNN_CONFIG.cnn.vgg6)
+        # self.config = deepcopy(ECG_CRNN_CONFIG.cnn.vgg6)
         self.config = ED(config)
+        if self.__DEBUG__:
+            print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
 
         module_in_channels = in_channels
         for idx, (nc, nf) in enumerate(zip(self.config.num_convs, self.config.num_filters)):
@@ -164,7 +174,7 @@ class VGG6(nn.Sequential):
                     num_convs=nc,
                     in_channels=module_in_channels,
                     out_channels=nf,
-                    **(config.block),
+                    **(self.config.block),
                 )
             )
             module_in_channels = nf
@@ -203,6 +213,8 @@ class ResNetStanfordBlock(nn.Module):
     building blocks of the CNN feature extractor `ResNetStanford`
     """
     __DEBUG__ = True
+    __name__ = "ResNetStanfordBlock"
+    
     def __init__(self, block_index:int, in_channels:int, num_filters:int, subsample_length:int, dilation:int=1, **config) -> NoReturn:
         """ finished, checked,
 
@@ -346,6 +358,8 @@ class ResNetStanford(nn.Sequential):
     [2] https://github.com/awni/ecg
     """
     __DEBUG__ = True
+    __name__ = "ResNetStanford"
+
     def __init__(self, in_channels:int, **config):
         """
         """
@@ -510,7 +524,7 @@ class ResNetBasicBlock(nn.Module):
         """
         """
         if self.__DEBUG__:
-            print(f"__down_scale = {self.__down_scale}, __increase_channels = {self.__increase_channels}")
+            print(f"down_scale = {self.__down_scale}, increase_channels = {self.__increase_channels}")
         if self.__down_scale > 1 or self.__increase_channels:
             if self.config.increase_channels_method.lower() == 'conv':
                 short_cut = DownSample(
@@ -640,8 +654,10 @@ class ResNet(nn.Sequential):
     1. check performances of activations other than "nn.ReLU", especially mish and swish
     2. to add
     """
-    __DEBUG__ = True
+    __DEBUG__ = False
+    __name__ = "ResNet"
     building_block = ResNetBasicBlock
+
     def __init__(self, in_channels:int, **config) -> NoReturn:
         """ finished, checked,
         
@@ -656,7 +672,7 @@ class ResNet(nn.Sequential):
         self.__in_channels = in_channels
         self.config = ED(config)
         if self.__DEBUG__:
-            print(f"configuration of ResNet is as follows\n{dict_to_str(self.config)}")
+            print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
         # self.__building_block = \
         #     ResNetBasicBlock if self.config.name == 'resnet' else ResNetBottleNeck
         
@@ -754,7 +770,9 @@ class ATI_CNN(nn.Module):
     [2] Yao, Qihang, et al. "Multi-class Arrhythmia detection from 12-lead varied-length ECG using Attention-based Time-Incremental Convolutional Neural Network." Information Fusion 53 (2020): 174-182.
     """
     __DEBUG__ = True
-    def __init__(self, classes:list, input_len:int, **config) -> NoReturn:
+    __name__ = "ATI_CNN"
+
+    def __init__(self, classes:list, input_len:int, config) -> NoReturn:
         """ finished, checked,
 
         Parameters:
@@ -846,6 +864,8 @@ class CPSCMiniBlock(nn.Sequential):
     building block of the SOTA model of CPSC2018 challenge
     """
     __DEBUG__ = True
+    __name__ = "CPSCMiniBlock"
+
     def __init__(self, filter_lengths:Sequence[int], subsample_lengths:Sequence[int], dropout:Optional[float]=None, **kwargs) -> NoReturn:
         """
 
@@ -934,6 +954,8 @@ class CPSCBlock(nn.Sequential):
     CNN part of the SOTA model of the CPSC2018 challenge
     """
     __DEBUG__ = True
+    __name__ = "CPSCBlock"
+
     def __init__(self, filter_lengths:Sequence[int], subsample_lengths:Sequence[int], dropouts:Optional[float]=None, **kwargs) -> NoReturn:
         """ finished, checked,
 
@@ -992,6 +1014,8 @@ class CPSC(nn.Sequential):
     SOTA model of the CPSC2018 challenge
     """
     __DEBUG__ = True
+    __name__ = "CPSC"
+    
     def __init__(self, classes:list, input_len:int, **config) -> NoReturn:
         """
 

@@ -24,29 +24,20 @@ ECG_CRNN_CONFIG.cnn = ED()
 ECG_CRNN_CONFIG.cnn.name = 'vgg6'
 
 
-if ECG_CRNN_CONFIG.cnn.name == 'vgg6':
-    ECG_CRNN_CONFIG.cnn.vgg6 = deepcopy(vgg6)
-    ECG_CRNN_CONFIG.cnn.vgg6.block = deepcopy(vgg_block_basic)
-elif ECG_CRNN_CONFIG.cnn.name == 'vgg6_mish':
-    ECG_CRNN_CONFIG.cnn.vgg6 = deepcopy(vgg6)
-    ECG_CRNN_CONFIG.cnn.vgg6.block = deepcopy(vgg_block_mish)
-elif ECG_CRNN_CONFIG.cnn.name == 'vgg6_swish':
-    ECG_CRNN_CONFIG.cnn.vgg6 = deepcopy(vgg6)
-    ECG_CRNN_CONFIG.cnn.vgg6.block = deepcopy(vgg_block_swish)
-elif ECG_CRNN_CONFIG.cnn.name == 'vgg6_dilation':  # not finished
-    ECG_CRNN_CONFIG.cnn.vgg6 = deepcopy(vgg6)
-    ECG_CRNN_CONFIG.cnn.vgg6.block = deepcopy(vgg_block_basic)
-elif ECG_CRNN_CONFIG.cnn.name == 'resnet':
-    ECG_CRNN_CONFIG.cnn.resnet = deepcopy(resnet)
-    ECG_CRNN_CONFIG.cnn.resnet.block = deepcopy(resnet_block_basic)
-elif ECG_CRNN_CONFIG.cnn.name == 'resnet_bottleneck':
-    ECG_CRNN_CONFIG.cnn.resnet = deepcopy(resnet)
-    ECG_CRNN_CONFIG.cnn.resnet.block = deepcopy(resnet_bottle_neck)
-elif ECG_CRNN_CONFIG.cnn.name == 'resnet_stanford':
-    ECG_CRNN_CONFIG.cnn.resnet = deepcopy(resnet_stanford)
-    ECG_CRNN_CONFIG.cnn.resnet.block = deepcopy(resnet_block_stanford)
-else:
-    pass
+ECG_CRNN_CONFIG.cnn.vgg6 = deepcopy(vgg6)
+ECG_CRNN_CONFIG.cnn.vgg6.block = deepcopy(vgg_block_basic)
+ECG_CRNN_CONFIG.cnn.vgg6_mish = deepcopy(vgg6)
+ECG_CRNN_CONFIG.cnn.vgg6_mish.block = deepcopy(vgg_block_mish)
+ECG_CRNN_CONFIG.cnn.vgg6_swish = deepcopy(vgg6)
+ECG_CRNN_CONFIG.cnn.vgg6_swish.block = deepcopy(vgg_block_swish)
+# ECG_CRNN_CONFIG.cnn.vgg6_dilation = deepcopy(vgg6)
+# ECG_CRNN_CONFIG.cnn.vgg6_dilation.block = deepcopy(vgg_block_basic)
+ECG_CRNN_CONFIG.cnn.resnet = deepcopy(resnet)
+ECG_CRNN_CONFIG.cnn.resnet.block = deepcopy(resnet_block_basic)
+ECG_CRNN_CONFIG.cnn.resnet_bottleneck = deepcopy(resnet)
+ECG_CRNN_CONFIG.cnn.resnet_bottleneck.block = deepcopy(resnet_bottle_neck)
+ECG_CRNN_CONFIG.cnn.resnet_stanford = deepcopy(resnet_stanford)
+ECG_CRNN_CONFIG.cnn.resnet_stanford.block = deepcopy(resnet_block_stanford)
 
 
 # rnn part
@@ -58,7 +49,7 @@ if ECG_CRNN_CONFIG.rnn.name == 'lstm':
     ECG_CRNN_CONFIG.rnn.dropout = 0.2
     ECG_CRNN_CONFIG.rnn.bidirectional = True
     ECG_CRNN_CONFIG.rnn.retseq = False
-    ECG_CRNN_CONFIG.rnn.hidden_sizes = [128, 32]
+    ECG_CRNN_CONFIG.rnn.hidden_sizes = [256, 128]
 elif ECG_CRNN_CONFIG.rnn.name == 'attention':
     pass
 else:
