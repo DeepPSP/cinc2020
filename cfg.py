@@ -94,20 +94,45 @@ TrainCfg.db_dir = "/media/cfs/wenhao71/data/cinc2020_data/"
 TrainCfg.log_dir = os.path.join(_BASE_DIR, 'log')
 TrainCfg.checkpoints = os.path.join(_BASE_DIR, "checkpoints")
 TrainCfg.keep_checkpoint_max = 100
-TrainCfg.TRAIN_EPOCHS = 6000
+TrainCfg.TRAIN_EPOCHS = 60000
 TrainCfg.TRAIN_OPTIMIZER = "adam"  # "sgd"
 
 TrainCfg.momentum = 0.949
 TrainCfg.decay = 0.0005
 TrainCfg.learning_rate = 0.00261
+TrainCfg.burn_in = 1000
 TrainCfg.max_batches = 500500
-TrainCfg.steps = [2000, 4000]
+TrainCfg.steps = [40000, 45000]
 TrainCfg.batch = 32
-TrainCfg.tranche_classes = ED{
-    "AB": ['IAVB', 'AF', 'AFL', 'IRBBB', 'LBBB', 'PAC', 'PVC', 'RBBB', 'SB', 'NSR', 'STach', 'TAb'],
-    "E": ['IAVB', 'AF', 'AFL', 'IRBBB', 'LAnFB', 'LBBB', 'NSIVCB', 'PAC', 'LPR', 'LQT', 'QAb', 'SA', 'SB', 'NSR', 'STach', 'TAb', 'TInv'],
-    "F": ['IAVB', 'AF', 'AFL', 'IRBBB', 'LAnFB', 'LBBB', 'NSIVCB', 'PAC', 'LQT', 'QAb', 'RBBB', 'SA', 'SB', 'NSR', 'STach', 'TAb', 'TInv', 'VPB'],
-}
-TrainCfg.classes = [
-    ['IAVB', 'AF', 'AFL', 'IRBBB', 'LAnFB', 'LBBB', 'NSIVCB', 'PAC', 'PVC', 'LPR', 'LQT', 'QAb', 'RBBB', 'SA', 'SB', 'NSR', 'STach', 'TAb', 'TInv']
-]
+TrainCfg.tranche_class_weights = ED({
+    "AB": {
+        'IAVB': 828, 'AF': 1374, 'AFL': 54, 'IRBBB': 86, 'LBBB': 274, 'PAC': 742, 'PVC': 196, 'RBBB': 1971, 'SB': 45, 'NSR': 922, 'STach': 303, 'TAb': 22,
+    },
+    "E": {
+        'IAVB': 797, 'AF': 1514, 'AFL': 73, 'RBBB': 542, 'IRBBB': 1118, 'LAnFB': 1626, 'LBBB': 536, 'NSIVCB': 789, 'PAC': 555, 'LPR': 340, 'LQT': 118, 'QAb': 548, 'SA': 772, 'SB': 637, 'NSR': 18092, 'STach': 826, 'TAb': 2345, 'TInv': 294,
+    },
+    "F": {
+        'IAVB': 769, 'AF': 570, 'AFL': 186, 'RBBB': 570, 'IRBBB': 407, 'LAnFB': 180, 'LBBB': 231, 'NSIVCB': 203, 'PAC': 640, 'LQT': 1391, 'QAb': 464, 'SA': 455, 'SB': 1677, 'NSR': 1752, 'STach': 1261, 'TAb': 2306, 'TInv': 812, 'PVC': 357,
+    },
+})
+TrainCfg.tranche_class_weights = ED({
+    t: {k: sum(t_cw.values())/v for k, v in t_cw.items()} \
+        for t, t_cw in TrainCfg.tranche_class_weights.items()
+})
+TrainCfg.tranche_class_weights = ED({
+    t: {k: v/min(t_cw.values()) for k, v in t_cw.items()} \
+        for t, t_cw in TrainCfg.tranche_class_weights.items()
+})
+TrainCfg.tranche_classes = ED({
+    t: list(t_cw.keys()) for t,t_cw in TrainCfg.tranche_class_weights.items()
+})
+TrainCfg.class_weights = ED({
+    'IAVB': 2394, 'AF': 3473, 'AFL': 314, 'RBBB': 3083, 'IRBBB': 1611, 'LAnFB': 1806, 'LBBB': 1041, 'NSIVCB': 996, 'PAC': 1937, 'PVC': 553, 'LPR': 340, 'LQT': 1513, 'QAb': 1013, 'SA': 1238, 'SB': 2359, 'NSR': 20846, 'STach': 2391, 'TAb': 4673, 'TInv': 1111,
+})  # count
+TrainCfg.class_weights = ED({
+    k: sum(TrainCfg.class_weights.values())/v for k, v in TrainCfg.class_weights.items()
+})
+TrainCfg.class_weights = ED({
+    k: v/min(TrainCfg.class_weights.values()) for k, v in TrainCfg.class_weights.items()
+})  # normalize so that the smallest weight equals 1
+TrainCfg.classes = list(TrainCfg.class_weights.keys())

@@ -22,7 +22,7 @@ Training strategy:
         F: {'IAVB': 769, 'AF': 570, 'AFL': 186, 'Brady': 6, 'CRBBB': 28, 'IRBBB': 407, 'LAnFB': 180, 'LAD': 940, 'LBBB': 231, 'LQRSV': 374, 'NSIVCB': 203, 'PAC': 639, 'LQT': 1391, 'QAb': 464, 'RAD': 83, 'RBBB': 542, 'SA': 455, 'SB': 1677, 'NSR': 1752, 'STach': 1261, 'SVPB': 1, 'TAb': 2306, 'TInv': 812, 'VPB': 357}
     hence in this manner, training classes for each tranche are as follows:
         A+B: ['IAVB', 'AF', 'AFL',  'IRBBB', 'LBBB', 'PAC', 'PVC', 'RBBB', 'SB', 'NSR', 'STach', 'TAb']
-        E: ['IAVB', 'AF', 'AFL', 'IRBBB', 'LAnFB', 'LBBB', 'NSIVCB', 'PAC', 'LPR', 'LQT', 'QAb', 'SA', 'SB', 'NSR', 'STach', 'TAb', 'TInv']
+        E: ['IAVB', 'AF', 'AFL', 'RBBB', 'IRBBB', 'LAnFB', 'LBBB', 'NSIVCB', 'PAC', 'LPR', 'LQT', 'QAb', 'SA', 'SB', 'NSR', 'STach', 'TAb', 'TInv']
         F: ['IAVB', 'AF', 'AFL', 'IRBBB', 'LAnFB', 'LBBB', 'NSIVCB', 'PAC', 'LQT', 'QAb', 'RBBB', 'SA', 'SB', 'NSR', 'STach', 'TAb', 'TInv', 'PVC']
     tranches C, D have too few recordings (recordings of C are long), which shall not be used to train separate models?
 
@@ -287,11 +287,7 @@ def get_args(**kwargs):
     #     dest='train_label', type=str, default='train.txt',
     #     help="train label path")
     parser.add_argument(
-        '-iou-type', type=str, default='iou',
-        help='iou type (iou, giou, diou, ciou)',
-        dest='iou_type')
-    parser.add_argument(
-        '-keep-checkpoint-max', type=int, default=10,
+        '-keep-checkpoint-max', type=int, default=100,
         help='maximum number of checkpoints to keep. If set 0, all checkpoints will be kept',
         dest='keep_checkpoint_max')
     parser.add_argument(
