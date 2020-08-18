@@ -136,3 +136,4 @@ TrainCfg.class_weights = ED({
     k: v/min(TrainCfg.class_weights.values()) for k, v in TrainCfg.class_weights.items()
 })  # normalize so that the smallest weight equals 1
 TrainCfg.classes = list(TrainCfg.class_weights.keys())
+TrainCfg.tranche_for_training = ''  # one of '', 'AB', 'E', 'F'

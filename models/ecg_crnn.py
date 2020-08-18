@@ -13,7 +13,7 @@ import torch.nn.functional as F
 from easydict import EasyDict as ED
 
 # from cfg import ModelCfg
-from model_configs.ati_cnn import ATI_CNN_CONFIG
+from model_configs import ECG_CRNN_CONFIG
 # from model_configs.cpsc import CPSC_CONFIG
 from models.utils.torch_utils import (
     Mish, Swish, Activations,
@@ -60,7 +60,7 @@ class VGGBlock(nn.Sequential):
         self.__in_channels = in_channels
         self.__out_channels = out_channels
 
-        # self.config = deepcopy(ATI_CNN_CONFIG.cnn.vgg_block)
+        # self.config = deepcopy(ECG_CRNN_CONFIG.cnn.vgg_block)
         # self.config.update(config)
         self.config = ED(config)
 
@@ -143,7 +143,7 @@ class VGG6(nn.Sequential):
         """
         super().__init__()
         self.__in_channels = in_channels
-        # self.config = deepcopy(ATI_CNN_CONFIG.cnn.vgg6)
+        # self.config = deepcopy(ECG_CRNN_CONFIG.cnn.vgg6)
         self.config = ED(config)
 
         module_in_channels = in_channels
@@ -444,7 +444,7 @@ class ResNet(nn.Sequential):
         return output_shape
 
 
-class ATI_CNN(nn.Module):
+class ECG_CRNN(nn.Module):
     """
 
     CRNN models proposed in the following refs.
@@ -455,7 +455,9 @@ class ATI_CNN(nn.Module):
     [2] Yao, Qihang, et al. "Multi-class Arrhythmia detection from 12-lead varied-length ECG using Attention-based Time-Incremental Convolutional Neural Network." Information Fusion 53 (2020): 174-182.
     """
     __DEBUG__ = False
-    def __init__(self, classes:list, input_len:int, **config) -> NoReturn:
+    __name__ = 'ECG_CRNN'
+
+    def __init__(self, classes:list, input_len:int, config:ED) -> NoReturn:
         """ finished, checked,
 
         Parameters:
@@ -473,10 +475,9 @@ class ATI_CNN(nn.Module):
         self.n_classes = len(classes)
         self.n_leads = 12
         self.input_len = input_len
-        self.config = deepcopy(ATI_CNN_CONFIG)
-        self.config.update(config)
+        self.config = deepcopy(ECG_CRNN_CONFIG)
         if self.__DEBUG__:
-            print(f"configuration of ATI_CNN is as follows\n{dict_to_str(self.config)}")
+            print(f"configuration of ECG_CRNN is as follows\n{dict_to_str(self.config)}")
         
         cnn_choice = self.config.cnn.name.lower()
         if cnn_choice == "vgg6":
@@ -486,7 +487,7 @@ class ATI_CNN(nn.Module):
             self.cnn = ResNet(self.n_leads, **(self.config.cnn.resnet))
             rnn_input_size = 2**len(self.config.cnn.num_blocks) * self.config.cnn.init_num_filters
         cnn_output_shape = self.cnn.compute_output_shape(input_len, batch_size=None)
-        self.cnn_output_len = cnn_output_shape[2]
+        # self.cnn_output_len = cnn_output_shape[2]
         if self.__DEBUG__:
             print(f"cnn output shape (batch_size, features, seq_len) = {cnn_output_shape}")
 
@@ -500,18 +501,27 @@ class ATI_CNN(nn.Module):
                 bidirectional=self.config.rnn.bidirectional,
                 return_sequences=self.config.rnn.retseq,
             )
-            if self.config.rnn.bidirectional:
-                clf_input_size = 2*self.config.rnn.hidden_sizes[-1]
-            else:
-                clf_input_size = self.config.rnn.hidden_sizes[-1]
-            if self.config.rnn.retseq:
-                clf_input_size *= self.cnn_output_len
+            clf_input_size = self.rnn.compute_output_shape(None,None)[-1]
+            # if self.config.rnn.bidirectional:
+            #     clf_input_size = 2*self.config.rnn.hidden_sizes[-1]
+            # else:
+            #     clf_input_size = self.config.rnn.hidden_sizes[-1]
+            # if self.config.rnn.retseq:
+            #     clf_input_size *= self.cnn_output_len
         elif rnn_choice == 'attention':
             raise NotImplementedError
         else:
             raise NotImplementedError
-        
-        self.clf = nn.Linear(clf_input_size, self.n_classes)
+
+        if self.__DEBUG__:
+            print(f"clf_input_size = {clf_input_size}")
+
+        if self.config.rnn.retseq:
+            self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
+        self.clf = nn.Sequential(
+            nn.Linear(clf_input_size, self.n_classes),
+            nn.Sigmoid()
+        )
 
     def forward(self, input:Tensor) -> Tensor:
         """
@@ -524,11 +534,9 @@ class ATI_CNN(nn.Module):
         # output.view(seq_len, batch, num_directions, hidden_size), 
         # with forward and backward being direction 0 and 1 respectively
         if self.config.rnn.retseq:
-            x, _ = x
-            x = x.permute(1,0,2)
-            batch_size, seq_len, hidden_size = x.size()
-            x = x.view(batch_size, seq_len*hidden_size)
-        else:
-            x = x[-1, ...]  # `return_sequences=False`, of shape (batch_size, channels)
+            # (seq_len, batch, channels) -> (batch, channels, seq_len)
+            x = x.permute(1,2,0)
+            x = self.max_pool(x)  # (batch, channels, 1)
+            x = torch.flatten(x, 1)  # (batch, channels)
         pred = self.clf(x)
         return pred

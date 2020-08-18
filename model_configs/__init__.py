@@ -49,7 +49,9 @@ References:
 [7] Moskalenko, Viktor, Nikolai Zolotykh, and Grigory Osipov. "Deep Learning for ECG Segmentation." International Conference on Neuroinformatics. Springer, Cham, 2019.
 """
 
+from .ecg_crnn import *
 from .ati_cnn import *
+from .cpsc import *
 
 
 __all__ = [s for s in dir() if not s.startswith('_')]

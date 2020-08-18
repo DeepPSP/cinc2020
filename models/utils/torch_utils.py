@@ -654,6 +654,7 @@ class BidirectionalLSTM(nn.Module):
             the number of features in the ouput
         """
         super().__init__()
+        self.__output_size = output_size
         self.lstm = nn.LSTM(input_size, hidden_size, bidirectional=True)
         self.embedding = nn.Linear(hidden_size * 2, output_size)
 
@@ -665,9 +666,26 @@ class BidirectionalLSTM(nn.Module):
         t_rec = recurrent.view(T * b, h)
 
         output = self.embedding(t_rec)  # [T * b, nOut]
-        output = output.view(T, b, -1)
-
+        output = output.view(T, b, -1)  # seq_len, batch_size, output_size
         return output
+
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        seq_len: int,
+            length of the 1d sequence
+        batch_size: int, optional,
+            the batch size, can be None
+
+        Returns:
+        --------
+        output_shape: sequence,
+            the output shape of this `DownDoubleConv` layer, given `seq_len` and `batch_size`
+        """
+        output_shape = (seq_len, batch_size, self.__output_size)
+        return output_shape
 
 
 class StackedLSTM(nn.Sequential):
@@ -698,7 +716,7 @@ class StackedLSTM(nn.Sequential):
         return_sequences: bool, default True,
         """
         super().__init__()
-        
+        self.__hidden_sizes = hidden_sizes
         self.num_lstm_layers = len(hidden_sizes)
         l_bias = bias if isinstance(bias, Sequence) else [bias for _ in range(self.num_lstm_layers)]
         self.__dropout = dropout
@@ -736,26 +754,50 @@ class StackedLSTM(nn.Sequential):
         keep up with `nn.LSTM.forward`, parameters ref. `nn.LSTM.forward`
         """
         n_layers = 0
-        _input, _hx = input, hx
+        output, _hx = input, hx
         div = 2 if self.__dropout > 0 else 1
         for module in self:
             n_lstm, res = divmod(n_layers, div)
             if res == 1:
-                _input = module(_input)
+                output = module(output)
                 print(f"module = {type(module).__name__}")
             else:
-                # print(f"n_layers = {n_layers}, input shape = {_input.shape}")
+                # print(f"n_layers = {n_layers}, input shape = {output.shape}")
                 if n_lstm > 0:
                     _hx = None
-                _input, _hx = module(_input, _hx)
+                output, _hx = module(output, _hx)
                 print(f"module = {type(module).__name__}")
-                # print(f"n_layers = {n_layers}, input shape = {_input.shape}")
+                # print(f"n_layers = {n_layers}, input shape = {output.shape}")
             n_layers += 1
         if self.return_sequences:
-            final_output = _input, _hx
+            final_output = output  # seq_len, batch_size, n_direction*hidden_size
         else:
-            final_output = _hx[0]
+            final_output = output[-1,...]  # batch_size, n_direction*hidden_size
         return final_output
+
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        seq_len: int,
+            length of the 1d sequence
+        batch_size: int, optional,
+            the batch size, can be None
+
+        Returns:
+        --------
+        output_shape: sequence,
+            the output shape of this `DownDoubleConv` layer, given `seq_len` and `batch_size`
+        """
+        output_size = self.__hidden_sizes[-1]
+        if self.bidirectional:
+            output_size *= 2
+        if self.return_sequences:
+            output_shape = (seq_len, batch_size, output_size)
+        else:
+            output_shape = (batch_size, output_size)
+        return output_shape
 
 
 # ---------------------------------------------

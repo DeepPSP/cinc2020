@@ -38,7 +38,6 @@ import logging
 import argparse
 from copy import deepcopy
 from collections import deque
-import datetime
 from typing import Union, Optional, Sequence, NoReturn
 from numbers import Real, Number
 
@@ -52,10 +51,11 @@ from torch.utils.data import DataLoader
 import torch.nn.functional as F
 from easydict import EasyDict as ED
 
-from models.ecg_crnn import ATI_CNN
-from model_configs.ati_cnn import ATI_CNN_CONFIG
+from models.ecg_crnn import ECG_CRNN
+from model_configs import ECG_CRNN_CONFIG
 from cfg import ModelCfg, TrainCfg
 from dataset import CINC2020
+from utils.misc import init_logger, get_date_str
 
 
 __all__ = [
@@ -114,7 +114,6 @@ def train(model:nn.Module, device:torch.device, config:dict, epochs:int=5, batch
             Validation size: {n_val}
             Checkpoints:     {save_ckpt}
             Device:          {device.type}
-            Images size:     {config.width}
             Optimizer:       {config.TRAIN_OPTIMIZER}
             Dataset classes: {config.classes}
         ''')
@@ -164,52 +163,52 @@ def train(model:nn.Module, device:torch.device, config:dict, epochs:int=5, batch
             for i, batch in enumerate(train_loader):
                 global_step += 1
                 epoch_step += 1
-                images = batch[0]
-                bboxes = batch[1]
+            #     images = batch[0]
+            #     bboxes = batch[1]
 
-                images = images.to(device=device, dtype=torch.float32)
-                bboxes = bboxes.to(device=device)
+            #     images = images.to(device=device, dtype=torch.float32)
+            #     bboxes = bboxes.to(device=device)
 
-                bboxes_pred = model(images)
-                loss, loss_xy, loss_wh, loss_obj, loss_cls, loss_l2 = criterion(bboxes_pred, bboxes)
-                # loss = loss / config.subdivisions
-                loss.backward()
+            #     bboxes_pred = model(images)
+            #     loss, loss_xy, loss_wh, loss_obj, loss_cls, loss_l2 = criterion(bboxes_pred, bboxes)
+            #     # loss = loss / config.subdivisions
+            #     loss.backward()
 
-                epoch_loss += loss.item()
+            #     epoch_loss += loss.item()
 
-                if global_step  % config.subdivisions == 0:
-                    optimizer.step()
-                    scheduler.step()
-                    model.zero_grad()
+            #     if global_step  % config.subdivisions == 0:
+            #         optimizer.step()
+            #         scheduler.step()
+            #         model.zero_grad()
 
-                if global_step % (log_step * config.subdivisions) == 0:
-                    writer.add_scalar('train/Loss', loss.item(), global_step)
-                    writer.add_scalar('train/loss_xy', loss_xy.item(), global_step)
-                    writer.add_scalar('train/loss_wh', loss_wh.item(), global_step)
-                    writer.add_scalar('train/loss_obj', loss_obj.item(), global_step)
-                    writer.add_scalar('train/loss_cls', loss_cls.item(), global_step)
-                    writer.add_scalar('train/loss_l2', loss_l2.item(), global_step)
-                    writer.add_scalar('lr', scheduler.get_lr()[0] * config.batch, global_step)
-                    pbar.set_postfix(**{
-                        'loss (batch)': loss.item(),
-                        'loss_xy': loss_xy.item(),
-                        'loss_wh': loss_wh.item(),
-                        'loss_obj': loss_obj.item(),
-                        'loss_cls': loss_cls.item(),
-                        'loss_l2': loss_l2.item(),
-                        'lr': scheduler.get_lr()[0] * config.batch
-                    })
-                    if logger:
-                        logger.info(f'Train step_{global_step}: loss : {loss.item()},loss xy : {loss_xy.item()}, loss wh : {loss_wh.item()}, loss obj : {loss_obj.item()}, loss cls : {loss_cls.item()}, loss l2 : {loss_l2.item()}, lr : {scheduler.get_lr()[0] * config.batch}')
+            #     if global_step % (log_step * config.subdivisions) == 0:
+            #         writer.add_scalar('train/Loss', loss.item(), global_step)
+            #         writer.add_scalar('train/loss_xy', loss_xy.item(), global_step)
+            #         writer.add_scalar('train/loss_wh', loss_wh.item(), global_step)
+            #         writer.add_scalar('train/loss_obj', loss_obj.item(), global_step)
+            #         writer.add_scalar('train/loss_cls', loss_cls.item(), global_step)
+            #         writer.add_scalar('train/loss_l2', loss_l2.item(), global_step)
+            #         writer.add_scalar('lr', scheduler.get_lr()[0] * config.batch, global_step)
+            #         pbar.set_postfix(**{
+            #             'loss (batch)': loss.item(),
+            #             'loss_xy': loss_xy.item(),
+            #             'loss_wh': loss_wh.item(),
+            #             'loss_obj': loss_obj.item(),
+            #             'loss_cls': loss_cls.item(),
+            #             'loss_l2': loss_l2.item(),
+            #             'lr': scheduler.get_lr()[0] * config.batch
+            #         })
+            #         if logger:
+            #             logger.info(f'Train step_{global_step}: loss : {loss.item()},loss xy : {loss_xy.item()}, loss wh : {loss_wh.item()}, loss obj : {loss_obj.item()}, loss cls : {loss_cls.item()}, loss l2 : {loss_l2.item()}, lr : {scheduler.get_lr()[0] * config.batch}')
 
-                pbar.update(images.shape[0])
+            #     pbar.update(images.shape[0])
                 
-            # TODO: eval for each epoch using `evaluate`
-            eval_model = Yolov4(yolov4conv137weight=None, n_classes=config.classes, inference=True)
-            eval_model.load_state_dict(model.state_dict())
-            eval_model.to(device)
-            evaluator = evaluate(eval_model, val_loader, config, device, logger)
-            del eval_model
+            # # TODO: eval for each epoch using `evaluate`
+            # eval_model = Yolov4(yolov4conv137weight=None, n_classes=config.classes, inference=True)
+            # eval_model.load_state_dict(model.state_dict())
+            # eval_model.to(device)
+            # evaluator = evaluate(eval_model, val_loader, config, device, logger)
+            # del eval_model
 
             if save_ckpt:
                 try:
@@ -218,7 +217,7 @@ def train(model:nn.Module, device:torch.device, config:dict, epochs:int=5, batch
                         logger.info('Created checkpoint directory')
                 except OSError:
                     pass
-                save_path = os.path.join(config.checkpoints, f'{save_prefix}{epoch + 1}_{_get_date_str()}.pth')
+                save_path = os.path.join(config.checkpoints, f'{save_prefix}{epoch + 1}_{get_date_str()}.pth')
                 torch.save(model.state_dict(), save_path)
                 if logger:
                     logger.info(f'Checkpoint {epoch + 1} saved!')
@@ -254,11 +253,6 @@ def get_args(**kwargs):
     parser = argparse.ArgumentParser(
         description='Train the Model on CINC2020',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    # parser.add_argument(
-    #     '-b', '--batch-size',
-    #     metavar='B', type=int, nargs='?', default=2,
-    #     help='Batch size',
-    #     dest='batchsize')
     parser.add_argument(
         '-l', '--learning-rate',
         metavar='LR', type=float, nargs='?', default=0.001,
@@ -269,23 +263,11 @@ def get_args(**kwargs):
         metavar='G', type=str, default='0',
         help='GPU',
         dest='gpu')
-    # `dataset_dir` and `pretrained` already set in cfg_acne04.py
-    # parser.add_argument(
-    #     '-dir', '--data-dir',
-    #     type=str, default=None,
-    #     help='dataset dir', dest='dataset_dir')
-    # parser.add_argument(
-    #     '-pretrained',
-    #     type=str, default=None,
-    #     help='pretrained yolov4.conv.137')
-    # parser.add_argument(
-    #     '-classes',
-    #     type=int, default=1,
-    #     help='dataset classes')
-    # parser.add_argument(
-    #     '-train_label_path',
-    #     dest='train_label', type=str, default='train.txt',
-    #     help="train label path")
+    parser.add_argument(
+        '-t', '--tranches',
+        type=int, default=1,
+        help='the tranches for training',
+        dest='tranche_for_training')
     parser.add_argument(
         '-keep-checkpoint-max', type=int, default=100,
         help='maximum number of checkpoints to keep. If set 0, all checkpoints will be kept',
@@ -302,54 +284,8 @@ def get_args(**kwargs):
     return ED(cfg)
 
 
-def init_logger(log_file=None, log_dir=None, mode='a', verbose=0):
-    """
-    """
-    if log_dir is None:
-        log_dir = '~/temp/log/'
-    if log_file is None:
-        log_file = f'log_{_get_date_str()}.txt'
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
-    log_file = os.path.join(log_dir, log_file)
-    print(f'log file path: {log_file}')
 
-    logger = logging.getLogger('Yolov4-ACNE04')
-
-    c_handler = logging.StreamHandler(sys.stdout)
-    f_handler = logging.FileHandler(log_file)
-
-    if verbose >= 2:
-        print("levels of c_handler and f_handler are set DEBUG")
-        c_handler.setLevel(logging.DEBUG)
-        f_handler.setLevel(logging.DEBUG)
-        logger.setLevel(logging.DEBUG)
-    elif verbose >= 1:
-        print("level of c_handler is set INFO, level of f_handler is set DEBUG")
-        c_handler.setLevel(logging.INFO)
-        f_handler.setLevel(logging.DEBUG)
-        logger.setLevel(logging.DEBUG)
-    else:
-        print("levels of c_handler and f_handler are set WARNING")
-        c_handler.setLevel(logging.WARNING)
-        f_handler.setLevel(logging.WARNING)
-        logger.setLevel(logging.WARNING)
-
-    c_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-    f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    c_handler.setFormatter(c_format)
-    f_handler.setFormatter(f_format)
-
-    logger.addHandler(c_handler)
-    logger.addHandler(f_handler)
-
-    return logger
-
-
-def _get_date_str():
-    now = datetime.datetime.now()
-    return now.strftime('%Y-%m-%d_%H-%M')
-
+DAS = True
 
 if __name__ == "__main__":
     cfg = get_args(**Cfg)
@@ -369,7 +305,7 @@ if __name__ == "__main__":
     print(f"Using torch of version {torch.__version__}")
     print(f'with configuration {cfg}')
 
-    model = Yolov4(cfg.pretrained, n_classes=cfg.classes)
+    model = ECG_CRNN()
 
     if not DAS and torch.cuda.device_count() > 1:
         model = torch.nn.DataParallel(model)

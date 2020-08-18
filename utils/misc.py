@@ -2,6 +2,8 @@
 """
 import os
 import re
+import logging
+import datetime
 from glob import glob
 from copy import deepcopy
 from typing import Union, Optional, List, Dict, Sequence, NoReturn, Any
@@ -25,6 +27,8 @@ __all__ = [
     "get_mask",
     "class_weight_to_sample_weight",
     "plot_single_lead",
+    "init_logger",
+    "get_date_str",
 ]
 
 
@@ -434,3 +438,80 @@ def plot_single_lead(t:np.ndarray, sig:np.ndarray, ax:Optional[Any]=None, ticks_
     ax.set_ylim(-y_range, y_range)
     ax.set_xlabel('Time [s]')
     ax.set_ylabel('Voltage [μV]')
+
+
+def init_logger(log_dir:str, log_file:Optional[str]=None, mode:str='a', verbose:int=0) -> logging.Logger:
+    """ finished, checked,
+
+    Parameters:
+    -----------
+    log_dir: str,
+        directory of the log file
+    log_file: str, optional,
+        name of the log file
+    mode: str, default 'a',
+        mode of writing the log file, can be one of 'a', 'w'
+    verbose: int, default 0,
+        log verbosity
+
+    Returns:
+    --------
+    logger: Logger
+    """
+    if log_dir is None:
+        log_dir = '~/temp/log/'
+    if log_file is None:
+        log_file = f'log_{_get_date_str()}.txt'
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    log_file = os.path.join(log_dir, log_file)
+    print(f'log file path: {log_file}')
+
+    logger = logging.getLogger('ECG-CRNN')
+
+    c_handler = logging.StreamHandler(sys.stdout)
+    f_handler = logging.FileHandler(log_file)
+
+    if verbose >= 2:
+        print("levels of c_handler and f_handler are set DEBUG")
+        c_handler.setLevel(logging.DEBUG)
+        f_handler.setLevel(logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
+    elif verbose >= 1:
+        print("level of c_handler is set INFO, level of f_handler is set DEBUG")
+        c_handler.setLevel(logging.INFO)
+        f_handler.setLevel(logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
+    else:
+        print("levels of c_handler and f_handler are set WARNING")
+        c_handler.setLevel(logging.WARNING)
+        f_handler.setLevel(logging.WARNING)
+        logger.setLevel(logging.WARNING)
+
+    c_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+    f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    c_handler.setFormatter(c_format)
+    f_handler.setFormatter(f_format)
+
+    logger.addHandler(c_handler)
+    logger.addHandler(f_handler)
+
+    return logger
+
+
+def get_date_str(fmt:Optional[str]=None):
+    """ finished, checked,
+
+    Parameters:
+    -----------
+    fmt: str, optional,
+        format of the string of date
+
+    Returns:
+    --------
+    date_str: str,
+        current time in the `str` format
+    """
+    now = datetime.datetime.now()
+    date_str = now.strftime(fmt or '%Y-%m-%d_%H-%M')
+    return date_str

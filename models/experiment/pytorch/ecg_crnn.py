@@ -785,7 +785,7 @@ class ATI_CNN(nn.Module):
             self.cnn = ResNet(self.n_leads, **(self.config.cnn.resnet))
             rnn_input_size = 2**len(self.config.cnn.num_blocks) * self.config.cnn.init_num_filters
         cnn_output_shape = self.cnn.compute_output_shape(input_len, batch_size=None)
-        self.cnn_output_len = cnn_output_shape[2]
+        # self.cnn_output_len = cnn_output_shape[2]
         if self.__DEBUG__:
             print(f"cnn output shape (batch_size, features, seq_len) = {cnn_output_shape}")
 
@@ -799,18 +799,27 @@ class ATI_CNN(nn.Module):
                 bidirectional=self.config.rnn.bidirectional,
                 return_sequences=self.config.rnn.retseq,
             )
-            if self.config.rnn.bidirectional:
-                clf_input_size = 2*self.config.rnn.hidden_sizes[-1]
-            else:
-                clf_input_size = self.config.rnn.hidden_sizes[-1]
-            if self.config.rnn.retseq:
-                clf_input_size *= self.cnn_output_len
+            clf_input_size = self.rnn.compute_output_shape(None,None)[-1]
+            # if self.config.rnn.bidirectional:
+            #     clf_input_size = 2*self.config.rnn.hidden_sizes[-1]
+            # else:
+            #     clf_input_size = self.config.rnn.hidden_sizes[-1]
+            # if self.config.rnn.retseq:
+            #     clf_input_size *= self.cnn_output_len
         elif rnn_choice == 'attention':
             raise NotImplementedError
         else:
             raise NotImplementedError
-        
-        self.clf = nn.Linear(clf_input_size, self.n_classes)
+
+        if self.__DEBUG__:
+            print(f"clf_input_size = {clf_input_size}")
+
+        if self.config.rnn.retseq:
+            self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
+        self.clf = nn.Sequential(
+            nn.Linear(clf_input_size, self.n_classes),
+            nn.Sigmoid()
+        )
 
     def forward(self, input:Tensor) -> Tensor:
         """
@@ -823,14 +832,13 @@ class ATI_CNN(nn.Module):
         # output.view(seq_len, batch, num_directions, hidden_size), 
         # with forward and backward being direction 0 and 1 respectively
         if self.config.rnn.retseq:
-            x, _ = x
-            x = x.permute(1,0,2)
-            batch_size, seq_len, hidden_size = x.size()
-            x = x.view(batch_size, seq_len*hidden_size)
-        else:
-            x = x[-1, ...]  # `return_sequences=False`, of shape (batch_size, channels)
+            # (seq_len, batch, channels) -> (batch, channels, seq_len)
+            x = x.permute(1,2,0)
+            x = self.max_pool(x)  # (batch, channels, 1)
+            x = torch.flatten(x, 1)  # (batch, channels)
         pred = self.clf(x)
         return pred
+
 
 
 class CPSCMiniBlock(nn.Sequential):
