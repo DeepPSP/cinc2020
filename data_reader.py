@@ -689,7 +689,7 @@ class CINC2020_Reader(object):
         return self.load_ann(rec, raw)
 
     
-    def get_labels(self, rec:str, scored_only:bool=True, abbr:bool=True, normalize:bool=True) -> List[str]:
+    def get_labels(self, rec:str, scored_only:bool=True, fmt:str='s', normalize:bool=True) -> List[str]:
         """ finished, checked,
 
         read labels (diagnoses or arrhythmias) of a record
@@ -700,8 +700,11 @@ class CINC2020_Reader(object):
             name of the record
         scored_only: bool, default True,
             only get the labels that are scored in the CINC2020 official phase
-        abbr: bool, default True,
-            labels in abbreviations or fullnames
+        fmt: str, default 'a',
+            the format of labels, one of the following (case insensitive):
+            - 'a', abbreviations
+            - 'f', full names
+            - 's', SNOMED CT Code
         normalize: bool, default True,
             if True, the labels will be transformed into their equavalents,
             which are defined in ``
@@ -716,10 +719,14 @@ class CINC2020_Reader(object):
             labels = ann_dict['diagnosis_scored']
         else:
             labels = ann_dict['diagnosis']
-        if abbr:
+        if fmt.lower() == 'a':
             labels = labels['diagnosis_abbr']
-        else:
+        elif fmt.lower() == 'f':
             labels = labels['diagnosis_fullname']
+        elif fmt.lower() == 's':
+            labels = labels['diagnosis_code']
+        else:
+            raise ValueError(f"`fmt` should be one of `a`, `f`, `s`, but got `{fmt}`")
         if normalize:
             labels = [self.label_trans_dict.get(item, item) for item in labels]
         return labels
@@ -926,8 +933,8 @@ class CINC2020_Reader(object):
         palette = {'p_waves': 'green', 'qrs': 'red', 't_waves': 'pink',}
         plot_alpha = 0.4
 
-        diag_scored = self.get_labels(rec, scored_only=True, abbr=True)
-        diag_all = self.get_labels(rec, scored_only=False, abbr=True)
+        diag_scored = self.get_labels(rec, scored_only=True, fmt='a')
+        diag_all = self.get_labels(rec, scored_only=False, fmt='a')
 
         nb_leads = len(leads)
 
