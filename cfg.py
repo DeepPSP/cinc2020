@@ -96,7 +96,15 @@ TrainCfg.log_dir = os.path.join(_BASE_DIR, 'log')
 TrainCfg.checkpoints = os.path.join(_BASE_DIR, "checkpoints")
 TrainCfg.keep_checkpoint_max = 100
 
-TrainCfg.tranche_class_weights = ED({
+TrainCfg.tranche_class_counts = ED({
+    # classes with too few recordings are ignored
+    # classes dealt with special detectors are ignored
+    "A": {
+        'IAVB': 722, 'AF': 1221, 'LBBB': 236, 'PAC': 616, 'RBBB': 1857, 'NSR': 918,
+    },
+    "B": {
+        'IAVB': 106, 'AF': 153, 'AFL': 54, 'IRBBB': 86, 'LBBB': 38, 'PAC': 126, 'PVC': 196, 'RBBB': 114, 'SB': 45, 'STach': 303, 'TAb': 22,
+    },
     "AB": {
         'IAVB': 828, 'AF': 1374, 'AFL': 54, 'IRBBB': 86, 'LBBB': 274, 'PAC': 742, 'PVC': 196, 'RBBB': 1971, 'SB': 45, 'NSR': 922, 'STach': 303, 'TAb': 22,
     },
@@ -109,7 +117,7 @@ TrainCfg.tranche_class_weights = ED({
 })
 TrainCfg.tranche_class_weights = ED({
     t: {k: sum(t_cw.values())/v for k, v in t_cw.items()} \
-        for t, t_cw in TrainCfg.tranche_class_weights.items()
+        for t, t_cw in TrainCfg.tranche_class_counts.items()
 })
 TrainCfg.tranche_class_weights = ED({
     t: {k: v/min(t_cw.values()) for k, v in t_cw.items()} \
@@ -118,11 +126,11 @@ TrainCfg.tranche_class_weights = ED({
 TrainCfg.tranche_classes = ED({
     t: list(t_cw.keys()) for t,t_cw in TrainCfg.tranche_class_weights.items()
 })
-TrainCfg.class_weights = ED({
+TrainCfg.class_counts = ED({
     'IAVB': 2394, 'AF': 3473, 'AFL': 314, 'RBBB': 3083, 'IRBBB': 1611, 'LAnFB': 1806, 'LBBB': 1041, 'NSIVCB': 996, 'PAC': 1937, 'PVC': 553, 'LPR': 340, 'LQT': 1513, 'QAb': 1013, 'SA': 1238, 'SB': 2359, 'NSR': 20846, 'STach': 2391, 'TAb': 4673, 'TInv': 1111,
 })  # count
 TrainCfg.class_weights = ED({
-    k: sum(TrainCfg.class_weights.values())/v for k, v in TrainCfg.class_weights.items()
+    k: sum(TrainCfg.class_weights.values())/v for k, v in TrainCfg.class_counts.items()
 })
 TrainCfg.class_weights = ED({
     k: v/min(TrainCfg.class_weights.values()) for k, v in TrainCfg.class_weights.items()
