@@ -146,7 +146,7 @@ def train(model:nn.Module, device:torch.device, config:dict, n_epochs:int=5, bat
         )
     scheduler = optim.lr_scheduler.LambdaLR(optimizer, burnin_schedule)
 
-    criterion = nn.BCELoss()
+    criterion = nn.BCEWithLogitsLoss()
     # scheduler = ReduceLROnPlateau(optimizer, mode='max', verbose=True, patience=6, min_lr=1e-7)
     # scheduler = CosineAnnealingWarmRestarts(optimizer, 0.001, 1e-6, 20)
 

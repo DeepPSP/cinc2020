@@ -533,10 +533,7 @@ class ECG_CRNN(nn.Module):
 
         if self.config.rnn.retseq:
             self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
-        self.clf = nn.Sequential(
-            nn.Linear(clf_input_size, self.n_classes),
-            nn.Sigmoid()
-        )
+        self.clf = nn.Linear(clf_input_size, self.n_classes)
 
     def forward(self, input:Tensor) -> Tensor:
         """
