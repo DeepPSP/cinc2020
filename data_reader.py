@@ -1056,7 +1056,7 @@ class CINC2020Reader(object):
                 print("*"*110)
 
 
-    def load_resampled_data(self, rec:str) -> np.ndarray:
+    def load_resampled_data(self, rec:str, siglen:Optional[int]=None) -> np.ndarray:
         """ finished, checked,
 
         resample the data of `rec` to 500Hz,
@@ -1066,13 +1066,23 @@ class CINC2020Reader(object):
         -----------
         rec: str,
             name of the record
+        siglen: int, optional,
+            signal length, units in number of samples,
+            used for example when preparing/doing model training
+
+        Returns:
+        --------
         """
         tranche = self._get_tranche(rec)
-        rec_fp = os.path.join(self.db_dirs[tranche], f'{rec}_500Hz.npy')
+        if siglen is None:
+            rec_fp = os.path.join(self.db_dirs[tranche], f'{rec}_500Hz.npy')
+        else:
+            rec_fp = os.path.join(self.db_dirs[tranche], f'{rec}_500Hz_siglen_{siglen}.npy')
         if not os.path.isfile(rec_fp):
             data = self.load_data(rec, data_format='channel_first', units='mV', freq=None)
             if self.freq[tranche] != 500:
                 data = resample_poly(data, 500, self.freq[tranche], axis=1)
+            if siglen is None:
             np.save(rec_fp, data)
         else:
             data = np.load(rec_fp)

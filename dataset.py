@@ -4,6 +4,7 @@ import os, sys
 import json
 from random import shuffle
 from copy import deepcopy
+from functools import reduce
 from typing import Union, Optional, Tuple, Dict, Sequence, Set, NoReturn
 
 import numpy as np
@@ -28,10 +29,10 @@ class CINC2020(Dataset):
         """
         """
         super().__init__()
-        self._TRANCHES = TrainCfg.tranche_classes.keys() + ["ABEF"]  # ["A", "B", "AB", "E", "F"]
+        self._TRANCHES = TrainCfg.tranche_classes.keys()  # ["A", "B", "AB", "E", "F"]
         self.config = deepcopy(config)
         self.reader = CR(db_dir=config.db_dir)
-        self.tranches = tranches or "ABEF"
+        self.tranches = tranches
         self.training = training
         assert not self.tranches or self.tranches in self._TRANCHES
 
@@ -48,7 +49,7 @@ class CINC2020(Dataset):
         values = self.reader.load_resampled_data(rec)
         labels = self.reader.get_labels(
             rec,
-            scored_only=True, abbr=True, normalize=True
+            scored_only=True, abbr=False, normalize=True
         )
         return values, labels
 
@@ -81,7 +82,7 @@ class CINC2020(Dataset):
         _test_ratio = 100 - _train_ratio
         assert _train_ratio * _test_ratio > 0
 
-        file_suffix = f"_samples_{TrainCfg.input_len}.json"
+        file_suffix = f"_siglen_{TrainCfg.input_len}.json"
         train_file = os.path.join(self.reader.db_dir_base, f"train_ratio_{_train_ratio}{file_suffix}")
         test_file = os.path.join(self.reader.db_dir_base, f"test_ratio_{_test_ratio}{file_suffix}")
 
@@ -120,16 +121,11 @@ class CINC2020(Dataset):
                 test = json.load(test_file)
 
         add = lambda a,b:a+b
-        if not self.tranches:
-            if self.training:
-                records = list(map(add, [v for v in train.values()]))
-            else:
-                records = list(map(add, [v for v in test.values()]))
+        _tranches = list(self.tranches or "ABEF")
+        if self.training:
+            records = reduce(add, [train[k] for k in _tranches])
         else:
-            if self.training:
-                records = train[self.tranches]
-            else:
-                records = test[self.tranches]
+            records = reduce(add, [test[k] for k in _tranches])
         return records
 
 
@@ -149,8 +145,10 @@ class CINC2020(Dataset):
             the split is valid or not
         """
         add = lambda a,b:a+b
-        train_classes = set(list(map(add, [self.reader.get_labels(rec, fmt='a') for rec in train])))
-        test_classes = set(list(map(add, [self.reader.get_labels(rec, fmt='a') for rec in test])))
-        is_valid = (all_classes-train_classes==set()) and (train_classes==test_classes)
-        print(f"all_classes = {all_classes}\ntrain_classes = {train_classes}\ntest_classes = {test_classes}")
+        train_classes = set(reduce(add, [self.reader.get_labels(rec, fmt='a') for rec in train]))
+        train_classes.intersection_update(all_classes)
+        test_classes = set(reduce(add, [self.reader.get_labels(rec, fmt='a') for rec in test]))
+        test_classes.intersection_update(all_classes)
+        is_valid = (len(all_classes) == len(train_classes) == len(test_classes))
+        print(f"all_classes = {all_classes}\ntrain_classes = {train_classes}\ntest_classes = {test_classes}\nis_valid = {is_valid}")
         return is_valid
