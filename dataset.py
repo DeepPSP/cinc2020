@@ -8,6 +8,7 @@ from typing import Union, Optional, Tuple, Dict, Sequence, Set, NoReturn
 
 import numpy as np
 from easydict import EasyDict as ED
+from tqdm import tqdm
 import torch
 from torch.utils.data.dataset import Dataset
 
@@ -89,16 +90,17 @@ class CINC2020(Dataset):
             train = {t: [] for t in _TRANCHES}
             test = {t: [] for t in _TRANCHES}
             for t in _TRANCHES:
-                for rec in self.reader.all_records[t]:
-                    rec_labels = self.reader.get_labels(rec, scored_only=True, fmt='a', normalize=True)
-                    rec_labels = [c for c in rec_labels if c in TrainCfg.tranche_classes[t]]
-                    if len(rec_labels) == 0:
-                        continue
-                    rec_samples = self.reader.load_resampled_data(rec).shape[1]
-                    if rec_samples < TrainCfg.input_len:
-                        continue
-                    tranche_records[t].append(rec)
-                print(f"tranche {t} has {len(tranche_records[t])} valid records for training")
+                with tqdm(self.reader.all_records[t], total=len(self.reader.all_records[t])) as bar:
+                    for rec in bar:
+                        rec_labels = self.reader.get_labels(rec, scored_only=True, fmt='a', normalize=True)
+                        rec_labels = [c for c in rec_labels if c in TrainCfg.tranche_classes[t]]
+                        if len(rec_labels) == 0:
+                            continue
+                        rec_samples = self.reader.load_resampled_data(rec).shape[1]
+                        if rec_samples < TrainCfg.input_len:
+                            continue
+                        tranche_records[t].append(rec)
+                    print(f"tranche {t} has {len(tranche_records[t])} valid records for training")
             for t in _TRANCHES:
                 is_valid = False
                 while not is_valid:
