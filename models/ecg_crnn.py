@@ -505,9 +505,9 @@ class ECG_CRNN(nn.Module):
         elif cnn_choice == "resnet":
             self.cnn = ResNet(self.n_leads, **(self.config.cnn[cnn_choice]))
             rnn_input_size = 2**len(self.config.cnn.num_blocks) * self.config.cnn.init_num_filters
-        cnn_output_shape = self.cnn.compute_output_shape(input_len, batch_size=None)
         # self.cnn_output_len = cnn_output_shape[2]
         if self.__DEBUG__:
+            cnn_output_shape = self.cnn.compute_output_shape(self.input_len, batch_size=None)
             print(f"cnn output shape (batch_size, features, seq_len) = {cnn_output_shape}")
 
         rnn_choice = self.config.rnn.name.lower()
