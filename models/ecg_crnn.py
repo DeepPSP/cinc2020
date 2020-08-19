@@ -14,6 +14,7 @@ from easydict import EasyDict as ED
 
 # from cfg import ModelCfg
 from model_configs import ECG_CRNN_CONFIG
+from cfg import TrainCfg
 # from model_configs.cpsc import CPSC_CONFIG
 from models.utils.torch_utils import (
     Mish, Swish, Activations,
@@ -469,7 +470,7 @@ class ECG_CRNN(nn.Module):
     __DEBUG__ = True
     __name__ = 'ECG_CRNN'
 
-    def __init__(self, classes:list, input_len:Optional[int]=None, config:Optional[ED]=None) -> NoReturn:
+    def __init__(self, classes:list, input_len:Optional[int]=None, config:Optional[ED]=None, training:bool=True) -> NoReturn:
         """ finished, checked,
 
         Parameters:
@@ -477,16 +478,21 @@ class ECG_CRNN(nn.Module):
         classes: list,
             list of the classes for classification
         input_len: int, optional,
-            sequence length (last dim.) of the input
+            sequence length (last dim.) of the input,
+            defaults to `TrainCfg.input_len`,
+            will not be used in the inference mode
         config: dict, optional,
             other hyper-parameters, including kernel sizes, etc.
             ref. the corresponding config file
+        training: bool, default True,
+            if True, the training mode; otherwise the inference mode
         """
         super().__init__()
         self.classes = classes
+        self.training = training
         self.n_classes = len(classes)
         self.n_leads = 12
-        self.input_len = input_len
+        self.input_len = input_len or TrainCfg.input_len
         self.config = deepcopy(ECG_CRNN_CONFIG)
         self.config.update(config or {})
         if self.__DEBUG__:
