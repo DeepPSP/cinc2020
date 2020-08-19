@@ -35,6 +35,10 @@ class CINC2020(Dataset):
         self.tranches = tranches
         self.training = training
         assert not self.tranches or self.tranches in self._TRANCHES
+        if self.tranches:
+            self.all_classes = TrainCfg.tranche_classes[self.tranches]
+        else:
+            self.all_classes = TrainCfg.classes
 
         self.records = self._train_test_split(config.train_ratio, force_recompute=False)
 
@@ -46,11 +50,12 @@ class CINC2020(Dataset):
         #     rec,
         #     data_format='channel_first', units='mV', backend='wfdb'
         # )
-        values = self.reader.load_resampled_data(rec)
+        values = self.reader.load_resampled_data(rec, siglen=TrainCfg.siglen)
         labels = self.reader.get_labels(
             rec,
             scored_only=True, abbr=False, normalize=True
         )
+        labels = [c for c in labels if c in self.all_classes]
         return values, labels
 
     def _get_val_item(self, index):
