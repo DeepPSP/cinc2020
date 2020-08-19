@@ -42,31 +42,41 @@ else:
 class Mish(torch.nn.Module):
     __name__ = "Mish"
     """ The Mish activation """
-    def __init__(self):
+    def __init__(self, inplace:bool=False):
         """
         """
         super().__init__()
+        self.inplace = inplace
 
-    def forward(self, x:Tensor) -> Tensor:
+    def forward(self, input:Tensor) -> Tensor:
         """
         """
-        x = x * (torch.tanh(F.softplus(x)))
-        return x
+        if self.inplace:
+            input = input * (torch.tanh(F.softplus(input)))
+            output = input
+        else:
+            ouput = input * (torch.tanh(F.softplus(input)))
+        return ouput
 
 
 class Swish(torch.nn.Module):
     __name__ = "Swish"
     """ The Swish activation """
-    def __init__(self):
+    def __init__(self, inplace:bool=False):
         """
         """
         super().__init__()
+        self.inplace = inplace
 
-    def forward(self, x:Tensor) -> Tensor:
+    def forward(self, input:Tensor) -> Tensor:
         """
         """
-        x = x * F.sigmoid(x)
-        return x
+        if self.inplace:
+            input = input * F.sigmoid(input)
+            output = input
+        else:
+            output = input * F.sigmoid(input)
+        return output
 
 
 # ---------------------------------------------
