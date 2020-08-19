@@ -130,7 +130,7 @@ TrainCfg.class_counts = ED({
     'IAVB': 2394, 'AF': 3473, 'AFL': 314, 'RBBB': 3083, 'IRBBB': 1611, 'LAnFB': 1806, 'LBBB': 1041, 'NSIVCB': 996, 'PAC': 1937, 'PVC': 553, 'LPR': 340, 'LQT': 1513, 'QAb': 1013, 'SA': 1238, 'SB': 2359, 'NSR': 20846, 'STach': 2391, 'TAb': 4673, 'TInv': 1111,
 })  # count
 TrainCfg.class_weights = ED({
-    k: sum(TrainCfg.class_weights.values())/v for k, v in TrainCfg.class_counts.items()
+    k: sum(TrainCfg.class_counts.values())/v for k, v in TrainCfg.class_counts.items()
 })
 TrainCfg.class_weights = ED({
     k: v/min(TrainCfg.class_weights.values()) for k, v in TrainCfg.class_weights.items()
