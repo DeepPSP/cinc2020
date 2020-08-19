@@ -111,9 +111,9 @@ class CINC2020(Dataset):
                     test[t] = tranche_records[t][split_idx:]
                     is_valid = _check_train_test_split_validity(train[t], test[t], set(TrainCfg.tranche_classes[t]))
             with open(train_file, "w") as f:
-                json.dump(train, train_file, ensure_ascii=False)
+                json.dump(train, f, ensure_ascii=False)
             with open(test_file, "w") as f:
-                json.dump(test, test_file, ensure_ascii=False)
+                json.dump(test, f, ensure_ascii=False)
         else:
             with open(train_file, "r") as f:
                 train = json.load(train_file)

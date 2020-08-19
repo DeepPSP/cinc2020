@@ -1068,10 +1068,13 @@ class CINC2020Reader(object):
             name of the record
         siglen: int, optional,
             signal length, units in number of samples,
+            if set, signal with length longer will be sliced to the length of `siglen`
             used for example when preparing/doing model training
 
         Returns:
         --------
+        data: ndarray,
+            the resampled (and perhaps sliced) signal data
         """
         tranche = self._get_tranche(rec)
         if siglen is None:
@@ -1082,7 +1085,10 @@ class CINC2020Reader(object):
             data = self.load_data(rec, data_format='channel_first', units='mV', freq=None)
             if self.freq[tranche] != 500:
                 data = resample_poly(data, 500, self.freq[tranche], axis=1)
-            if siglen is None:
+            if siglen is not None and data.shape[1] >= siglen:
+                slice_start = (data.shape[1] - siglen)//2
+                slice_end = (data.shape[1] - siglen)//2
+                data = data[..., slice_start:slice_end]
             np.save(rec_fp, data)
         else:
             data = np.load(rec_fp)
