@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 import wfdb
 from scipy.io import loadmat
+from scipy.signal import resample, resample_poly
 from easydict import EasyDict as ED
 
 import utils
@@ -392,7 +393,7 @@ class CINC2020_Reader(object):
         return tranche
 
 
-    def load_data(self, rec:str, leads:Optional[Union[str, List[str]]]=None, data_format='channel_first', backend:str='wfdb', units:str='mV') -> np.ndarray:
+    def load_data(self, rec:str, leads:Optional[Union[str, List[str]]]=None, data_format='channel_first', backend:str='wfdb', units:str='mV', freq:Optional[Real]=None) -> np.ndarray:
         """ finished, checked,
 
         load physical (converted from digital) ecg data,
@@ -412,6 +413,8 @@ class CINC2020_Reader(object):
             the backend data reader, can also be 'scipy'
         units: str, default 'mV',
             units of the output signal, can also be 'μV', with an alias of 'uV'
+        freq: real number, optional,
+            if not None, the loaded data will be resampled to this frequency
         
         Returns:
         --------
@@ -420,6 +423,8 @@ class CINC2020_Reader(object):
         """
         assert data_format.lower() in ['channel_first', 'lead_first', 'channel_last', 'lead_last']
         tranche = self._get_tranche(rec)
+        if tranche in "CD" and freq == 500:
+            data = self.load_resampled_data(rec)
         if backend.lower() == 'wfdb':
             rec_fp = os.path.join(self.db_dirs[tranche], rec)
             data = np.asarray(wfdb.rdrecord(rec_fp).p_signal.T, dtype=np.float64)
@@ -445,7 +450,10 @@ class CINC2020_Reader(object):
 
         if units.lower() in ['uv', 'μv']:
             data = data * 1000
-        
+
+        if freq is not None and freq != 500:
+            data = resample_poly(data, freq, self.freq[tranche])
+
         return data
 
     
@@ -1039,3 +1047,25 @@ class CINC2020_Reader(object):
             print(dict_to_str(eval(f"EAK.{item}")))
             if idx < len(d)-1:
                 print("*"*110)
+
+
+    def load_resampled_data(self, rec:str) -> np.ndarray:
+        """ finished, checked,
+
+        resample the data of `rec` to 500Hz,
+        or load the resampled data in 500Hz, if the corr. data file already exists
+
+        Parameters:
+        -----------
+        rec: str,
+            name of the record
+        """
+        tranche = self._get_tranche(rec)
+        rec_fp = os.path.join(self.db_dirs[tranche], f'{rec}_500Hz.npy')
+        if not os.path.is_file(rec_fp):
+            data = self.load_data(rec, data_format='channel_first', units='mV', freq=None)
+            data = resample_poly(data, 500, self.freq[tranche], axis=1)
+            np.save(rec_fp, data)
+        else:
+            data = np.load(rec_fp)
+        return data
