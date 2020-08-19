@@ -623,7 +623,7 @@ class CINC2020_Reader(object):
         """
         diag_dict, diag_scored_dict = {}, {}
         try:
-            diag_dict['diagnosis_code'] = [int(item) for item in l_Dx]
+            diag_dict['diagnosis_code'] = [item for item in l_Dx]
             # selection = dx_mapping_all['SNOMED CT Code'].isin(diag_dict['diagnosis_code'])
             # diag_dict['diagnosis_abbr'] = dx_mapping_all[selection]['Abbreviation'].tolist()
             # diag_dict['diagnosis_fullname'] = dx_mapping_all[selection]['Dx'].tolist()
