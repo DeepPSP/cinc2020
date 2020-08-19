@@ -12,7 +12,7 @@ import torch
 from torch.utils.data.dataset import Dataset
 
 from cfg import TrainCfg
-from data_reader import CINC2020_Reader as CR
+from data_reader import CINC2020Reader as CR
 
 
 __all__ = [
