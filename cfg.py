@@ -85,7 +85,6 @@ PlotCfg.t_offset = 60
 ModelCfg = ED()
 ModelCfg.fs = 500
 ModelCfg.spacing = 1000 / ModelCfg.fs
-ModelCfg.classes = []
 
 
 # training configurations for machine learning and deep learning
@@ -148,6 +147,8 @@ TrainCfg.burn_in = 1000
 TrainCfg.max_batches = 500500
 TrainCfg.steps = [40000, 45000]
 TrainCfg.batch = 32
-TrainCfg.loss = 'bce'
+TrainCfg.loss = 'BCEWithLogitLoss'
 
 TrainCfg.cnn_name = "resnet"
+
+TrainCfg.input_len = 500 * 8  # almost all records has duration >= 8s

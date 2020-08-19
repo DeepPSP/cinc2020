@@ -23,28 +23,28 @@ __all__ = [
 class CINC2020(Dataset):
     """
     """
-    def __init__(self, config:ED, tranches:Optional[str]=None, train:bool=True) -> NoReturn:
+    def __init__(self, config:ED, tranches:Optional[str]=None, training:bool=True) -> NoReturn:
         """
         """
-        self._TRANCHES = TrainCfg.tranche_classes.keys()  # ["A", "B", "AB", "E", "F"]
         super().__init__()
+        self._TRANCHES = TrainCfg.tranche_classes.keys() + ["ABEF"]  # ["A", "B", "AB", "E", "F"]
         self.config = deepcopy(config)
         self.reader = CR(db_dir=config.db_dir)
-        self.tranches = tranches
-        self.train = train
-
+        self.tranches = tranches or "ABEF"
+        self.training = training
         assert not self.tranches or self.tranches in self._TRANCHES
 
         self.records = self._train_test_split(config.train_ratio, force_recompute=False)
 
     def __getitem__(self, index):
-        """
+        """ NOT finished,
         """
         rec = self.records[index]
-        values = self.reader.load_data(
-            rec,
-            data_format='channel_first', units='mV', backend='wfdb'
-        )
+        # values = self.reader.load_data(
+        #     rec,
+        #     data_format='channel_first', units='mV', backend='wfdb'
+        # )
+        values = self.reader.load_resampled_data(rec)
         labels = self.reader.get_labels(
             rec,
             scored_only=True, abbr=True, normalize=True
@@ -57,11 +57,13 @@ class CINC2020(Dataset):
         raise NotImplementedError
 
     def __len__(self):
-        return super().__len__()
+        """
+        """
+        return len(self.records)
 
     
     def _train_test_split(self, train_ratio:float=0.8, force_recompute:bool=False) -> List[str]:
-        """ NOT finished,
+        """ finished, NOT checked,
 
         Parameters:
         -----------
@@ -73,18 +75,30 @@ class CINC2020(Dataset):
         records: list of str,
             list of the records split for training or validation
         """
+        _TRANCHES = list("ABEF")
         _train_ratio = int(train_ratio*100)
         _test_ratio = 100 - _train_ratio
         assert _train_ratio * _test_ratio > 0
-        train_file = os.path.join(self.reader.db_dir_base, f"train_{_train_ratio}.json")
-        test_file = os.path.join(self.reader.db_dir_base, f"test_{_test_ratio}.json")
+
+        file_suffix = f"_samples_{TrainCfg.input_len}.json"
+        train_file = os.path.join(self.reader.db_dir_base, f"train_ratio_{_train_ratio}{file_suffix}")
+        test_file = os.path.join(self.reader.db_dir_base, f"test_ratio_{_test_ratio}{file_suffix}")
+
         if force_recompute or not all([os.path.isfile(train_file), os.path.isfile(test_file)]):
             tranche_records = {t: [] for t in _TRANCHES}
             train = {t: [] for t in _TRANCHES}
             test = {t: [] for t in _TRANCHES}
             for t in _TRANCHES:
-                for _t in list(t):
-                    tranche_records[t] += self.reader.all_records[_t]
+                for rec in self.reader.all_records[t]:
+                    rec_labels = self.reader.get_labels(rec, scored_only=True, fmt='a', normalize=True)
+                    rec_labels = [c for c in rec_labels if c in TrainCfg.tranche_classes[t]]
+                    if len(rec_labels) == 0:
+                        continue
+                    rec_samples = self.reader.load_resampled_data(rec).shape[1]
+                    if rec_samples < TrainCfg.input_len:
+                        continue
+                    tranche_records[t].append(rec)
+                print(f"tranche {t} has {len(tranche_records[t])} valid records for training")
             for t in _TRANCHES:
                 is_valid = False
                 while not is_valid:
@@ -105,12 +119,12 @@ class CINC2020(Dataset):
 
         add = lambda a,b:a+b
         if not self.tranches:
-            if self.train:
+            if self.training:
                 records = list(map(add, [v for v in train.values()]))
             else:
                 records = list(map(add, [v for v in test.values()]))
         else:
-            if self.train:
+            if self.training:
                 records = train[self.tranches]
             else:
                 records = test[self.tranches]
@@ -118,7 +132,7 @@ class CINC2020(Dataset):
 
 
     def _check_train_test_split_validity(self, train:List[str], test:List[str], all_classes:Set[str]) -> bool:
-        """
+        """ finished, NOT checked,
 
         Parameters:
         -----------
@@ -133,8 +147,8 @@ class CINC2020(Dataset):
             the split is valid or not
         """
         add = lambda a,b:a+b
-        train_classes = set(list(map(add, [self.reader.get_labels(rec) for rec in train])))
-        test_classes = set(list(map(add, [self.reader.get_labels(rec) for rec in test])))
+        train_classes = set(list(map(add, [self.reader.get_labels(rec, fmt='a') for rec in train])))
+        test_classes = set(list(map(add, [self.reader.get_labels(rec, fmt='a') for rec in test])))
         is_valid = (all_classes-train_classes==set()) and (train_classes==test_classes)
+        print(f"all_classes = {all_classes}\ntrain_classes = {train_classes}\ntest_classes = {test_classes}")
         return is_valid
-

@@ -1069,9 +1069,10 @@ class CINC2020Reader(object):
         """
         tranche = self._get_tranche(rec)
         rec_fp = os.path.join(self.db_dirs[tranche], f'{rec}_500Hz.npy')
-        if not os.path.is_file(rec_fp):
+        if not os.path.isfile(rec_fp):
             data = self.load_data(rec, data_format='channel_first', units='mV', freq=None)
-            data = resample_poly(data, 500, self.freq[tranche], axis=1)
+            if self.freq[tranche] != 500:
+                data = resample_poly(data, 500, self.freq[tranche], axis=1)
             np.save(rec_fp, data)
         else:
             data = np.load(rec_fp)
