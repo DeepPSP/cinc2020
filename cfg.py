@@ -153,7 +153,7 @@ TrainCfg.decay = 0.0005
 TrainCfg.learning_rate = 0.00261
 TrainCfg.burn_in = 1000
 TrainCfg.loss = 'BCEWithLogitLoss'
+TrainCfg.eval_every = 20
 
 TrainCfg.cnn_name = "resnet"
-
 TrainCfg.input_len = int(500 * 8.0)  # almost all records has duration >= 8s

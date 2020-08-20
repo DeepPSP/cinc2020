@@ -49,6 +49,7 @@ from torch import optim
 from torch import Tensor
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
+from tensorboardX import SummaryWriter
 from easydict import EasyDict as ED
 
 from models.ecg_crnn import ECG_CRNN
@@ -56,6 +57,7 @@ from model_configs import ECG_CRNN_CONFIG
 from cfg import ModelCfg, TrainCfg
 from dataset import CINC2020
 from utils.misc import init_logger, get_date_str
+from utils.scoring_metrics import evaluate_12ECG_score
 
 
 __all__ = [
@@ -110,9 +112,8 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
         comment=f'OPT_{model.__name__}_{config.cnn_name}_{config.train_optimizer}_LR_{lr}_BS_{batch_size}',
     )
     
-    max_itr = n_epochs * n_train
-    # global_step = cfg.TRAIN_MINEPOCH * n_train
-    global_step = 0
+    # max_itr = n_epochs * n_train
+
     if logger:
         logger.info(f'''Starting training:
             Epochs:          {n_epochs}
@@ -140,14 +141,14 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
     if config.train_optimizer.lower() == 'adam':
         optimizer = optim.Adam(
             params=model.parameters(),
-            lr=config.learning_rate / config.batch,
+            lr=lr/batch_size,
             betas=(0.9, 0.999),
             eps=1e-08,
         )
     elif config.train_optimizer.lower() == 'sgd':
         optimizer = optim.SGD(
             params=model.parameters(),
-            lr=config.learning_rate / config.batch,
+            lr=lr/batch_size,
             momentum=config.momentum,
             weight_decay=config.decay,
         )
@@ -155,6 +156,8 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
 
     if config.loss == "BCEWithLogitsLoss":
         criterion = nn.BCEWithLogitsLoss()
+    elif config.loss == "BCEWithLogitsLossWithWeights":
+        criterion = nn.BCEWithLogitsLoss(pos_weight=train_dataset.class_weights)
     else:
         raise NotImplementedError(f"loss `{config.loss}` not implemented!")
     # scheduler = ReduceLROnPlateau(optimizer, mode='max', verbose=True, patience=6, min_lr=1e-7)
@@ -164,62 +167,39 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
     saved_models = deque()
     model.train()
 
+    global_step = 0
     for epoch in range(n_epochs):
         model.train()
         epoch_loss = 0
-        epoch_step = 0
 
         with tqdm(total=n_train, desc=f'Epoch {epoch + 1}/{n_epochs}', ncols=100) as pbar:
-            for i, batch in enumerate(train_loader):
+            for epoch_step, (signals, labels) in enumerate(train_loader):
                 global_step += 1
-                epoch_step += 1
-
-                signals, labels = batch
                 signals = signals.to(device=device, dtype=torch.float32)
                 labels = labels.to(device=device, dtype=torch.float32)
+                optimizer.zero_grad()
 
                 preds = model(signals)
                 loss = criterion(preds, labels)
                 loss.backward()
-            #     loss, loss_xy, loss_wh, loss_obj, loss_cls, loss_l2 = criterion(bboxes_pred, bboxes)
-            #     # loss = loss / config.subdivisions
-            #     loss.backward()
+                optimizer.step()
+                scheduler.step()
+                epoch_loss += loss.item()
 
-            #     epoch_loss += loss.item()
+                if global_step % log_step == 0:
+                    writer.add_scalar('train/loss', loss.item(), global_step)
+                    writer.add_scalar('lr', scheduler.get_lr()[0] * batch_size, global_step)
+                    pbar.set_postfix(**{
+                        'loss (batch)': loss.item(),
+                        'lr': scheduler.get_lr()[0] * batch_size
+                    })
+                    if logger:
+                        logger.info(f'Train step_{global_step}: loss : {loss.item()}, lr : {scheduler.get_lr()[0] * batch_size}')
 
-            #     if global_step  % config.subdivisions == 0:
-            #         optimizer.step()
-            #         scheduler.step()
-            #         model.zero_grad()
-
-            #     if global_step % (log_step * config.subdivisions) == 0:
-            #         writer.add_scalar('train/Loss', loss.item(), global_step)
-            #         writer.add_scalar('train/loss_xy', loss_xy.item(), global_step)
-            #         writer.add_scalar('train/loss_wh', loss_wh.item(), global_step)
-            #         writer.add_scalar('train/loss_obj', loss_obj.item(), global_step)
-            #         writer.add_scalar('train/loss_cls', loss_cls.item(), global_step)
-            #         writer.add_scalar('train/loss_l2', loss_l2.item(), global_step)
-            #         writer.add_scalar('lr', scheduler.get_lr()[0] * config.batch, global_step)
-            #         pbar.set_postfix(**{
-            #             'loss (batch)': loss.item(),
-            #             'loss_xy': loss_xy.item(),
-            #             'loss_wh': loss_wh.item(),
-            #             'loss_obj': loss_obj.item(),
-            #             'loss_cls': loss_cls.item(),
-            #             'loss_l2': loss_l2.item(),
-            #             'lr': scheduler.get_lr()[0] * config.batch
-            #         })
-            #         if logger:
-            #             logger.info(f'Train step_{global_step}: loss : {loss.item()},loss xy : {loss_xy.item()}, loss wh : {loss_wh.item()}, loss obj : {loss_obj.item()}, loss cls : {loss_cls.item()}, loss l2 : {loss_l2.item()}, lr : {scheduler.get_lr()[0] * config.batch}')
-
-            #     pbar.update(images.shape[0])
+                pbar.update(signals.shape[0])
                 
             # # TODO: eval for each epoch using `evaluate`
-            # eval_model = Yolov4(yolov4conv137weight=None, n_classes=config.classes, inference=True)
-            # eval_model.load_state_dict(model.state_dict())
-            # eval_model.to(device)
-            # evaluator = evaluate(eval_model, val_loader, config, device, logger)
-            # del eval_model
+            evaluator = evaluate(model, val_loader, config, device, writer, logger)
 
             try:
                 os.makedirs(config.checkpoints, exist_ok=True)
@@ -256,12 +236,25 @@ def collate_fn(batch:tuple) -> Tuple[Tensor, Tensor]:
 
 
 @torch.no_grad()
-def evaluate(model, data_loader, cfg, device, logger=None, **kwargs):
+def evaluate(model:nn.Module, data_loader:DataLoader, config:dict, device:torch.device, writer:Optional[SummaryWriter]=None, logger:Optional[logging.Logger]=None, **kwargs):
     """ NOT finished, NOT checked,
     """
     model.eval()
 
-    raise NotImplementedError
+    for signals, labels in train_loader:
+        signals = signals.to(device=device, dtype=torch.float32)
+
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+        preds = model(signals)
+
+        auroc, auprc, accuracy, f_measure, f_beta_measure, g_beta_measure, challenge_metric = \
+            evaluate_12ECG_score(
+                classes=data_loader.dataset.all_classes,
+                truth=labels.numpy(),
+            )
+
+    model.train()
 
 
 def get_args(**kwargs):

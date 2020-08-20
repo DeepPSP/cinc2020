@@ -47,8 +47,14 @@ class CINC2020(Dataset):
         assert not self.tranches or self.tranches in self._TRANCHES
         if self.tranches:
             self.all_classes = self.config.tranche_classes[self.tranches]
+            self.class_weights = self.config.tranche_class_weights
         else:
             self.all_classes = self.config.classes
+            self.class_weights = self.config.class_weights
+        cw = np.zeros((len(self.class_weights),), dtype=np.float32)
+        for idx, c in enumerate(self.all_classes):
+            cw[idx] = self.class_weights[c]
+        self.class_weights = torch.from_numpy(self.class_weights)
         # if self.training:
         #     self.siglen = self.config.siglen
         # else:

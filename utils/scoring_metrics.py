@@ -1,7 +1,7 @@
 """
 metrics from the official scoring repository
 """
-from typing import Union, Optional, Tuple, Sequence, NoReturn
+from typing import Union, Optional, List, Tuple, Sequence, NoReturn
 from numbers import Number, Real
 
 import numpy as np
@@ -14,8 +14,25 @@ __all__ = [
 ]
 
 
-def evaluate_12ECG_score(classes:Sequence[str], truth:np.ndarray, binary_pred:np.ndarray, scalar_pred:np.ndarray) -> Tuple[Real]:
-    """
+def evaluate_12ECG_score(classes:List[str], truth:np.ndarray, binary_pred:np.ndarray, scalar_pred:np.ndarray) -> Tuple[float]:
+    """ NOT finished, NOT checked,
+
+    Parameters:
+    -----------
+    classes: list of str,
+    truth: ndarray,
+    binary_pred: ndarray,
+    scalar_pred: ndarray,
+
+    Returns:
+    --------
+    auroc:
+    auprc:
+    accuracy:
+    f_measure:
+    f_beta_measure:
+    g_beta_measure:
+    challenge_metric:
     """
     normal_class = '426783006'
     equivalent_classes = [['713427006', '59118001'], ['284470004', '63593006'], ['427172004', '17338001']]
@@ -43,7 +60,9 @@ def evaluate_12ECG_score(classes:Sequence[str], truth:np.ndarray, binary_pred:np
 
 
 # Compute recording-wise accuracy.
-def compute_accuracy(labels, outputs):
+def compute_accuracy(labels:np.ndarray, outputs:np.ndarray) -> float:
+    """ NOT checked,
+    """
     num_recordings, num_classes = np.shape(labels)
 
     num_correct_recordings = 0
@@ -53,8 +72,11 @@ def compute_accuracy(labels, outputs):
 
     return float(num_correct_recordings) / float(num_recordings)
 
+
 # Compute confusion matrices.
-def compute_confusion_matrices(labels, outputs, normalize=False):
+def compute_confusion_matrices(labels:np.ndarray, outputs:np.ndarray, normalize:bool=False) -> np.ndarray:
+    """ NOT checked,
+    """
     # Compute a binary confusion matrix for each class k:
     #
     #     [TN_k FN_k]
@@ -96,8 +118,11 @@ def compute_confusion_matrices(labels, outputs, normalize=False):
 
     return A
 
+
 # Compute macro F-measure.
-def compute_f_measure(labels, outputs):
+def compute_f_measure(labels:np.ndarray, outputs:np.ndarray) -> float:
+    """
+    """
     num_recordings, num_classes = np.shape(labels)
 
     A = compute_confusion_matrices(labels, outputs)
@@ -116,7 +141,7 @@ def compute_f_measure(labels, outputs):
 
 
 # Compute F-beta and G-beta measures from the unofficial phase of the Challenge.
-def compute_beta_measures(labels, outputs, beta):
+def compute_beta_measures(labels:np.ndarray, outputs:np.ndarray, beta:Real) -> Tuple[float, float]:
     """
     """
     num_recordings, num_classes = np.shape(labels)
@@ -143,7 +168,7 @@ def compute_beta_measures(labels, outputs, beta):
 
 
 # Compute macro AUROC and macro AUPRC.
-def compute_auc(labels, outputs):
+def compute_auc(labels:np.ndarray, outputs:np.ndarray) -> Tuple[float, float]:
     """
     """
     num_recordings, num_classes = np.shape(labels)
@@ -223,7 +248,7 @@ def compute_auc(labels, outputs):
 
 
 # Compute modified confusion matrix for multi-class, multi-label tasks.
-def compute_modified_confusion_matrix(labels, outputs):
+def compute_modified_confusion_matrix(labels:np.ndarray, outputs:np.ndarray) -> np.ndarray:
     """
     Compute a binary multi-class, multi-label confusion matrix,
     where the rows are the labels and the columns are the outputs.
@@ -246,7 +271,7 @@ def compute_modified_confusion_matrix(labels, outputs):
 
 
 # Compute the evaluation metric for the Challenge.
-def compute_challenge_metric(weights, labels, outputs, classes, normal_class):
+def compute_challenge_metric(weights:np.ndarray, labels:np.ndarray, outputs:np.ndarray, classes:List[str], normal_class:str) -> float:
     """
     """
     num_recordings, num_classes = np.shape(labels)
