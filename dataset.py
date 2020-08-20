@@ -26,7 +26,16 @@ class CINC2020(Dataset):
     """
     """
     def __init__(self, config:ED, tranches:Optional[str]=None, training:bool=True) -> NoReturn:
-        """
+        """ finished, NOT checked,
+
+        Parameters:
+        -----------
+        config: dict,
+            configurations for the Dataset,
+            ref. `cfg.TrainCfg`
+        tranches: str, optional,
+            tranches for training,
+            can be one of "A", "B", "AB", "E", "F", or None (defaults to "ABEF")
         """
         super().__init__()
         self._TRANCHES = TrainCfg.tranche_classes.keys()  # ["A", "B", "AB", "E", "F"]
@@ -39,23 +48,28 @@ class CINC2020(Dataset):
             self.all_classes = TrainCfg.tranche_classes[self.tranches]
         else:
             self.all_classes = TrainCfg.classes
+        if self.training:
+            self.siglen = TrainCfg.siglen
+        else:
+            self.siglen = None
 
         self.records = self._train_test_split(config.train_ratio, force_recompute=False)
 
     def __getitem__(self, index):
-        """ NOT finished,
+        """ finished, NOT checked,
         """
         rec = self.records[index]
         # values = self.reader.load_data(
         #     rec,
         #     data_format='channel_first', units='mV', backend='wfdb'
         # )
-        values = self.reader.load_resampled_data(rec, siglen=TrainCfg.siglen)
+        
+        values = self.reader.load_resampled_data(rec, siglen=self.siglen)
         labels = self.reader.get_labels(
-            rec,
-            scored_only=True, abbr=False, normalize=True
+            rec, scored_only=True, abbr=False, normalize=True
         )
         labels = [c for c in labels if c in self.all_classes]
+
         return values, labels
 
     def _get_val_item(self, index):
@@ -75,7 +89,10 @@ class CINC2020(Dataset):
         Parameters:
         -----------
         train_ratio: float, default 0.8,
-        force_recompute: bool, default False
+            ratio of the train set in the whole dataset (or the whole tranche(s))
+        force_recompute: bool, default False,
+            if True, force redo the train-test split,
+            regardless of the existing ones stored in json files
 
         Returns:
         --------
@@ -135,7 +152,10 @@ class CINC2020(Dataset):
 
 
     def _check_train_test_split_validity(self, train:List[str], test:List[str], all_classes:Set[str]) -> bool:
-        """ finished, NOT checked,
+        """ finished, checked,
+
+        the train-test split is valid iff
+        records in both `train` and `test` contain all classes in `all_classes`
 
         Parameters:
         -----------
@@ -143,6 +163,8 @@ class CINC2020(Dataset):
             list of the records in the train set
         test: list of str,
             list of the records in the test set
+        all_classes: set of str,
+            the set of all classes for training
 
         Returns:
         --------
