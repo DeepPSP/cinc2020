@@ -34,8 +34,9 @@ def evaluate_12ECG_score(classes:List[str], truth:np.ndarray, binary_pred:np.nda
     g_beta_measure:
     challenge_metric:
     """
-    normal_class = '426783006'
-    equivalent_classes = [['713427006', '59118001'], ['284470004', '63593006'], ['427172004', '17338001']]
+    # normal_class = '426783006'
+    normal_class = 'NSR'
+    # equivalent_classes = [['713427006', '59118001'], ['284470004', '63593006'], ['427172004', '17338001']]
     weights = load_weights(classes=classes)
 
     print('- AUROC and AUPRC...')
