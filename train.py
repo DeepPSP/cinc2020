@@ -115,7 +115,9 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
     # max_itr = n_epochs * n_train
 
     if logger:
-        logger.info(f'''Starting training:
+        logger.info(f'''
+            Starting training:
+            ------------------
             Epochs:          {n_epochs}
             Batch size:      {batch_size}
             Learning rate:   {lr}
@@ -124,6 +126,7 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
             Device:          {device.type}
             Optimizer:       {config.train_optimizer}
             Dataset classes: {config.classes}
+            -----------------------------------------
         ''')
 
     # learning rate setup
@@ -152,6 +155,8 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
             momentum=config.momentum,
             weight_decay=config.decay,
         )
+    else:
+        raise NotImplementedError(f"loss `{config.train_optimizer}` not implemented!")
     scheduler = optim.lr_scheduler.LambdaLR(optimizer, burnin_schedule)
 
     if config.loss == "BCEWithLogitsLoss":
@@ -199,7 +204,27 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
                 pbar.update(signals.shape[0])
                 
             # # TODO: eval for each epoch using `evaluate`
-            evaluator = evaluate(model, val_loader, config, device, writer, logger)
+            eval_res = evaluate(model, val_loader, config, device)
+            writer.add_scalar('test/auroc', eval_res[0], global_step)
+            writer.add_scalar('test/auprc', eval_res[1], global_step)
+            writer.add_scalar('test/accuracy', eval_res[2], global_step)
+            writer.add_scalar('test/f_measure', eval_res[3], global_step)
+            writer.add_scalar('test/f_beta_measure', eval_res[4], global_step)
+            writer.add_scalar('test/g_beta_measure', eval_res[5], global_step)
+            writer.add_scalar('test/challenge_metric', eval_res[6], global_step)
+            if logger:
+                logger.info(f'''
+                    Train epoch_{epoch}:
+                    --------------------
+                    auroc:              {eval_res[0]}
+                    auprc:              {eval_res[1]}
+                    accuracy:           {eval_res[2]}
+                    f_measure:          {eval_res[3]}
+                    f_beta_measure:     {eval_res[4]}
+                    g_beta_measure:     {eval_res[5]}
+                    challenge_metric:   {eval_res[6]}
+                    ---------------------------------
+                ''')
 
             try:
                 os.makedirs(config.checkpoints, exist_ok=True)
@@ -236,25 +261,47 @@ def collate_fn(batch:tuple) -> Tuple[Tensor, Tensor]:
 
 
 @torch.no_grad()
-def evaluate(model:nn.Module, data_loader:DataLoader, config:dict, device:torch.device, writer:Optional[SummaryWriter]=None, logger:Optional[logging.Logger]=None, **kwargs):
+def evaluate(model:nn.Module, data_loader:DataLoader, config:dict, device:torch.device) -> Tuple[float]:
     """ NOT finished, NOT checked,
+
+    Parameters:
+    -----------
+    to write
+
+    Returns:
+    --------
+    to write
     """
     model.eval()
 
+    all_preds = []
+    all_labels = []
+
     for signals, labels in train_loader:
         signals = signals.to(device=device, dtype=torch.float32)
+        labels = labels.numpy()
+        all_labels.append(labels)
 
         if torch.cuda.is_available():
             torch.cuda.synchronize()
         preds = model(signals)
+        all_preds.append(preds.detach().numpy())
+    
+    all_preds = np.concatenate(all_preds, axis=0)
+    bin_preds = (all_preds >= config.bin_pred_thr).astype(int)
+    all_labels = np.concatenate(all_labels, axis=0)
 
-        auroc, auprc, accuracy, f_measure, f_beta_measure, g_beta_measure, challenge_metric = \
-            evaluate_12ECG_score(
-                classes=data_loader.dataset.all_classes,
-                truth=labels.numpy(),
-            )
+    auroc, auprc, accuracy, f_measure, f_beta_measure, g_beta_measure, challenge_metric = \
+        evaluate_12ECG_score(
+            classes=data_loader.dataset.all_classes,
+            truth=all_labels,
+            scalar_pred=all_preds,
+            binary_pred=bin_preds,
+        )
 
     model.train()
+
+    return auroc, auprc, accuracy, f_measure, f_beta_measure, g_beta_measure, challenge_metric
 
 
 def get_args(**kwargs):

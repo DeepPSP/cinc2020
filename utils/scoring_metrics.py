@@ -39,19 +39,19 @@ def evaluate_12ECG_score(classes:List[str], truth:np.ndarray, binary_pred:np.nda
     weights = load_weights(classes=classes)
 
     print('- AUROC and AUPRC...')
-    auroc, auprc = compute_auc(truth, scalar_outputs)
+    auroc, auprc = compute_auc(truth, scalar_pred)
 
     print('- Accuracy...')
-    accuracy = compute_accuracy(truth, binary_outputs)
+    accuracy = compute_accuracy(truth, binary_pred)
 
     print('- F-measure...')
-    f_measure = compute_f_measure(truth, binary_outputs)
+    f_measure = compute_f_measure(truth, binary_pred)
 
     print('- F-beta and G-beta measures...')
-    f_beta_measure, g_beta_measure = compute_beta_measures(truth, binary_outputs, beta=2)
+    f_beta_measure, g_beta_measure = compute_beta_measures(truth, binary_pred, beta=2)
 
     print('- Challenge metric...')
-    challenge_metric = compute_challenge_metric(weights, truth, binary_outputs, classes, normal_class)
+    challenge_metric = compute_challenge_metric(weights, truth, binary_pred, classes, normal_class)
 
     print('Done.')
 

@@ -470,7 +470,7 @@ class ECG_CRNN(nn.Module):
     __DEBUG__ = True
     __name__ = 'ECG_CRNN'
 
-    def __init__(self, classes:list, input_len:Optional[int]=None, config:Optional[ED]=None, training:bool=True) -> NoReturn:
+    def __init__(self, classes:list, input_len:Optional[int]=None, config:Optional[ED]=None) -> NoReturn:
         """ finished, checked,
 
         Parameters:
@@ -484,12 +484,9 @@ class ECG_CRNN(nn.Module):
         config: dict, optional,
             other hyper-parameters, including kernel sizes, etc.
             ref. the corresponding config file
-        training: bool, default True,
-            if True, the training mode; otherwise the inference mode
         """
         super().__init__()
         self.classes = classes
-        self.training = training
         self.n_classes = len(classes)
         self.n_leads = 12
         self.input_len = input_len or TrainCfg.input_len
@@ -538,6 +535,7 @@ class ECG_CRNN(nn.Module):
         if self.config.rnn.retseq:
             self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
         self.clf = nn.Linear(clf_input_size, self.n_classes)
+        self.sigmoid = nn.Sigmoid()  # for making inference
 
     def forward(self, input:Tensor) -> Tensor:
         """
@@ -555,4 +553,14 @@ class ECG_CRNN(nn.Module):
             x = self.max_pool(x)  # (batch, channels, 1)
             x = torch.flatten(x, 1)  # (batch, channels)
         pred = self.clf(x)
+        if not self.training:
+            pred = self.sigmoid(pred)
         return pred
+
+    def inference(self, input:Tensor) -> Tensor:
+        """
+        """
+        pred = self.forward(input)
+        if self.training:
+            output = self.sigmoid(output)
+        return output

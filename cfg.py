@@ -85,6 +85,7 @@ PlotCfg.t_offset = 60
 ModelCfg = ED()
 ModelCfg.fs = 500
 ModelCfg.spacing = 1000 / ModelCfg.fs
+ModelCfg.bin_pred_thr = 0.5
 
 
 # training configurations for machine learning and deep learning
@@ -157,3 +158,4 @@ TrainCfg.eval_every = 20
 
 TrainCfg.cnn_name = "resnet"
 TrainCfg.input_len = int(500 * 8.0)  # almost all records has duration >= 8s
+TrainCfg.bin_pred_thr = ModelCfg.bin_pred_thr
