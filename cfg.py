@@ -95,6 +95,7 @@ TrainCfg.log_dir = os.path.join(_BASE_DIR, 'log')
 TrainCfg.checkpoints = os.path.join(_BASE_DIR, "checkpoints")
 TrainCfg.keep_checkpoint_max = 100
 
+TrainCfg.min_class_weight = 0.5
 TrainCfg.tranche_class_counts = ED({
     # classes with too few recordings are ignored
     # classes dealt with special detectors are ignored
@@ -119,36 +120,39 @@ TrainCfg.tranche_class_weights = ED({
         for t, t_cw in TrainCfg.tranche_class_counts.items()
 })
 TrainCfg.tranche_class_weights = ED({
-    t: {k: v/min(t_cw.values()) for k, v in t_cw.items()} \
+    t: {k: TrainCfg.min_class_weight * v / min(t_cw.values()) for k, v in t_cw.items()} \
         for t, t_cw in TrainCfg.tranche_class_weights.items()
-})
+})  # normalize class weights so that the minimun one equals `TrainCfg.min_class_weight`
 TrainCfg.tranche_classes = ED({
-    t: list(t_cw.keys()) for t,t_cw in TrainCfg.tranche_class_weights.items()
+    t: sorted(list(t_cw.keys())) \
+        for t, t_cw in TrainCfg.tranche_class_weights.items()
 })
 TrainCfg.class_counts = ED({
     'IAVB': 2394, 'AF': 3473, 'AFL': 314, 'RBBB': 3083, 'IRBBB': 1611, 'LAnFB': 1806, 'LBBB': 1041, 'NSIVCB': 996, 'PAC': 1937, 'PVC': 553, 'LPR': 340, 'LQT': 1513, 'QAb': 1013, 'SA': 1238, 'SB': 2359, 'NSR': 20846, 'STach': 2391, 'TAb': 4673, 'TInv': 1111,
 })  # count
 TrainCfg.class_weights = ED({
-    k: sum(TrainCfg.class_counts.values())/v for k, v in TrainCfg.class_counts.items()
+    k: sum(TrainCfg.class_counts.values())/v \
+        for k, v in TrainCfg.class_counts.items()
 })
 TrainCfg.class_weights = ED({
-    k: v/min(TrainCfg.class_weights.values()) for k, v in TrainCfg.class_weights.items()
-})  # normalize so that the smallest weight equals 1
-TrainCfg.classes = list(TrainCfg.class_weights.keys())
+    k: TrainCfg.min_class_weight * v / min(TrainCfg.class_weights.values()) \
+        for k, v in TrainCfg.class_weights.items()
+})  # normalize so that the smallest weight equals `TrainCfg.min_class_weight`
+TrainCfg.classes = sorted(list(TrainCfg.class_weights.keys()))
 TrainCfg.tranches_for_training = ''  # one of '', 'AB', 'E', 'F'
 
-TrainCfg.TRAIN_EPOCHS = 60000
-TrainCfg.TRAIN_OPTIMIZER = "adam"  # "sgd"
+TrainCfg.n_epochs = 60000
+TrainCfg.train_optimizer = "adam"  # "sgd"
+TrainCfg.max_batches = 500500
+TrainCfg.steps = [40000, 45000]
+TrainCfg.batch_size = 32
 
 TrainCfg.momentum = 0.949
 TrainCfg.decay = 0.0005
 TrainCfg.learning_rate = 0.00261
 TrainCfg.burn_in = 1000
-TrainCfg.max_batches = 500500
-TrainCfg.steps = [40000, 45000]
-TrainCfg.batch = 32
 TrainCfg.loss = 'BCEWithLogitLoss'
 
 TrainCfg.cnn_name = "resnet"
 
-TrainCfg.input_len = 500 * 8  # almost all records has duration >= 8s
+TrainCfg.input_len = int(500 * 8.0)  # almost all records has duration >= 8s

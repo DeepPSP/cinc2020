@@ -38,20 +38,23 @@ class CINC2020(Dataset):
             can be one of "A", "B", "AB", "E", "F", or None (defaults to "ABEF")
         """
         super().__init__()
-        self._TRANCHES = TrainCfg.tranche_classes.keys()  # ["A", "B", "AB", "E", "F"]
-        self.config = deepcopy(config)
+        self.config = deepcopy(TrainCfg)
+        self.config.update(config)
+        self._TRANCHES = self.config.tranche_classes.keys()  # ["A", "B", "AB", "E", "F"]
         self.reader = CR(db_dir=config.db_dir)
         self.tranches = tranches
         self.training = training
         assert not self.tranches or self.tranches in self._TRANCHES
         if self.tranches:
-            self.all_classes = TrainCfg.tranche_classes[self.tranches]
+            self.all_classes = self.config.tranche_classes[self.tranches]
         else:
-            self.all_classes = TrainCfg.classes
-        if self.training:
-            self.siglen = TrainCfg.siglen
-        else:
-            self.siglen = None
+            self.all_classes = self.config.classes
+        # if self.training:
+        #     self.siglen = self.config.siglen
+        # else:
+        #     self.siglen = None
+        # validation also goes in batches, hence length has to be fixed
+        self.siglen = self.config.input_len
 
         self.records = self._train_test_split(config.train_ratio, force_recompute=False)
 
@@ -68,10 +71,11 @@ class CINC2020(Dataset):
         labels = self.reader.get_labels(
             rec, scored_only=True, abbr=False, normalize=True
         )
-        labels = [c for c in labels if c in self.all_classes]
+        labels = np.where(np.isin(self.all_classes, labels).astype(int)
 
         return values, labels
 
+    @DeprecationWarning
     def _get_val_item(self, index):
         """
         """
@@ -104,14 +108,14 @@ class CINC2020(Dataset):
         _test_ratio = 100 - _train_ratio
         assert _train_ratio * _test_ratio > 0
 
-        file_suffix = f"_siglen_{TrainCfg.input_len}.json"
+        file_suffix = f"_siglen_{self.siglen}.json"
         train_file = os.path.join(self.reader.db_dir_base, f"train_ratio_{_train_ratio}{file_suffix}")
         test_file = os.path.join(self.reader.db_dir_base, f"test_ratio_{_test_ratio}{file_suffix}")
 
         if force_recompute or not all([os.path.isfile(train_file), os.path.isfile(test_file)]):
             tranche_records = {t: [] for t in _TRANCHES}
-            train = {t: [] for t in _TRANCHES}
-            test = {t: [] for t in _TRANCHES}
+            train_set = {t: [] for t in _TRANCHES}
+            test_set = {t: [] for t in _TRANCHES}
             for t in _TRANCHES:
                 with tqdm(self.reader.all_records[t], total=len(self.reader.all_records[t])) as bar:
                     for rec in bar:
@@ -120,7 +124,7 @@ class CINC2020(Dataset):
                         if len(rec_labels) == 0:
                             continue
                         rec_samples = self.reader.load_resampled_data(rec).shape[1]
-                        if rec_samples < TrainCfg.input_len:
+                        if rec_samples < self.siglen:
                             continue
                         tranche_records[t].append(rec)
                     print(f"tranche {t} has {len(tranche_records[t])} valid records for training")
@@ -129,39 +133,39 @@ class CINC2020(Dataset):
                 while not is_valid:
                     shuffle(tranche_records[t])
                     split_idx = int(len(tranche_records[t])*train_ratio)
-                    train[t] = tranche_records[t][:split_idx]
-                    test[t] = tranche_records[t][split_idx:]
-                    is_valid = _check_train_test_split_validity(train[t], test[t], set(TrainCfg.tranche_classes[t]))
+                    train_set[t] = tranche_records[t][:split_idx]
+                    test_set[t] = tranche_records[t][split_idx:]
+                    is_valid = _check_train_test_split_validity(train_set[t], test_set[t], set(TrainCfg.tranche_classes[t]))
             with open(train_file, "w") as f:
-                json.dump(train, f, ensure_ascii=False)
+                json.dump(train_set, f, ensure_ascii=False)
             with open(test_file, "w") as f:
-                json.dump(test, f, ensure_ascii=False)
+                json.dump(test_set, f, ensure_ascii=False)
         else:
             with open(train_file, "r") as f:
-                train = json.load(train_file)
+                train_set = json.load(train_file)
             with open(test_file, "r") as f:
-                test = json.load(test_file)
+                test_set = json.load(test_file)
 
         add = lambda a,b:a+b
         _tranches = list(self.tranches or "ABEF")
         if self.training:
-            records = reduce(add, [train[k] for k in _tranches])
+            records = reduce(add, [train_set[k] for k in _tranches])
         else:
-            records = reduce(add, [test[k] for k in _tranches])
+            records = reduce(add, [test_set[k] for k in _tranches])
         return records
 
 
-    def _check_train_test_split_validity(self, train:List[str], test:List[str], all_classes:Set[str]) -> bool:
+    def _check_train_test_split_validity(self, train_set:List[str], test_set:List[str], all_classes:Set[str]) -> bool:
         """ finished, checked,
 
         the train-test split is valid iff
-        records in both `train` and `test` contain all classes in `all_classes`
+        records in both `train_set` and `test` contain all classes in `all_classes`
 
         Parameters:
         -----------
-        train: list of str,
+        train_set: list of str,
             list of the records in the train set
-        test: list of str,
+        test_set: list of str,
             list of the records in the test set
         all_classes: set of str,
             the set of all classes for training
@@ -172,9 +176,9 @@ class CINC2020(Dataset):
             the split is valid or not
         """
         add = lambda a,b:a+b
-        train_classes = set(reduce(add, [self.reader.get_labels(rec, fmt='a') for rec in train]))
+        train_classes = set(reduce(add, [self.reader.get_labels(rec, fmt='a') for rec in train_set]))
         train_classes.intersection_update(all_classes)
-        test_classes = set(reduce(add, [self.reader.get_labels(rec, fmt='a') for rec in test]))
+        test_classes = set(reduce(add, [self.reader.get_labels(rec, fmt='a') for rec in test_set]))
         test_classes.intersection_update(all_classes)
         is_valid = (len(all_classes) == len(train_classes) == len(test_classes))
         print(f"all_classes = {all_classes}\ntrain_classes = {train_classes}\ntest_classes = {test_classes}\nis_valid = {is_valid}")

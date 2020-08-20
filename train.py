@@ -63,22 +63,30 @@ __all__ = [
 ]
 
 
-def train(model:nn.Module, device:torch.device, config:dict, n_epochs:int=5, batch_size:int=1, save_ckpt:bool=True, log_step:int=20, logger:Optional[logging.Logger]=None):
+def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, logger:Optional[logging.Logger]=None):
     """
 
     Parameters:
     -----------
-    to write
+    model: Module,
+    device: torch.device,
+    config: dict,
+    log_step: int, default 20,
+    logger: Logger, optional,
     """
-    train_dataset = CINC2020(config=config, train=True)
-    val_dataset = CINC2020(config=config, train=False)
+    train_dataset = CINC2020(config=config, training=True)
+    val_dataset = CINC2020(config=config, training=False)
 
     n_train = len(train_dataset)
     n_val = len(val_dataset)
 
+    n_epochs = config.n_epochs
+    batch_size = config.batch_size
+    lr = config.learning_rate
+
     train_loader = DataLoader(
         dataset=train_dataset,
-        batch_size=config.batch,
+        batch_size=batch_size,
         shuffle=True,
         num_workers=8,
         pin_memory=True,
@@ -88,7 +96,7 @@ def train(model:nn.Module, device:torch.device, config:dict, n_epochs:int=5, bat
 
     val_loader = DataLoader(
         dataset=val_dataset,
-        batch_size=config.batch,
+        batch_size=batch_size,
         shuffle=True,
         num_workers=8,
         pin_memory=True,
@@ -98,23 +106,22 @@ def train(model:nn.Module, device:torch.device, config:dict, n_epochs:int=5, bat
 
     writer = SummaryWriter(
         log_dir=config.log_dir,
-        filename_suffix=f'OPT_{config.cnn_name}_{config.TRAIN_OPTIMIZER}_LR_{config.learning_rate}_BS_{config.batch}',
-        comment=f'OPT_{config.cnn_name}_{config.TRAIN_OPTIMIZER}_LR_{config.learning_rate}_BS_{config.batch}',
+        filename_suffix=f'OPT_{model.__name__}_{config.cnn_name}_{config.train_optimizer}_LR_{lr}_BS_{batch_size}',
+        comment=f'OPT_{model.__name__}_{config.cnn_name}_{config.train_optimizer}_LR_{lr}_BS_{batch_size}',
     )
     
-    max_itr = config.TRAIN_EPOCHS * n_train
+    max_itr = n_epochs * n_train
     # global_step = cfg.TRAIN_MINEPOCH * n_train
     global_step = 0
     if logger:
         logger.info(f'''Starting training:
             Epochs:          {n_epochs}
-            Batch size:      {config.batch}
-            Learning rate:   {config.learning_rate}
+            Batch size:      {batch_size}
+            Learning rate:   {lr}
             Training size:   {n_train}
             Validation size: {n_val}
-            Checkpoints:     {save_ckpt}
             Device:          {device.type}
-            Optimizer:       {config.TRAIN_OPTIMIZER}
+            Optimizer:       {config.train_optimizer}
             Dataset classes: {config.classes}
         ''')
 
@@ -130,14 +137,14 @@ def train(model:nn.Module, device:torch.device, config:dict, n_epochs:int=5, bat
             factor = 0.01
         return factor
 
-    if config.TRAIN_OPTIMIZER.lower() == 'adam':
+    if config.train_optimizer.lower() == 'adam':
         optimizer = optim.Adam(
             params=model.parameters(),
             lr=config.learning_rate / config.batch,
             betas=(0.9, 0.999),
             eps=1e-08,
         )
-    elif config.TRAIN_OPTIMIZER.lower() == 'sgd':
+    elif config.train_optimizer.lower() == 'sgd':
         optimizer = optim.SGD(
             params=model.parameters(),
             lr=config.learning_rate / config.batch,
@@ -146,11 +153,14 @@ def train(model:nn.Module, device:torch.device, config:dict, n_epochs:int=5, bat
         )
     scheduler = optim.lr_scheduler.LambdaLR(optimizer, burnin_schedule)
 
-    criterion = nn.BCEWithLogitsLoss()
+    if config.loss == "BCEWithLogitsLoss":
+        criterion = nn.BCEWithLogitsLoss()
+    else:
+        raise NotImplementedError(f"loss `{config.loss}` not implemented!")
     # scheduler = ReduceLROnPlateau(optimizer, mode='max', verbose=True, patience=6, min_lr=1e-7)
     # scheduler = CosineAnnealingWarmRestarts(optimizer, 0.001, 1e-6, 20)
 
-    save_prefix = 'ECG_CRNN_epoch'
+    save_prefix = f'{model.__name__}_epoch'
     saved_models = deque()
     model.train()
 
@@ -163,13 +173,13 @@ def train(model:nn.Module, device:torch.device, config:dict, n_epochs:int=5, bat
             for i, batch in enumerate(train_loader):
                 global_step += 1
                 epoch_step += 1
-            #     images = batch[0]
-            #     bboxes = batch[1]
 
-            #     images = images.to(device=device, dtype=torch.float32)
-            #     bboxes = bboxes.to(device=device)
+                signals, labels = batch
+                signals = signals.to(device=device, dtype=torch.float32)
+                labels = labels.to(device=device)
 
-            #     bboxes_pred = model(images)
+                preds = model(signals)
+                loss = criterion(preds, labels)
             #     loss, loss_xy, loss_wh, loss_obj, loss_cls, loss_l2 = criterion(bboxes_pred, bboxes)
             #     # loss = loss / config.subdivisions
             #     loss.backward()
@@ -210,36 +220,43 @@ def train(model:nn.Module, device:torch.device, config:dict, n_epochs:int=5, bat
             # evaluator = evaluate(eval_model, val_loader, config, device, logger)
             # del eval_model
 
-            if save_ckpt:
-                try:
-                    os.makedirs(config.checkpoints, exist_ok=True)
-                    if logger:
-                        logger.info('Created checkpoint directory')
-                except OSError:
-                    pass
-                save_path = os.path.join(config.checkpoints, f'{save_prefix}{epoch + 1}_{get_date_str()}.pth')
-                torch.save(model.state_dict(), save_path)
+            try:
+                os.makedirs(config.checkpoints, exist_ok=True)
                 if logger:
-                    logger.info(f'Checkpoint {epoch + 1} saved!')
-                saved_models.append(save_path)
-                # remove outdated models
-                if len(saved_models) > config.keep_checkpoint_max > 0:
-                    model_to_remove = saved_models.popleft()
-                    try:
-                        os.remove(model_to_remove)
-                    except:
-                        logger.info(f'failed to remove {model_to_remove}')
+                    logger.info('Created checkpoint directory')
+            except OSError:
+                pass
+            save_path = os.path.join(config.checkpoints, f'{save_prefix}{epoch + 1}_{get_date_str()}.pth')
+            torch.save(model.state_dict(), save_path)
+            if logger:
+                logger.info(f'Checkpoint {epoch + 1} saved!')
+            saved_models.append(save_path)
+            # remove outdated models
+            if len(saved_models) > config.keep_checkpoint_max > 0:
+                model_to_remove = saved_models.popleft()
+                try:
+                    os.remove(model_to_remove)
+                except:
+                    logger.info(f'failed to remove {model_to_remove}')
 
     writer.close()
 
 
-def collate_fn(batch):
-    return tuple(zip(*batch))
+def collate_fn(batch:tuple) -> Tuple[Tensor, Tensor]:
+    """ finished, Not checked,
+    """
+    signals = [[item[0]] for item in batch]
+    labels = [[item[1]] for item in batch]
+    signals = np.concatenate(signals, axis=0)
+    images = torch.from_numpy(signals)
+    labels = np.concatenate(labels, axis=0)
+    labels = torch.from_numpy(labels)
+    return signals, labels
 
 
 @torch.no_grad()
 def evaluate(model, data_loader, cfg, device, logger=None, **kwargs):
-    """ finished, tested
+    """ NOT finished, NOT checked,
     """
     model.eval()
 
@@ -331,7 +348,6 @@ if __name__ == "__main__":
         train(
             model=model,
             config=cfg,
-            n_epochs=cfg.TRAIN_EPOCHS,
             device=device,
             logger=logger,
         )
