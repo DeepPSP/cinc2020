@@ -38,7 +38,7 @@ import logging
 import argparse
 from copy import deepcopy
 from collections import deque
-from typing import Union, Optional, Sequence, NoReturn
+from typing import Union, Optional, Tuple, Sequence, NoReturn
 from numbers import Real, Number
 
 from tqdm import tqdm
@@ -175,7 +175,7 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
                 epoch_step += 1
 
                 signals, labels = batch
-                signals = signals.to(device=device, dtype=torch.float32)
+                signals = signals.to(device=device)
                 labels = labels.to(device=device)
 
                 preds = model(signals)
@@ -248,7 +248,7 @@ def collate_fn(batch:tuple) -> Tuple[Tensor, Tensor]:
     signals = [[item[0]] for item in batch]
     labels = [[item[1]] for item in batch]
     signals = np.concatenate(signals, axis=0)
-    images = torch.from_numpy(signals)
+    signals = torch.from_numpy(signals).double()
     labels = np.concatenate(labels, axis=0)
     labels = torch.from_numpy(labels)
     return signals, labels

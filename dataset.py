@@ -26,7 +26,7 @@ class CINC2020(Dataset):
     """
     """
     def __init__(self, config:ED, tranches:Optional[str]=None, training:bool=True) -> NoReturn:
-        """ finished, NOT checked,
+        """ finished, checked,
 
         Parameters:
         -----------
@@ -59,7 +59,7 @@ class CINC2020(Dataset):
         self.records = self._train_test_split(config.train_ratio, force_recompute=False)
 
     def __getitem__(self, index):
-        """ finished, NOT checked,
+        """ finished, checked,
         """
         rec = self.records[index]
         # values = self.reader.load_data(
