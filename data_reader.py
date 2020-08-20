@@ -423,8 +423,8 @@ class CINC2020Reader(object):
         """
         assert data_format.lower() in ['channel_first', 'lead_first', 'channel_last', 'lead_last']
         tranche = self._get_tranche(rec)
-        if tranche in "CD" and freq == 500:
-            data = self.load_resampled_data(rec)
+        # if tranche in "CD" and freq == 500:  # resample will be done at the end of the function
+        #     data = self.load_resampled_data(rec)
         if backend.lower() == 'wfdb':
             rec_fp = os.path.join(self.db_dirs[tranche], rec)
             data = np.asarray(wfdb.rdrecord(rec_fp).p_signal.T, dtype=np.float64)
@@ -451,7 +451,7 @@ class CINC2020Reader(object):
         if units.lower() in ['uv', 'μv']:
             data = data * 1000
 
-        if freq is not None and freq != 500:
+        if freq is not None and freq != self.freq[tranche]:
             data = resample_poly(data, freq, self.freq[tranche])
 
         return data
@@ -1082,6 +1082,7 @@ class CINC2020Reader(object):
         else:
             rec_fp = os.path.join(self.db_dirs[tranche], f'{rec}_500Hz_siglen_{siglen}.npy')
         if not os.path.isfile(rec_fp):
+            print(f"corresponding file {os.basename(rec_fp)} does not exist")
             data = self.load_data(rec, data_format='channel_first', units='mV', freq=None)
             if self.freq[tranche] != 500:
                 data = resample_poly(data, 500, self.freq[tranche], axis=1)
@@ -1091,5 +1092,6 @@ class CINC2020Reader(object):
                 data = data[..., slice_start:slice_end]
             np.save(rec_fp, data)
         else:
+            print(f"loading from local file...")
             data = np.load(rec_fp)
         return data
