@@ -1,27 +1,39 @@
 #!/usr/bin/env python
 
-import numpy as np, os, sys
+import os, sys
 import joblib
+
+import numpy as np
+
 from get_12ECG_features import get_12ECG_features
+from models.special_detectors import (
+    pacing_rhythm_detector,
+    electrical_axis_detector,
+    brady_tachy_detector,
+    LQRSV_detector,
+)
 
-def run_12ECG_classifier(data,header_data,loaded_model):
 
-
+def run_12ECG_classifier(data, header_data, loaded_model):
+    """
+    """
+    raise NotImplementedError
     # Use your classifier here to obtain a label and score for each class.
-    model = loaded_model['model']
-    imputer = loaded_model['imputer']
-    classes = loaded_model['classes']
+    # model = loaded_model['model']
+    # imputer = loaded_model['imputer']
+    # classes = loaded_model['classes']
 
-    features=np.asarray(get_12ECG_features(data,header_data))
-    feats_reshape = features.reshape(1, -1)
-    feats_reshape = imputer.transform(feats_reshape)
-    current_label = model.predict(feats_reshape)[0]
-    current_label=current_label.astype(int)
-    current_score = model.predict_proba(feats_reshape)
-    current_score=np.asarray(current_score)
-    current_score=current_score[:,0,1]
+    # features=np.asarray(get_12ECG_features(data,header_data))
+    # feats_reshape = features.reshape(1, -1)
+    # feats_reshape = imputer.transform(feats_reshape)
+    # current_label = model.predict(feats_reshape)[0]
+    # current_label=current_label.astype(int)
+    # current_score = model.predict_proba(feats_reshape)
+    # current_score=np.asarray(current_score)
+    # current_score=current_score[:,0,1]
 
-    return current_label, current_score,classes
+    return current_label, current_score, classes
+
 
 def load_12ECG_model(input_directory):
     # load the model from disk 

@@ -200,10 +200,11 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
                     })
                     if logger:
                         logger.info(f'Train step_{global_step}: loss : {loss.item()}, lr : {scheduler.get_lr()[0] * batch_size}')
-
                 pbar.update(signals.shape[0])
-                
-            # # TODO: eval for each epoch using `evaluate`
+
+            writer.add_scalar('train/epoch_loss', epoch_loss, global_step)
+
+            # eval for each epoch using `evaluate`
             eval_res = evaluate(model, val_loader, config, device)
             writer.add_scalar('test/auroc', eval_res[0], global_step)
             writer.add_scalar('test/auprc', eval_res[1], global_step)
@@ -212,6 +213,7 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
             writer.add_scalar('test/f_beta_measure', eval_res[4], global_step)
             writer.add_scalar('test/g_beta_measure', eval_res[5], global_step)
             writer.add_scalar('test/challenge_metric', eval_res[6], global_step)
+
             if logger:
                 logger.info(f'''
                     Train epoch_{epoch}:
