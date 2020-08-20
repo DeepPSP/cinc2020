@@ -21,7 +21,7 @@ ECG_CRNN_CONFIG = ED()
 
 # cnn part
 ECG_CRNN_CONFIG.cnn = ED()
-ECG_CRNN_CONFIG.cnn.name = 'vgg6'
+ECG_CRNN_CONFIG.cnn.name = 'resnet'
 
 
 ECG_CRNN_CONFIG.cnn.vgg6 = deepcopy(vgg6)

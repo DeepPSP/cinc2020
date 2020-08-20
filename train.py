@@ -56,7 +56,7 @@ from models.ecg_crnn import ECG_CRNN
 from model_configs import ECG_CRNN_CONFIG
 from cfg import ModelCfg, TrainCfg
 from dataset import CINC2020
-from utils.misc import init_logger, get_date_str
+from utils.misc import init_logger, get_date_str, dict_to_str
 from utils.scoring_metrics import evaluate_12ECG_score
 
 
@@ -76,6 +76,7 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
     log_step: int, default 20,
     logger: Logger, optional,
     """
+    print(f"training configurations are as follows:\n{dict_to_str(config)}")
     train_dataset = CINC2020(config=config, training=True)
     val_dataset = CINC2020(config=config, training=False)
 
@@ -359,7 +360,7 @@ if __name__ == "__main__":
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     else:
         device = torch.device('cuda')
-    log_dir = cfg.TRAIN_TENSORBOARD_DIR
+    log_dir = cfg.log_dir
     logger = init_logger(log_dir=log_dir)
     logger.info(f"\n{'*'*20}   Start Training   {'*'*20}\n")
     logger.info(f'Using device {device}')
