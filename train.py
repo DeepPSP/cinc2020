@@ -280,7 +280,7 @@ def evaluate(model:nn.Module, data_loader:DataLoader, config:dict, device:torch.
     all_preds = []
     all_labels = []
 
-    for signals, labels in train_loader:
+    for signals, labels in data_loader:
         signals = signals.to(device=device, dtype=torch.float32)
         labels = labels.numpy()
         all_labels.append(labels)
@@ -326,7 +326,7 @@ def get_args(**kwargs):
         dest='gpu')
     parser.add_argument(
         '-t', '--tranches',
-        type=int, default=1,
+        type=str, default='',
         help='the tranches for training',
         dest='tranches_for_training')
     parser.add_argument(
@@ -335,13 +335,18 @@ def get_args(**kwargs):
         help='choice of cnn feature extractor',
         dest='cnn_name')
     parser.add_argument(
+        '-r', '--rnn-name',
+        type=str, default='lstm',
+        help='choice of rnn structures',
+        dest='rnn_name')
+    parser.add_argument(
         '-keep-checkpoint-max', type=int, default=100,
         help='maximum number of checkpoints to keep. If set 0, all checkpoints will be kept',
         dest='keep_checkpoint_max')
     parser.add_argument(
         '-optimizer', type=str, default='adam',
         help='training optimizer',
-        dest='TRAIN_OPTIMIZER')
+        dest='train_optimizer')
     
     args = vars(parser.parse_args())
 
@@ -371,7 +376,7 @@ if __name__ == "__main__":
     print(f"Using torch of version {torch.__version__}")
     print(f'with configuration {cfg}')
 
-    tranches = cfg.tranche_for_training
+    tranches = cfg.tranches_for_training
     if tranches:
         classes = cfg.tranche_classes[tranches]
     else:
