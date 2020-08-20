@@ -19,6 +19,8 @@ from cfg import TrainCfg
 from models.utils.torch_utils import (
     Mish, Swish, Activations,
     Bn_Activation, Conv_Bn_Activation,
+    DownSample,
+    ZeroPadding,
     StackedLSTM,
     # AML_Attention, AML_GatedAttention,
     AttentionWithContext,
