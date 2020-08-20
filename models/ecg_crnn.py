@@ -562,5 +562,5 @@ class ECG_CRNN(nn.Module):
         """
         pred = self.forward(input)
         if self.training:
-            output = self.sigmoid(output)
-        return output
+            pred = self.sigmoid(pred)
+        return pred
