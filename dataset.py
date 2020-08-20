@@ -5,7 +5,7 @@ import json
 from random import shuffle
 from copy import deepcopy
 from functools import reduce
-from typing import Union, Optional, Tuple, Dict, Sequence, Set, NoReturn
+from typing import Union, Optional, List, Tuple, Dict, Sequence, Set, NoReturn
 
 import numpy as np
 from easydict import EasyDict as ED
@@ -69,9 +69,9 @@ class CINC2020(Dataset):
         
         values = self.reader.load_resampled_data(rec, siglen=self.siglen)
         labels = self.reader.get_labels(
-            rec, scored_only=True, abbr=False, normalize=True
+            rec, scored_only=True, fmt='a', normalize=True
         )
-        labels = np.where(np.isin(self.all_classes, labels).astype(int)
+        labels = np.isin(self.all_classes, labels).astype(int)
 
         return values, labels
 
@@ -142,9 +142,9 @@ class CINC2020(Dataset):
                 json.dump(test_set, f, ensure_ascii=False)
         else:
             with open(train_file, "r") as f:
-                train_set = json.load(train_file)
+                train_set = json.load(f)
             with open(test_file, "r") as f:
-                test_set = json.load(test_file)
+                test_set = json.load(f)
 
         add = lambda a,b:a+b
         _tranches = list(self.tranches or "ABEF")

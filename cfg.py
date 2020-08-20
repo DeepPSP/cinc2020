@@ -95,6 +95,7 @@ TrainCfg.log_dir = os.path.join(_BASE_DIR, 'log')
 TrainCfg.checkpoints = os.path.join(_BASE_DIR, "checkpoints")
 TrainCfg.keep_checkpoint_max = 100
 
+TrainCfg.train_ratio = 0.8
 TrainCfg.min_class_weight = 0.5
 TrainCfg.tranche_class_counts = ED({
     # classes with too few recordings are ignored

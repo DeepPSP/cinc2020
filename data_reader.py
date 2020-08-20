@@ -153,7 +153,7 @@ class CINC2020Reader(object):
             print and log verbosity
         """
         self.db_name = 'CINC2020'
-        self.working_dir = working_dir or os.getcwd()
+        self.working_dir = os.path.join(working_dir or os.getcwd(), "working_dir")
         os.makedirs(self.working_dir, exist_ok=True)
         self.verbose = verbose
         self.logger = None
@@ -1082,7 +1082,7 @@ class CINC2020Reader(object):
         else:
             rec_fp = os.path.join(self.db_dirs[tranche], f'{rec}_500Hz_siglen_{siglen}.npy')
         if not os.path.isfile(rec_fp):
-            print(f"corresponding file {os.basename(rec_fp)} does not exist")
+            # print(f"corresponding file {os.basename(rec_fp)} does not exist")
             data = self.load_data(rec, data_format='channel_first', units='mV', freq=None)
             if self.freq[tranche] != 500:
                 data = resample_poly(data, 500, self.freq[tranche], axis=1)
@@ -1092,6 +1092,6 @@ class CINC2020Reader(object):
                 data = data[..., slice_start:slice_end]
             np.save(rec_fp, data)
         else:
-            print(f"loading from local file...")
+            # print(f"loading from local file...")
             data = np.load(rec_fp)
         return data
