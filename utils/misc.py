@@ -1,6 +1,6 @@
 """
 """
-import os
+import os, sys
 import re
 import logging
 import datetime
@@ -461,7 +461,7 @@ def init_logger(log_dir:str, log_file:Optional[str]=None, mode:str='a', verbose:
     if log_dir is None:
         log_dir = '~/temp/log/'
     if log_file is None:
-        log_file = f'log_{_get_date_str()}.txt'
+        log_file = f'log_{get_date_str()}.txt'
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     log_file = os.path.join(log_dir, log_file)
