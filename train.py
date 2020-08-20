@@ -175,11 +175,12 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
                 epoch_step += 1
 
                 signals, labels = batch
-                signals = signals.to(device=device)
+                signals = signals.to(device=device, dtype=torch.float32)
                 labels = labels.to(device=device)
 
                 preds = model(signals)
                 loss = criterion(preds, labels)
+                loss.backward()
             #     loss, loss_xy, loss_wh, loss_obj, loss_cls, loss_l2 = criterion(bboxes_pred, bboxes)
             #     # loss = loss / config.subdivisions
             #     loss.backward()
@@ -247,8 +248,8 @@ def collate_fn(batch:tuple) -> Tuple[Tensor, Tensor]:
     """
     signals = [[item[0]] for item in batch]
     labels = [[item[1]] for item in batch]
-    signals = np.concatenate(signals, axis=0)
-    signals = torch.from_numpy(signals).double()
+    signals = np.concatenate(signals, axis=0).astype(np.float32)
+    signals = torch.from_numpy(signals)
     labels = np.concatenate(labels, axis=0)
     labels = torch.from_numpy(labels)
     return signals, labels
