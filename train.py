@@ -169,7 +169,7 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
     # scheduler = ReduceLROnPlateau(optimizer, mode='max', verbose=True, patience=6, min_lr=1e-7)
     # scheduler = CosineAnnealingWarmRestarts(optimizer, 0.001, 1e-6, 20)
 
-    save_prefix = f'{model.__name__}_epoch'
+    save_prefix = f'{model.__name__}_{config.cnn_name}_{config.rnn_name}_epoch'
     saved_models = deque()
     model.train()
 
@@ -378,6 +378,7 @@ if __name__ == "__main__":
         classes = cfg.classes
     model_config = deepcopy(ECG_CRNN_CONFIG)
     model_config.cnn.name = cfg.cnn_name
+    model_config.rnn.name = cfg.rnn_name
 
     model = ECG_CRNN(classes=classes, config=model_config)
 

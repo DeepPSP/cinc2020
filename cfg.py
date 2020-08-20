@@ -157,5 +157,6 @@ TrainCfg.loss = 'BCEWithLogitsLoss'
 TrainCfg.eval_every = 20
 
 TrainCfg.cnn_name = "resnet"
+TrainCfg.rnn_name == 'lstm'
 TrainCfg.input_len = int(500 * 8.0)  # almost all records has duration >= 8s
 TrainCfg.bin_pred_thr = ModelCfg.bin_pred_thr
