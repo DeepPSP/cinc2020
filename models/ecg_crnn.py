@@ -560,14 +560,19 @@ class ECG_CRNN(nn.Module):
         """
         """
         x = self.cnn(input)  # batch_size, channels, seq_len
-        # input shape of lstm: (seq_len, batch, input_size)
-        x = x.permute(2,0,1)  # seq_len, batch_size, channels
-        x = self.rnn(x)
-        if not self.rnn or self.config.rnn.retseq:
-            # (seq_len, batch, channels) -> (batch, channels, seq_len)
-            x = x.permute(1,2,0)
-            x = self.max_pool(x)  # (batch, channels, 1)
-            x = torch.flatten(x, 1)  # (batch, channels)
+        print(f"cnn out shape = {x.shape}")
+        if self.rnn:
+            # input shape of lstm: (seq_len, batch, input_size)
+            x = x.permute(2,0,1)  # seq_len, batch_size, channels
+            x = self.rnn(x)
+            if self.config.rnn.retseq:
+                # (seq_len, batch, channels) -> (batch, channels, seq_len)
+                x = x.permute(1,2,0)
+                x = self.max_pool(x)  # (batch, channels, 1)
+                x = torch.flatten(x, 1)  # (batch, channels)
+        else:
+            x = self.max_pool(x)
+            x = torch.flatten(x, 1)
         pred = self.clf(x)
         return pred
 
