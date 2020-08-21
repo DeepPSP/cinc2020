@@ -177,7 +177,9 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
     if config.loss == "BCEWithLogitsLoss":
         criterion = nn.BCEWithLogitsLoss()
     elif config.loss == "BCEWithLogitsWithClassWeightLoss":
-        criterion = BCEWithLogitsWithClassWeightLoss(train_dataset.class_weights.to(device=device, dtype=torch.float32))
+        criterion = BCEWithLogitsWithClassWeightLoss(
+            class_weight=train_dataset.class_weights.to(device=device, dtype=torch.float32)
+        )
     else:
         raise NotImplementedError(f"loss `{config.loss}` not implemented!")
     # scheduler = ReduceLROnPlateau(optimizer, mode='max', verbose=True, patience=6, min_lr=1e-7)

@@ -56,8 +56,8 @@ class Mish(torch.nn.Module):
             input = input * (torch.tanh(F.softplus(input)))
             output = input
         else:
-            ouput = input * (torch.tanh(F.softplus(input)))
-        return ouput
+            output = input * (torch.tanh(F.softplus(input)))
+        return output
 
 
 class Swish(torch.nn.Module):
@@ -180,7 +180,8 @@ class Bn_Activation(nn.Sequential):
         output_shape: sequence,
             the output shape of this `Bn_Activation` layer, given `seq_len` and `batch_size`
         """
-        return (batch_size, self.__num_features, seq_len)
+        output_shape = (batch_size, self.__num_features, seq_len)
+        return output_shape
 
 
 class Conv_Bn_Activation(nn.Sequential):
@@ -394,7 +395,8 @@ class DownSample(nn.Sequential):
                 input_shape=(batch_size, self.__in_channels, seq_len),
                 kernel_size=self.__down_scale, stride=self.__down_scale,
             )[-1]
-        return (batch_size, self.__out_channels, out_seq_len)
+        output_shape = (batch_size, self.__out_channels, out_seq_len)
+        return output_shape
 
 
 class DoubleConv(nn.Sequential):
@@ -667,7 +669,7 @@ class BidirectionalLSTM(nn.Module):
     """
     __name__ = "BidirectionalLSTM"
 
-    def __init__(self, input_size:int, hidden_size:int, output_size:int) -> NoReturn:
+    def __init__(self, input_size:int, hidden_size:int, num_layers:int=1, bias:bool=True, dropout:float=0.0) -> NoReturn:
         """ finished, checked,
 
         Parameters:
@@ -676,23 +678,30 @@ class BidirectionalLSTM(nn.Module):
             the number of features in the input
         hidden_size: int,
             the number of features in the hidden state
-        output_size: int,
-            the number of features in the ouput
+        num_layers: int, default 1,
+            number of lstm layers
+        bias: bool, or sequence of bool, default True,
+            use bias weights or not
+        dropout: float, default 0.0,
+            if non-zero, introduces a `Dropout` layer on the outputs of each
+            LSTM layer EXCEPT the last layer, with dropout probability equal to this value
         """
         super().__init__()
-        self.__output_size = output_size
-        self.lstm = nn.LSTM(input_size, hidden_size, bidirectional=True)
-        self.embedding = nn.Linear(hidden_size * 2, output_size)
+        self.__output_size = 2 * hidden_size
+        self.lstm = nn.LSTM(
+            input_size=input_size,
+            hidden_size=hidden_size,
+            batch_first=False,
+            bias=bias,
+            dropout=dropout,
+            bidirectional=True,
+        )
 
     def forward(self, input:Tensor) -> Tensor:
         """
         """
-        recurrent, _ = self.lstm(input)
-        T, b, h = recurrent.size()  # seq_len, batch_size, hidden_size
-        t_rec = recurrent.view(T * b, h)
-
-        output = self.embedding(t_rec)  # [T * b, nOut]
-        output = output.view(T, b, -1)  # seq_len, batch_size, output_size
+        output, _ = self.lstm(input)  #  seq_len, batch_size, double_hidden_size
+        output = output.permute(1,2,0)  #  batch_size, double_hidden_size, seq_len
         return output
 
     def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
@@ -708,7 +717,7 @@ class BidirectionalLSTM(nn.Module):
         Returns:
         --------
         output_shape: sequence,
-            the output shape of this `DownDoubleConv` layer, given `seq_len` and `batch_size`
+            the output shape of this `BidirectionalLSTM` layer, given `seq_len` and `batch_size`
         """
         output_shape = (seq_len, batch_size, self.__output_size)
         return output_shape
@@ -817,7 +826,7 @@ class StackedLSTM(nn.Sequential):
         Returns:
         --------
         output_shape: sequence,
-            the output shape of this `DownDoubleConv` layer, given `seq_len` and `batch_size`
+            the output shape of this `StackedLSTM` layer, given `seq_len` and `batch_size`
         """
         output_size = self.__hidden_sizes[-1]
         if self.bidirectional:
@@ -990,6 +999,24 @@ class AttentionWithContext(nn.Module):
             print(f"AttentionWithContext forward: output.shape = {output.shape}")
         return output
 
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        seq_len: int,
+            length of the 1d sequence
+        batch_size: int, optional,
+            the batch size, can be None
+
+        Returns:
+        --------
+        output_shape: sequence,
+            the output shape of this `ZeroPadding` layer, given `seq_len` and `batch_size`
+        """
+        output_shape = (batch_size, self.__out_channels, seq_len)
+        return output_shape
+
 
 class ZeroPadding(nn.Module):
     """
@@ -1039,7 +1066,8 @@ class ZeroPadding(nn.Module):
         output_shape: sequence,
             the output shape of this `ZeroPadding` layer, given `seq_len` and `batch_size`
         """
-        return (batch_size, self.__out_channels, seq_len)
+        output_shape = (batch_size, self.__out_channels, seq_len)
+        return output_shape
 
 
 def compute_conv_output_shape(input_shape:Sequence[Union[int, type(None)]], num_filters:Optional[int]=None, kernel_size:Union[Sequence[int], int]=1, stride:Union[Sequence[int], int]=1, pad:Union[Sequence[int], int]=0, dilation:Union[Sequence[int], int]=1, channel_last:bool=False) -> Tuple[Union[int, type(None)]]:

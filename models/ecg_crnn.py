@@ -23,7 +23,7 @@ from models.utils.torch_utils import (
     Bn_Activation, Conv_Bn_Activation,
     DownSample,
     ZeroPadding,
-    StackedLSTM,
+    StackedLSTM, BidirectionalLSTM,
     # AML_Attention, AML_GatedAttention,
     AttentionWithContext,
     compute_conv_output_shape,
@@ -517,13 +517,20 @@ class ECG_CRNN(nn.Module):
 
         rnn_choice = self.config.rnn.name.lower()
         if rnn_choice == 'lstm':
-            self.rnn = StackedLSTM(
+            # self.rnn = StackedLSTM(
+            #     input_size=rnn_input_size,
+            #     hidden_sizes=self.config.rnn.hidden_sizes,
+            #     bias=self.config.rnn.bias,
+            #     dropout=self.config.rnn.dropout,
+            #     bidirectional=self.config.rnn.bidirectional,
+            #     return_sequences=self.config.rnn.retseq,
+            # )
+            self.rnn = BidirectionalLSTM(
                 input_size=rnn_input_size,
-                hidden_sizes=self.config.rnn.hidden_sizes,
+                hidden_sizes=self.config.rnn.hidden_sizes[-1],
+                num_layers=len(self.config.rnn.hidden_sizes)
                 bias=self.config.rnn.bias,
                 dropout=self.config.rnn.dropout,
-                bidirectional=self.config.rnn.bidirectional,
-                return_sequences=self.config.rnn.retseq,
             )
             clf_input_size = self.rnn.compute_output_shape(None,None)[-1]
             # if self.config.rnn.bidirectional:
