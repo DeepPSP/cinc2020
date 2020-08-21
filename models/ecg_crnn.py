@@ -566,16 +566,13 @@ class ECG_CRNN(nn.Module):
             x = self.max_pool(x)  # (batch, channels, 1)
             x = torch.flatten(x, 1)  # (batch, channels)
         pred = self.clf(x)
-        if not self.training:
-            pred = self.sigmoid(pred)
         return pred
 
     def inference(self, input:Tensor, class_names:bool=False, bin_pred_thr:float=0.5) -> Union[Tensor, pd.DataFrame]:
         """
         """
         pred = self.forward(input)
-        if self.training:
-            pred = self.sigmoid(pred)
+        pred = self.sigmoid(pred)
         if class_names:
             pred = pred.cpu().detach().numpy()
             pred = pd.DataFrame(pred)
