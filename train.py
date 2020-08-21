@@ -109,7 +109,7 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
 
     writer = SummaryWriter(
         log_dir=config.log_dir,
-        filename_suffix=f"OPT_{model.__name__}_{config.cnn_name}_{config.train_optimizer}_LR_{lr}_BS_{batch_size}_tranche_{config.tranches_for_training or 'all'",
+        filename_suffix=f"OPT_{model.__name__}_{config.cnn_name}_{config.train_optimizer}_LR_{lr}_BS_{batch_size}_tranche_{config.tranches_for_training or 'all'}",
         comment=f"OPT_{model.__name__}_{config.cnn_name}_{config.train_optimizer}_LR_{lr}_BS_{batch_size}_tranche_{config.tranches_for_training or 'all'}",
     )
     
