@@ -25,7 +25,7 @@ __all__ = [
     "AML_Attention", "AML_GatedAttention",
     "AttentionWithContext",
     "ZeroPadding",
-    "WeightedBCELoss", "BCEWithLogitsWithClassWeightsLoss",
+    "WeightedBCELoss", "BCEWithLogitsWithClassWeightLoss",
     "compute_conv_output_shape",
 ]
 

@@ -155,7 +155,7 @@ TrainCfg.decay = 0.0005
 TrainCfg.learning_rate = 0.00261
 TrainCfg.burn_in = 10000
 # TrainCfg.loss = 'BCEWithLogitsLoss'
-TrainCfg.loss = 'BCEWithLogitsWithClassWeightsLoss'
+TrainCfg.loss = 'BCEWithLogitsWithClassWeightLoss'
 TrainCfg.eval_every = 20
 
 TrainCfg.cnn_name = "resnet"
