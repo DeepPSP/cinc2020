@@ -53,6 +53,7 @@ from tensorboardX import SummaryWriter
 from easydict import EasyDict as ED
 
 from models.ecg_crnn import ECG_CRNN
+from models.utils.torch_utils import BCEWithLogitsWithClassWeightsLoss
 from model_configs import ECG_CRNN_CONFIG
 from cfg import ModelCfg, TrainCfg
 from dataset import CINC2020
@@ -164,8 +165,8 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
 
     if config.loss == "BCEWithLogitsLoss":
         criterion = nn.BCEWithLogitsLoss()
-    elif config.loss == "BCEWithLogitsLossWithWeights":
-        criterion = nn.BCEWithLogitsLoss(pos_weight=train_dataset.class_weights)
+    elif config.loss == "BCEWithLogitsWithClassWeightsLoss":
+        criterion = BCEWithLogitsWithClassWeightsLoss(train_dataset.class_weights)
     else:
         raise NotImplementedError(f"loss `{config.loss}` not implemented!")
     # scheduler = ReduceLROnPlateau(optimizer, mode='max', verbose=True, patience=6, min_lr=1e-7)
