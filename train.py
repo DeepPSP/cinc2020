@@ -333,11 +333,11 @@ def get_args(**kwargs):
     parser = argparse.ArgumentParser(
         description='Train the Model on CINC2020',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument(
-        '-l', '--learning-rate',
-        metavar='LR', type=float, nargs='?', default=0.001,
-        help='Learning rate',
-        dest='learning_rate')
+    # parser.add_argument(
+    #     '-l', '--learning-rate',
+    #     metavar='LR', type=float, nargs='?', default=0.001,
+    #     help='Learning rate',
+    #     dest='learning_rate')
     # parser.add_argument(
     #     '-g', '--gpu',
     #     metavar='G', type=str, default='0',

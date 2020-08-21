@@ -496,6 +496,7 @@ class ECG_CRNN(nn.Module):
         self.config.update(config or {})
         if self.__DEBUG__:
             print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
+            print(f"classes (totally {self.n_classes}) for prediction:{self.classes}")
         
         cnn_choice = self.config.cnn.name.lower()
         if cnn_choice == "vgg6":
