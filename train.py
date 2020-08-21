@@ -329,7 +329,7 @@ def evaluate(model:nn.Module, data_loader:DataLoader, config:dict, device:torch.
 def get_args(**kwargs):
     """
     """
-    cfg = kwargs
+    cfg = deepcopy(kwargs)
     parser = argparse.ArgumentParser(
         description='Train the Model on CINC2020',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -384,8 +384,7 @@ if __name__ == "__main__":
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     else:
         device = torch.device('cuda')
-    log_dir = cfg.log_dir
-    logger = init_logger(log_dir=log_dir)
+    logger = init_logger(log_dir=cfg.log_dir)
     logger.info(f"\n{'*'*20}   Start Training   {'*'*20}\n")
     logger.info(f'Using device {device}')
     logger.info(f"Using torch of version {torch.__version__}")
