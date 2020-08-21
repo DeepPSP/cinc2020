@@ -662,7 +662,7 @@ class UpDoubleConv(nn.Module):
         """
         raise NotImplementedError
 
-from keras.layers import LSTM
+
 class BidirectionalLSTM(nn.Module):
     """
     from crnn_torch of references.ati_cnn
@@ -695,6 +695,7 @@ class BidirectionalLSTM(nn.Module):
         self.lstm = nn.LSTM(
             input_size=input_size,
             hidden_size=hidden_size,
+            num_layers=num_layers,
             batch_first=False,
             bias=bias,
             dropout=dropout,
