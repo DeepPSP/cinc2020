@@ -84,7 +84,7 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
     val_test_dataset = CINC2020(config=config, training=False)
 
     n_train = len(train_dataset)
-    n_val = len(val_dataset)
+    n_val = len(val_test_dataset)
 
     n_epochs = config.n_epochs
     batch_size = config.batch_size
