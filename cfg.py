@@ -144,16 +144,16 @@ TrainCfg.classes = sorted(list(TrainCfg.class_weights.keys()))
 
 TrainCfg.tranches_for_training = ''  # one of '', 'AB', 'E', 'F'
 
-TrainCfg.n_epochs = 60000
+TrainCfg.n_epochs = 1000
 TrainCfg.train_optimizer = "adam"  # "sgd"
 TrainCfg.max_batches = 500500
-TrainCfg.steps = [40000, 45000]
+TrainCfg.steps = [50000, 85000]
 TrainCfg.batch_size = 32
 
 TrainCfg.momentum = 0.949
 TrainCfg.decay = 0.0005
 TrainCfg.learning_rate = 0.00261
-TrainCfg.burn_in = 1000
+TrainCfg.burn_in = 10000
 TrainCfg.loss = 'BCEWithLogitsLoss'
 TrainCfg.eval_every = 20
 
