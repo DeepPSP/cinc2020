@@ -424,7 +424,7 @@ class ResNet(nn.Sequential):
                 )
                 block_in_channels = block_num_filters
 
-    def forward(self, input):
+    def forward(self, input:Tensor) -> Tensor:
         """
         """
         output = super().forward(input)

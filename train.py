@@ -303,6 +303,11 @@ def collate_fn(batch:tuple) -> Tuple[Tensor, Tensor]:
     return signals, labels
 
 
+# def train_one_epoch(model:nn.Module, criterion:nn.Module, optimizer:optim.Optimizer, data_loader:DataLoader, device:torch.device, epoch:int) -> NoReturn:
+#     """
+#     """
+
+
 @torch.no_grad()
 def evaluate(model:nn.Module, data_loader:DataLoader, config:dict, device:torch.device) -> Tuple[float]:
     """ finished, checked,
