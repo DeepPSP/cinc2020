@@ -662,14 +662,14 @@ class UpDoubleConv(nn.Module):
         """
         raise NotImplementedError
 
-
+from keras.layers import LSTM
 class BidirectionalLSTM(nn.Module):
     """
     from crnn_torch of references.ati_cnn
     """
     __name__ = "BidirectionalLSTM"
 
-    def __init__(self, input_size:int, hidden_size:int, num_layers:int=1, bias:bool=True, dropout:float=0.0) -> NoReturn:
+    def __init__(self, input_size:int, hidden_size:int, num_layers:int=1, bias:bool=True, dropout:float=0.0, return_sequences:bool=True) -> NoReturn:
         """ finished, checked,
 
         Parameters:
@@ -685,9 +685,13 @@ class BidirectionalLSTM(nn.Module):
         dropout: float, default 0.0,
             if non-zero, introduces a `Dropout` layer on the outputs of each
             LSTM layer EXCEPT the last layer, with dropout probability equal to this value
+        return_sequences: bool, default True,
+            if True, returns the last output in the output sequence,
+            otherwise the full sequence.
         """
         super().__init__()
         self.__output_size = 2 * hidden_size
+        self.return_sequence = return_sequences
         self.lstm = nn.LSTM(
             input_size=input_size,
             hidden_size=hidden_size,
@@ -701,7 +705,8 @@ class BidirectionalLSTM(nn.Module):
         """
         """
         output, _ = self.lstm(input)  #  seq_len, batch_size, double_hidden_size
-        output = output.permute(1,2,0)  #  batch_size, double_hidden_size, seq_len
+        if not self.return_sequence:
+            output = output[-1,...]
         return output
 
     def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:

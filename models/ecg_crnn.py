@@ -527,10 +527,11 @@ class ECG_CRNN(nn.Module):
             # )
             self.rnn = BidirectionalLSTM(
                 input_size=rnn_input_size,
-                hidden_sizes=self.config.rnn.hidden_sizes[-1],
-                num_layers=len(self.config.rnn.hidden_sizes)
+                hidden_size=self.config.rnn.hidden_sizes[-1],
+                num_layers=len(self.config.rnn.hidden_sizes),
                 bias=self.config.rnn.bias,
                 dropout=self.config.rnn.dropout,
+                return_sequences=self.config.rnn.retseq,
             )
             clf_input_size = self.rnn.compute_output_shape(None,None)[-1]
             # if self.config.rnn.bidirectional:
@@ -559,9 +560,6 @@ class ECG_CRNN(nn.Module):
         # input shape of lstm: (seq_len, batch, input_size)
         x = x.permute(2,0,1)  # seq_len, batch_size, channels
         x = self.rnn(x)
-        # the directions can be separated using 
-        # output.view(seq_len, batch, num_directions, hidden_size), 
-        # with forward and backward being direction 0 and 1 respectively
         if self.config.rnn.retseq:
             # (seq_len, batch, channels) -> (batch, channels, seq_len)
             x = x.permute(1,2,0)

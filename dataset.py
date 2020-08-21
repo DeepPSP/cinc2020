@@ -74,6 +74,8 @@ class CINC2020(Dataset):
         # )
         
         values = self.reader.load_resampled_data(rec, siglen=self.siglen)
+        if self.config.normalize_data:
+            values = (values - np.mean(values)) / np.std(values)
         labels = self.reader.get_labels(
             rec, scored_only=True, fmt='a', normalize=True
         )
@@ -83,11 +85,6 @@ class CINC2020(Dataset):
 
         return values, labels
 
-    @DeprecationWarning
-    def _get_val_item(self, index):
-        """
-        """
-        raise NotImplementedError
 
     def __len__(self):
         """
