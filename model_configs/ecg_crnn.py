@@ -6,7 +6,7 @@ from copy import deepcopy
 from easydict import EasyDict as ED
 
 from .cnn import (
-    vgg_block_basic, vgg_block_mish, vgg_block_swish, vgg6,
+    vgg_block_basic, vgg_block_mish, vgg_block_swish, vgg16,
     resnet_block_stanford, resnet_stanford,
     resnet_block_basic, resnet_bottle_neck, resnet,
 )
@@ -24,14 +24,14 @@ ECG_CRNN_CONFIG.cnn = ED()
 ECG_CRNN_CONFIG.cnn.name = 'resnet'
 
 
-ECG_CRNN_CONFIG.cnn.vgg6 = deepcopy(vgg6)
-ECG_CRNN_CONFIG.cnn.vgg6.block = deepcopy(vgg_block_basic)
-ECG_CRNN_CONFIG.cnn.vgg6_mish = deepcopy(vgg6)
-ECG_CRNN_CONFIG.cnn.vgg6_mish.block = deepcopy(vgg_block_mish)
-ECG_CRNN_CONFIG.cnn.vgg6_swish = deepcopy(vgg6)
-ECG_CRNN_CONFIG.cnn.vgg6_swish.block = deepcopy(vgg_block_swish)
-# ECG_CRNN_CONFIG.cnn.vgg6_dilation = deepcopy(vgg6)
-# ECG_CRNN_CONFIG.cnn.vgg6_dilation.block = deepcopy(vgg_block_basic)
+ECG_CRNN_CONFIG.cnn.vgg16 = deepcopy(vgg16)
+ECG_CRNN_CONFIG.cnn.vgg16.block = deepcopy(vgg_block_basic)
+ECG_CRNN_CONFIG.cnn.vgg16_mish = deepcopy(vgg16)
+ECG_CRNN_CONFIG.cnn.vgg16_mish.block = deepcopy(vgg_block_mish)
+ECG_CRNN_CONFIG.cnn.vgg16_swish = deepcopy(vgg16)
+ECG_CRNN_CONFIG.cnn.vgg16_swish.block = deepcopy(vgg_block_swish)
+# ECG_CRNN_CONFIG.cnn.vgg16_dilation = deepcopy(vgg16)
+# ECG_CRNN_CONFIG.cnn.vgg16_dilation.block = deepcopy(vgg_block_basic)
 ECG_CRNN_CONFIG.cnn.resnet = deepcopy(resnet)
 ECG_CRNN_CONFIG.cnn.resnet.block = deepcopy(resnet_block_basic)
 ECG_CRNN_CONFIG.cnn.resnet_bottleneck = deepcopy(resnet)

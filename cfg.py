@@ -148,20 +148,20 @@ TrainCfg.tranches_for_training = ''  # one of '', 'AB', 'E', 'F'
 
 TrainCfg.n_epochs = 1000
 TrainCfg.train_optimizer = "adam"  # "sgd"
+TrainCfg.batch_size = 32
 TrainCfg.max_batches = 500500
 TrainCfg.steps = [5000, 10000]
-TrainCfg.batch_size = 32
 
 TrainCfg.momentum = 0.949
 TrainCfg.decay = 0.0005
-TrainCfg.learning_rate = 0.00261
+TrainCfg.learning_rate = 0.0001
 TrainCfg.burn_in = 1000
 # TrainCfg.loss = 'BCEWithLogitsLoss'
 TrainCfg.loss = 'BCEWithLogitsWithClassWeightLoss'
 TrainCfg.eval_every = 20
 
-TrainCfg.cnn_name = "resnet"
-TrainCfg.rnn_name = 'lstm'
+TrainCfg.cnn_name = "resnet"  # 'vgg16'
+TrainCfg.rnn_name = 'lstm'  # 'none'
 TrainCfg.label_smoothing = 0.1
 
 TrainCfg.input_len = int(500 * 8.0)  # almost all records has duration >= 8s

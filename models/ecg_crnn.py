@@ -38,7 +38,7 @@ __all__ = [
 
 class VGGBlock(nn.Sequential):
     """
-    building blocks of the CNN feature extractor `VGG6`
+    building blocks of the CNN feature extractor `VGG16`
     """
     __DEBUG__ = False
     __name__ = "VGGBlock"
@@ -135,12 +135,12 @@ class VGGBlock(nn.Sequential):
         return output_shape
 
 
-class VGG6(nn.Sequential):
+class VGG16(nn.Sequential):
     """
     CNN feature extractor of the CRNN models proposed in refs of `ATI_CNN`
     """
     __DEBUG__ = True
-    __name__ = "VGG6"
+    __name__ = "VGG16"
 
     def __init__(self, in_channels:int, **config) -> NoReturn:
         """ finished, checked,
@@ -156,7 +156,7 @@ class VGG6(nn.Sequential):
         """
         super().__init__()
         self.__in_channels = in_channels
-        # self.config = deepcopy(ECG_CRNN_CONFIG.cnn.vgg6)
+        # self.config = deepcopy(ECG_CRNN_CONFIG.cnn.vgg16)
         self.config = ED(config)
         if self.__DEBUG__:
             print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
@@ -501,9 +501,9 @@ class ECG_CRNN(nn.Module):
             print(f"classes (totally {self.n_classes}) for prediction:{self.classes}")
         
         cnn_choice = self.config.cnn.name.lower()
-        if cnn_choice == "vgg6":
-            self.cnn = VGG6(self.n_leads, **(self.config.cnn[cnn_choice]))
-            rnn_input_size = self.config.cnn.vgg6.num_filters[-1]
+        if cnn_choice == "vgg16":
+            self.cnn = VGG16(self.n_leads, **(self.config.cnn[cnn_choice]))
+            rnn_input_size = self.config.cnn.vgg16.num_filters[-1]
         elif cnn_choice == "resnet":
             self.cnn = ResNet(self.n_leads, **(self.config.cnn[cnn_choice]))
             rnn_input_size = \
@@ -516,7 +516,10 @@ class ECG_CRNN(nn.Module):
             print(f"cnn output shape (batch_size, features, seq_len) = {cnn_output_shape}")
 
         rnn_choice = self.config.rnn.name.lower()
-        if rnn_choice == 'lstm':
+        if rnn_choice == 'none':
+            self.rnn = None
+            _, clf_input_size, _ = self.cnn.compute_output_shape(self.input_len, batch_size=None)
+        elif rnn_choice == 'lstm':
             # self.rnn = StackedLSTM(
             #     input_size=rnn_input_size,
             #     hidden_sizes=self.config.rnn.hidden_sizes,
@@ -548,7 +551,7 @@ class ECG_CRNN(nn.Module):
         if self.__DEBUG__:
             print(f"clf_input_size = {clf_input_size}")
 
-        if self.config.rnn.retseq:
+        if not self.rnn or self.config.rnn.retseq:
             self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
         self.clf = nn.Linear(clf_input_size, self.n_classes)
         self.sigmoid = nn.Sigmoid()  # for making inference
@@ -560,7 +563,7 @@ class ECG_CRNN(nn.Module):
         # input shape of lstm: (seq_len, batch, input_size)
         x = x.permute(2,0,1)  # seq_len, batch_size, channels
         x = self.rnn(x)
-        if self.config.rnn.retseq:
+        if not self.rnn or self.config.rnn.retseq:
             # (seq_len, batch, channels) -> (batch, channels, seq_len)
             x = x.permute(1,2,0)
             x = self.max_pool(x)  # (batch, channels, 1)

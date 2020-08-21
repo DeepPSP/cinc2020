@@ -10,7 +10,7 @@ from cfg import ModelCfg
 
 __all__ = [
     "vgg_block_basic", "vgg_block_mish", "vgg_block_swish",
-    "vgg6",
+    "vgg16",
     "resnet_block_basic", "resnet_bottle_neck",
     "resnet",
     "resnet_block_stanford",
@@ -38,9 +38,9 @@ vgg_block_mish.activation = "mish"
 vgg_block_swish = deepcopy(vgg_block_basic)
 vgg_block_mish.activation = "swish"
 
-vgg6 = ED()
-vgg6.num_convs = [2, 2, 3, 3, 3]
-vgg6.num_filters = [64, 128, 256, 512, 512]
+vgg16 = ED()
+vgg16.num_convs = [2, 2, 3, 3, 3]
+vgg16.num_filters = [64, 128, 256, 512, 512]
 
 
 # ResNet

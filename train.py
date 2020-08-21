@@ -199,6 +199,7 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
                 global_step += 1
                 signals = signals.to(device=device, dtype=torch.float32)
                 labels = labels.to(device=device, dtype=torch.float32)
+                
                 optimizer.zero_grad()
 
                 preds = model(signals)
@@ -444,10 +445,11 @@ if __name__ == "__main__":
 
     if not DAS and torch.cuda.device_count() > 1:
         model = torch.nn.DataParallel(model)
-    if not DAS:
-        model.to(device=device)
-    else:
-        model.cuda()
+    # if not DAS:
+    #     model.to(device=device)
+    # else:
+    #     model.cuda()
+    model.to(device=device)
 
     try:
         train(

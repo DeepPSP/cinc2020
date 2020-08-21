@@ -31,7 +31,7 @@ from utils.misc import dict_to_str
 __all__ = [
     # CRNN structure 1
     "ATI_CNN",
-    "VGGBlock", "VGG6",
+    "VGGBlock", "VGG16",
     "ResNetStanfordBlock", "ResNetStanford",
     "ResNetBasicBlock", "ResNetBottleNeck", "ResNet",
     # CRNN structure 2
@@ -42,7 +42,7 @@ __all__ = [
 
 class VGGBlock(nn.Sequential):
     """
-    building blocks of the CNN feature extractor `VGG6`
+    building blocks of the CNN feature extractor `VGG16`
     """
     __DEBUG__ = True
     __name__ = "VGGBlock"
@@ -139,12 +139,12 @@ class VGGBlock(nn.Sequential):
         return output_shape
 
 
-class VGG6(nn.Sequential):
+class VGG16(nn.Sequential):
     """
     CNN feature extractor of the CRNN models proposed in refs of `ATI_CNN`
     """
     __DEBUG__ = True
-    __name__ = "VGG6"
+    __name__ = "VGG16"
 
     def __init__(self, in_channels:int, **config) -> NoReturn:
         """ finished, checked,
@@ -160,7 +160,7 @@ class VGG6(nn.Sequential):
         """
         super().__init__()
         self.__in_channels = in_channels
-        # self.config = deepcopy(ECG_CRNN_CONFIG.cnn.vgg6)
+        # self.config = deepcopy(ECG_CRNN_CONFIG.cnn.vgg16)
         self.config = ED(config)
         if self.__DEBUG__:
             print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
@@ -796,9 +796,9 @@ class ATI_CNN(nn.Module):
             print(f"configuration of ATI_CNN is as follows\n{dict_to_str(self.config)}")
         
         cnn_choice = self.config.cnn.name.lower()
-        if cnn_choice == "vgg6":
-            self.cnn = VGG6(self.n_leads, **(self.config.cnn.vgg6))
-            rnn_input_size = self.config.cnn.vgg6.num_filters[-1]
+        if cnn_choice == "vgg16":
+            self.cnn = VGG16(self.n_leads, **(self.config.cnn.vgg16))
+            rnn_input_size = self.config.cnn.vgg16.num_filters[-1]
         elif cnn_choice == "resnet":
             self.cnn = ResNet(self.n_leads, **(self.config.cnn.resnet))
             rnn_input_size = 2**len(self.config.cnn.num_blocks) * self.config.cnn.init_num_filters
