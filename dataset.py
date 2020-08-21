@@ -15,6 +15,7 @@ from torch.utils.data.dataset import Dataset
 
 from cfg import TrainCfg
 from data_reader import CINC2020Reader as CR
+from utils.misc import dict_to_str
 
 
 __all__ = [
@@ -36,8 +37,7 @@ class CINC2020(Dataset):
             can be one of "A", "B", "AB", "E", "F", or None (or '', defaults to "ABEF")
         """
         super().__init__()
-        self.config = deepcopy(TrainCfg)
-        self.config.update(config)
+        self.config = deepcopy(config)
         self._TRANCHES = self.config.tranche_classes.keys()  # ["A", "B", "AB", "E", "F"]
         self.reader = CR(db_dir=config.db_dir)
         self.tranches = config.tranches_for_training
@@ -45,10 +45,12 @@ class CINC2020(Dataset):
         assert not self.tranches or self.tranches in self._TRANCHES
         if self.tranches:
             self.all_classes = self.config.tranche_classes[self.tranches]
-            self.class_weights = self.config.tranche_class_weights
+            self.class_weights = self.config.tranche_class_weights[self.tranches]
         else:
             self.all_classes = self.config.classes
             self.class_weights = self.config.class_weights
+        # print(f"tranches = {self.tranches}, all_classes = {self.all_classes}")
+        # print(f"class_weights = {dict_to_str(self.class_weights)}")
         cw = np.zeros((len(self.class_weights),), dtype=np.float32)
         for idx, c in enumerate(self.all_classes):
             cw[idx] = self.class_weights[c]
