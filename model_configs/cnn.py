@@ -49,7 +49,7 @@ resnet.num_blocks = [
     2, 2, 2, 2,
 ]
 resnet.init_num_filters = 32
-resnet.init_filter_length = 11  # corr. to 22 ms
+resnet.init_filter_length = 5  # corr. to 10 ms
 resnet.init_conv_stride = 2
 resnet.init_pool_size = 3
 resnet.init_pool_stride = 2

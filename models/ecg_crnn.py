@@ -6,6 +6,8 @@ from copy import deepcopy
 from typing import Union, Optional, Sequence, NoReturn
 from numbers import Real, Number
 
+import numpy as np
+import pandas as pd
 import torch
 from torch import nn
 from torch import Tensor
@@ -563,10 +565,18 @@ class ECG_CRNN(nn.Module):
             pred = self.sigmoid(pred)
         return pred
 
-    def inference(self, input:Tensor) -> Tensor:
+    def inference(self, input:Tensor, class_names:bool=False, bin_pred_thr:float=0.5) -> Union[Tensor, pd.DataFrame]:
         """
         """
         pred = self.forward(input)
         if self.training:
             pred = self.sigmoid(pred)
+        if class_names:
+            pred = pred.cpu().detach().numpy()
+            pred = pd.DataFrame(pred)
+            pred.columns = self.classes
+            pred['bin_pred'] = pred.apply(
+                lambda row: np.array(self.classes)[np.where(row.values>=bin_pred_thr)[0]],
+                axis=1
+            )
         return pred
