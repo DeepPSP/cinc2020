@@ -25,7 +25,7 @@ __all__ = [
 class CINC2020(Dataset):
     """
     """
-    def __init__(self, config:ED, tranches:Optional[str]=None, training:bool=True) -> NoReturn:
+    def __init__(self, config:ED, training:bool=True) -> NoReturn:
         """ finished, checked,
 
         Parameters:
@@ -33,16 +33,14 @@ class CINC2020(Dataset):
         config: dict,
             configurations for the Dataset,
             ref. `cfg.TrainCfg`
-        tranches: str, optional,
-            tranches for training,
-            can be one of "A", "B", "AB", "E", "F", or None (defaults to "ABEF")
+            can be one of "A", "B", "AB", "E", "F", or None (or '', defaults to "ABEF")
         """
         super().__init__()
         self.config = deepcopy(TrainCfg)
         self.config.update(config)
         self._TRANCHES = self.config.tranche_classes.keys()  # ["A", "B", "AB", "E", "F"]
         self.reader = CR(db_dir=config.db_dir)
-        self.tranches = tranches
+        self.tranches = config.tranches_for_training
         self.training = training
         assert not self.tranches or self.tranches in self._TRANCHES
         if self.tranches:
