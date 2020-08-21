@@ -109,26 +109,28 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
 
     writer = SummaryWriter(
         log_dir=config.log_dir,
-        filename_suffix=f'OPT_{model.__name__}_{config.cnn_name}_{config.train_optimizer}_LR_{lr}_BS_{batch_size}',
-        comment=f'OPT_{model.__name__}_{config.cnn_name}_{config.train_optimizer}_LR_{lr}_BS_{batch_size}',
+        filename_suffix=f"OPT_{model.__name__}_{config.cnn_name}_{config.train_optimizer}_LR_{lr}_BS_{batch_size}_tranche_{config.tranches_for_training or 'all'",
+        comment=f"OPT_{model.__name__}_{config.cnn_name}_{config.train_optimizer}_LR_{lr}_BS_{batch_size}_tranche_{config.tranches_for_training or 'all'",
     )
     
     # max_itr = n_epochs * n_train
 
+    msg = f'''
+        Starting training:
+        ------------------
+        Epochs:          {n_epochs}
+        Batch size:      {batch_size}
+        Learning rate:   {lr}
+        Training size:   {n_train}
+        Validation size: {n_val}
+        Device:          {device.type}
+        Optimizer:       {config.train_optimizer}
+        Dataset classes: {config.classes}
+        -----------------------------------------
+    '''
+    print(msg)  # in case no logger
     if logger:
-        logger.info(f'''
-            Starting training:
-            ------------------
-            Epochs:          {n_epochs}
-            Batch size:      {batch_size}
-            Learning rate:   {lr}
-            Training size:   {n_train}
-            Validation size: {n_val}
-            Device:          {device.type}
-            Optimizer:       {config.train_optimizer}
-            Dataset classes: {config.classes}
-            -----------------------------------------
-        ''')
+        logger.info(msg)
 
     # learning rate setup
     def burnin_schedule(i):
@@ -169,10 +171,10 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
     # scheduler = ReduceLROnPlateau(optimizer, mode='max', verbose=True, patience=6, min_lr=1e-7)
     # scheduler = CosineAnnealingWarmRestarts(optimizer, 0.001, 1e-6, 20)
 
-    save_prefix = f'{model.__name__}_{config.cnn_name}_{config.rnn_name}_epoch'
+    save_prefix = f"{model.__name__}_{config.cnn_name}_{config.rnn_name}_tranche_{config.tranches_for_training or 'all'}_epoch"
+
     saved_models = deque()
     model.train()
-
     global_step = 0
     for epoch in range(n_epochs):
         model.train()
@@ -199,8 +201,10 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
                         'loss (batch)': loss.item(),
                         'lr': scheduler.get_lr()[0] * batch_size
                     })
+                    msg = f'Train step_{global_step}: loss : {loss.item()}, lr : {scheduler.get_lr()[0] * batch_size}'
+                    print(msg)  # in case no logger
                     if logger:
-                        logger.info(f'Train step_{global_step}: loss : {loss.item()}, lr : {scheduler.get_lr()[0] * batch_size}')
+                        logger.info(msg)
                 pbar.update(signals.shape[0])
 
             writer.add_scalar('train/epoch_loss', epoch_loss, global_step)
@@ -215,19 +219,22 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
             writer.add_scalar('test/g_beta_measure', eval_res[5], global_step)
             writer.add_scalar('test/challenge_metric', eval_res[6], global_step)
 
+            msg = f'''
+                Train epoch_{epoch}:
+                --------------------
+                train/epoch_loss:        {epoch_loss}
+                test/auroc:              {eval_res[0]}
+                test/auprc:              {eval_res[1]}
+                test/accuracy:           {eval_res[2]}
+                test/f_measure:          {eval_res[3]}
+                test/f_beta_measure:     {eval_res[4]}
+                test/g_beta_measure:     {eval_res[5]}
+                test/challenge_metric:   {eval_res[6]}
+                ---------------------------------
+            '''
+            print(msg)  # in case no logger
             if logger:
-                logger.info(f'''
-                    Train epoch_{epoch}:
-                    --------------------
-                    auroc:              {eval_res[0]}
-                    auprc:              {eval_res[1]}
-                    accuracy:           {eval_res[2]}
-                    f_measure:          {eval_res[3]}
-                    f_beta_measure:     {eval_res[4]}
-                    g_beta_measure:     {eval_res[5]}
-                    challenge_metric:   {eval_res[6]}
-                    ---------------------------------
-                ''')
+                logger.info(msg)
 
             try:
                 os.makedirs(config.checkpoints, exist_ok=True)
@@ -235,7 +242,9 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
                     logger.info('Created checkpoint directory')
             except OSError:
                 pass
-            save_path = os.path.join(config.checkpoints, f'{save_prefix}{epoch + 1}_{get_date_str()}.pth')
+            save_suffix = f'epochloss_{epoch_loss}_fb_{eval_res[4]}_gb_{eval_res[5]}_cm_{eval_res[6]}'
+            save_filename = f'{save_prefix}{epoch + 1}_{get_date_str()}_{save_suffix}.pth'
+            save_path = os.path.join(config.checkpoints, save_filename)
             torch.save(model.state_dict(), save_path)
             if logger:
                 logger.info(f'Checkpoint {epoch + 1} saved!')
@@ -265,15 +274,24 @@ def collate_fn(batch:tuple) -> Tuple[Tensor, Tensor]:
 
 @torch.no_grad()
 def evaluate(model:nn.Module, data_loader:DataLoader, config:dict, device:torch.device) -> Tuple[float]:
-    """ NOT finished, NOT checked,
+    """ finished, checked,
 
     Parameters:
     -----------
-    to write
+    model: Module,
+        the model to evaluate
+    data_loader: DataLoader,
+        the data loader for loading data for evaluation
+    config: dict,
+        evaluation configurations
+    device: torch.device,
+        device for evaluation
 
     Returns:
     --------
-    to write
+    eval_res: tuple of float,
+        evaluation results, including
+        auroc, auprc, accuracy, f_measure, f_beta_measure, g_beta_measure, challenge_metric
     """
     model.eval()
 
@@ -301,10 +319,11 @@ def evaluate(model:nn.Module, data_loader:DataLoader, config:dict, device:torch.
             scalar_pred=all_preds,
             binary_pred=bin_preds,
         )
+    eval_res = auroc, auprc, accuracy, f_measure, f_beta_measure, g_beta_measure, challenge_metric
 
     model.train()
 
-    return auroc, auprc, accuracy, f_measure, f_beta_measure, g_beta_measure, challenge_metric
+    return eval_res
 
 
 def get_args(**kwargs):
@@ -319,11 +338,11 @@ def get_args(**kwargs):
         metavar='LR', type=float, nargs='?', default=0.001,
         help='Learning rate',
         dest='learning_rate')
-    parser.add_argument(
-        '-g', '--gpu',
-        metavar='G', type=str, default='0',
-        help='GPU',
-        dest='gpu')
+    # parser.add_argument(
+    #     '-g', '--gpu',
+    #     metavar='G', type=str, default='0',
+    #     help='GPU',
+    #     dest='gpu')
     parser.add_argument(
         '-t', '--tranches',
         type=str, default='',
@@ -381,6 +400,7 @@ if __name__ == "__main__":
         classes = cfg.tranche_classes[tranches]
     else:
         classes = cfg.classes
+
     model_config = deepcopy(ECG_CRNN_CONFIG)
     model_config.cnn.name = cfg.cnn_name
     model_config.rnn.name = cfg.rnn_name

@@ -513,5 +513,5 @@ def get_date_str(fmt:Optional[str]=None):
         current time in the `str` format
     """
     now = datetime.datetime.now()
-    date_str = now.strftime(fmt or '%Y-%m-%d_%H-%M')
+    date_str = now.strftime(fmt or '%m-%d_%H-%M')
     return date_str
