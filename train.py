@@ -100,8 +100,17 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
         collate_fn=collate_fn,
     )
 
-    val_loader = DataLoader(
-        dataset=val_dataset,
+    val_train_loader = DataLoader(
+        dataset=val_train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=8,
+        pin_memory=True,
+        drop_last=True,  # setting False would result in error
+        collate_fn=collate_fn,
+    )
+    val_test_loader = DataLoader(
+        dataset=val_test_dataset,
         batch_size=batch_size,
         shuffle=True,
         num_workers=8,
