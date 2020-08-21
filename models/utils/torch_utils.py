@@ -1224,7 +1224,7 @@ class BCEWithLogitsWithClassWeightLoss(nn.BCEWithLogitsLoss):
         class_weight: Tensor,
             class weight, of shape (1, n_classes)
         """
-        super().__init__(reduction=None)
+        super().__init__(reduction='none')
         self.class_weight = class_weight
 
     def forward(self, input:Tensor, target:Tensor) -> Tensor:
