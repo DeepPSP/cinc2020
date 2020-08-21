@@ -25,6 +25,7 @@ __all__ = [
     "AML_Attention", "AML_GatedAttention",
     "AttentionWithContext",
     "ZeroPadding",
+    "WeightedBCELoss", "BCEWithLogitsWithClassWeightsLoss",
     "compute_conv_output_shape",
 ]
 
@@ -1208,3 +1209,27 @@ class WeightedBCELoss(nn.Module):
                                              weight=self.weight,
                                              size_average=self.size_average,
                                              reduce=self.reduce)
+
+
+class BCEWithLogitsWithClassWeightLoss(nn.BCEWithLogitsLoss):
+    """
+    """
+    __name__ = "BCEWithLogitsWithClassWeightsLoss"
+
+    def __init__(self, class_weight:Tensor) -> NoReturn:
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        class_weight: Tensor,
+            class weight, of shape (1, n_classes)
+        """
+        super().__init__(reduction=None)
+        self.class_weight = class_weight
+
+    def forward(self, input:Tensor, target:Tensor) -> Tensor:
+        """
+        """
+        loss = super().forward(input, target)
+        loss = torch.mean(loss * self.class_weight)
+        return loss
