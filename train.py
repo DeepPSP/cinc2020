@@ -57,7 +57,7 @@ from models.utils.torch_utils import BCEWithLogitsWithClassWeightLoss
 from model_configs import ECG_CRNN_CONFIG
 from cfg import ModelCfg, TrainCfg
 from dataset import CINC2020
-from utils.misc import init_logger, get_date_str, dict_to_str
+from utils.misc import init_logger, get_date_str, dict_to_str, str2bool
 from utils.scoring_metrics import evaluate_12ECG_score
 
 
@@ -431,6 +431,10 @@ def get_args(**kwargs):
         '-optimizer', type=str, default='adam',
         help='training optimizer',
         dest='train_optimizer')
+    parser.add_argument(
+        '-debug', type=str2bool, default=False,
+        help='train with more debugging information',
+        dest='debug')
     
     args = vars(parser.parse_args())
 
@@ -485,6 +489,7 @@ if __name__ == "__main__":
             config=cfg,
             device=device,
             logger=logger,
+            debug=cfg.debug,
         )
     except KeyboardInterrupt:
         torch.save(model.state_dict(), os.path.join(cfg.checkpoints, 'INTERRUPTED.pth'))
