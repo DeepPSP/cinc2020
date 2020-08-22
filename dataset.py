@@ -202,3 +202,28 @@ class CINC2020(Dataset):
         is_valid = (len(all_classes) == len(train_classes) == len(test_classes))
         print(f"all_classes = {all_classes}\ntrain_classes = {train_classes}\ntest_classes = {test_classes}\nis_valid = {is_valid}")
         return is_valid
+
+
+    def persistence(self) -> NoReturn:
+        """
+        """
+        prev_state = self.__data_aug
+        self.disable_data_augmentation()
+        if self.training:
+            ratio = int(self.config.train_ratio*100)
+        else:
+            ratio = 100 - int(self.config.train_ratio*100)
+        fn_suffix = f"_tranches_{self.self.tranches}_ratio_{ratio}_siglen_{self.siglen}"
+
+        X, y = [], []
+        for idx in range(self.__len__()):
+            values, labels = self.__getitem__(idx)
+            X.append(values)
+            y.append(labels)
+        X, y = np.array(X), np.array(y)
+        filename = f"{'train' if self.training else 'test'}_X_{fn_suffix}.npy"
+        np.save(os.path.join(self.reader.db_dir_base, filename), X)
+        filename = f"{'train' if self.training else 'test'}_y_{fn_suffix}.npy"
+        np.save(os.path.join(self.reader.db_dir_basefilename), y)
+
+        self.__data_aug = prev_state

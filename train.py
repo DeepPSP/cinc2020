@@ -138,7 +138,8 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
         Validation size: {n_val}
         Device:          {device.type}
         Optimizer:       {config.train_optimizer}
-        Dataset classes: {config.classes}
+        Dataset classes: {train_dataset.all_classes}
+        Class weights:   {train_dataset.class_weights}
         -----------------------------------------
     '''
     print(msg)  # in case no logger
