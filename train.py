@@ -147,6 +147,8 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
 
     # learning rate setup
     def burnin_schedule(i):
+        """
+        """
         if i < config.burn_in:
             factor = pow(i / config.burn_in, 4)
         elif i < config.steps[0]:
@@ -215,13 +217,18 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
 
                 if global_step % log_step == 0:
                     writer.add_scalar('train/loss', loss.item(), global_step)
-                    # writer.add_scalar('lr', scheduler.get_lr()[0] * batch_size, global_step)
-                    pbar.set_postfix(**{
-                        'loss (batch)': loss.item(),
-                        # 'lr': scheduler.get_lr()[0] * batch_size
-                    })
-                    # msg = f'Train step_{global_step}: loss : {loss.item()}, lr : {scheduler.get_lr()[0] * batch_size}'
-                    msg = f'Train step_{global_step}: loss : {loss.item()}'
+                    if scheduler:
+                        writer.add_scalar('lr', scheduler.get_lr()[0], global_step)
+                        pbar.set_postfix(**{
+                            'loss (batch)': loss.item(),
+                            'lr': scheduler.get_lr()[0],
+                        })
+                        msg = f'Train step_{global_step}: loss : {loss.item()}, lr : {scheduler.get_lr()[0] * batch_size}'
+                    else:
+                        pbar.set_postfix(**{
+                            'loss (batch)': loss.item(),
+                        })
+                        msg = f'Train step_{global_step}: loss : {loss.item()}'
                     print(msg)  # in case no logger
                     if logger:
                         logger.info(msg)
@@ -298,7 +305,7 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
 
 
 def collate_fn(batch:tuple) -> Tuple[Tensor, Tensor]:
-    """ finished, Not checked,
+    """ finished, checked,
     """
     signals = [[item[0]] for item in batch]
     labels = [[item[1]] for item in batch]
@@ -362,9 +369,9 @@ def evaluate(model:nn.Module, data_loader:DataLoader, config:dict, device:torch.
         head_num = 5
         head_preds = all_preds[:head_num,...]
         head_bin_preds = bin_preds[:head_num,...]
-        head_preds_classes = [np.array(classes)[row] for row in head_bin_preds]
+        head_preds_classes = [np.array(classes)[np.where(row)] for row in head_bin_preds]
         head_labels = all_labels[:head_num,...]
-        head_labels_classes = [np.array(classes)[row] for row in head_labels]
+        head_labels_classes = [np.array(classes)[np.where(row)] for row in head_labels]
         for n in range(head_num):
             print(f"""
             ----------------------------------------------
@@ -444,7 +451,7 @@ def get_args(**kwargs):
 
 
 
-DAS = True
+DAS = True  # JD DAS platform
 
 if __name__ == "__main__":
     cfg = get_args(**TrainCfg)
