@@ -98,6 +98,7 @@ TrainCfg.checkpoints = os.path.join(_BASE_DIR, "checkpoints")
 TrainCfg.keep_checkpoint_max = 100
 
 # configs of training data
+TrainCfg.fs = ModelCfg.fs
 TrainCfg.normalize_data = True
 TrainCfg.train_ratio = 0.8
 TrainCfg.min_class_weight = 0.5
@@ -148,6 +149,8 @@ TrainCfg.classes = sorted(list(TrainCfg.class_weights.keys()))
 
 # configs of data aumentation
 TrainCfg.label_smoothing = 0.1
+TrainCfg.random_mask = int(TrainCfg.fs * 0.0)  # 1.0s, 0 for no masking
+TrainCfg.stretch_compress = 1.0  # stretch or compress in time axis
 
 # configs of training epochs, batch, etc.
 TrainCfg.n_epochs = 300

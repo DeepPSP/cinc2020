@@ -2,7 +2,7 @@
 """
 import os, sys
 import json
-from random import shuffle
+from random import shuffle, randint
 from copy import deepcopy
 from functools import reduce
 from typing import Union, Optional, List, Tuple, Dict, Sequence, Set, NoReturn
@@ -49,6 +49,7 @@ class CINC2020(Dataset):
         else:
             self.all_classes = self.config.classes
             self.class_weights = self.config.class_weights
+        self.n_classes = len(self.all_classes)
         # print(f"tranches = {self.tranches}, all_classes = {self.all_classes}")
         # print(f"class_weights = {dict_to_str(self.class_weights)}")
         cw = np.zeros((len(self.class_weights),), dtype=np.float32)
@@ -72,7 +73,6 @@ class CINC2020(Dataset):
         #     rec,
         #     data_format='channel_first', units='mV', backend='wfdb'
         # )
-        
         values = self.reader.load_resampled_data(rec, siglen=self.siglen)
         if self.config.normalize_data:
             values = (values - np.mean(values)) / np.std(values)
@@ -81,7 +81,13 @@ class CINC2020(Dataset):
         )
         labels = np.isin(self.all_classes, labels).astype(int)
         if self.training:
-            labels = (1-self.config.label_smoothing) * labels + self.config.label_smoothing
+            labels = (1-self.config.label_smoothing) * labels + self.config.label_smoothing/self.n_classes
+            if self.config.random_mask > 0:
+                mask_len = randint(0, self.config.random_mask)
+                mask_start = randint(0, self.siglen-mask_len-1)
+                values[...,mask_start:mask_start+mask_len] = 0
+            if self.config.stretch_compress != 1:
+                pass  # not implemented
 
         return values, labels
 
