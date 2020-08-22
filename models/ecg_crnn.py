@@ -43,7 +43,7 @@ class VGGBlock(nn.Sequential):
     __DEBUG__ = False
     __name__ = "VGGBlock"
 
-    def __init__(self, num_convs:int, in_channels:int, out_channels:int, **config) -> NoReturn:
+    def __init__(self, num_convs:int, in_channels:int, out_channels:int, groups:int=1, **config) -> NoReturn:
         """ finished, checked,
 
         Parameters:
@@ -54,6 +54,8 @@ class VGGBlock(nn.Sequential):
             number of channels in the input
         out_channels: int,
             number of channels produced by the convolutional layers
+        groups: int, default 1,
+            connection pattern (of channels) of the inputs and outputs
         config: dict,
             other parameters, including
             filter length (kernel size), activation choices,
@@ -64,10 +66,8 @@ class VGGBlock(nn.Sequential):
         self.__num_convs = num_convs
         self.__in_channels = in_channels
         self.__out_channels = out_channels
-
-        # self.config = deepcopy(ECG_CRNN_CONFIG.cnn.vgg_block)
-        # self.config.update(config)
-        self.config = ED(config)
+        self.__groups = groups
+        self.config = ED(deepcopy(config))
         if self.__DEBUG__:
             print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
 
@@ -77,6 +77,7 @@ class VGGBlock(nn.Sequential):
                 in_channels, out_channels,
                 kernel_size=self.config.filter_length,
                 stride=self.config.subsample_length,
+                groups=self.__groups,
                 activation=self.config.activation,
                 kw_activation=self.config.kw_activation,
                 kernel_initializer=self.config.kernel_initializer,
@@ -91,6 +92,7 @@ class VGGBlock(nn.Sequential):
                     out_channels, out_channels,
                     kernel_size=self.config.filter_length,
                     stride=self.config.subsample_length,
+                    groups=self.__groups,
                     activation=self.config.activation,
                     kw_activation=self.config.kw_activation,
                     kernel_initializer=self.config.kernel_initializer,
@@ -157,7 +159,7 @@ class VGG16(nn.Sequential):
         super().__init__()
         self.__in_channels = in_channels
         # self.config = deepcopy(ECG_CRNN_CONFIG.cnn.vgg16)
-        self.config = ED(config)
+        self.config = ED(deepcopy(config))
         if self.__DEBUG__:
             print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
 
@@ -170,6 +172,7 @@ class VGG16(nn.Sequential):
                     num_convs=nc,
                     in_channels=module_in_channels,
                     out_channels=nf,
+                    groups=self.config.groups,
                     **(self.config.block),
                 )
             )
@@ -214,7 +217,7 @@ class ResNetBasicBlock(nn.Module):
     expansion = 1
 
     def __init__(self, in_channels:int, num_filters:int, subsample_length:int, groups:int=1, dilation:int=1, **config) -> NoReturn:
-        """ NOT finished, NOT checked,
+        """ finished, checked,
 
         Parameters:
         -----------
@@ -228,6 +231,8 @@ class ResNetBasicBlock(nn.Module):
         groups: int, default 1,
             pattern of connections between inputs and outputs,
             for more details, ref. `nn.Conv1d`
+        dilation: int, default 1,
+            not used
         config: dict,
             other hyper-parameters, including
             filter length (kernel size), activation choices, weight initializer,
@@ -241,9 +246,13 @@ class ResNetBasicBlock(nn.Module):
         self.__out_channels = num_filters
         self.__down_scale = subsample_length
         self.__stride = subsample_length
-        self.config = ED(config)
+        self.__groups = groups
+        self.config = ED(deepcopy(config))
         if self.__DEBUG__:
             print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
+        
+        if self.config.increase_channels_method.lower() == 'zero_padding' and self.__groups != 1:
+            raise ValueError("zero padding for increasing channels can not be used with groups != 1")
         
         self.__increase_channels = (self.__out_channels > self.__in_channels)
         self.short_cut = self._make_short_cut_layer()
@@ -372,7 +381,7 @@ class ResNet(nn.Sequential):
         """
         super().__init__()
         self.__in_channels = in_channels
-        self.config = ED(config)
+        self.config = ED(deepcopy(config))
         if self.__DEBUG__:
             print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
         # self.__building_block = \

@@ -192,7 +192,7 @@ class Conv_Bn_Activation(nn.Sequential):
     """
     __name__ = "Conv_Bn_Activation"
 
-    def __init__(self, in_channels:int, out_channels:int, kernel_size:int, stride:int, bn:Union[bool,nn.Module]=True, activation:Optional[Union[str,nn.Module]]=None, kernel_initializer:Optional[Union[str,callable]]=None, bias:bool=True, **kwargs) -> NoReturn:
+    def __init__(self, in_channels:int, out_channels:int, kernel_size:int, stride:int, dilation:int=1, groups:int=1, bn:Union[bool,nn.Module]=True, activation:Optional[Union[str,nn.Module]]=None, kernel_initializer:Optional[Union[str,callable]]=None, bias:bool=True, **kwargs) -> NoReturn:
         """ finished, checked,
 
         Parameters:
@@ -202,10 +202,14 @@ class Conv_Bn_Activation(nn.Sequential):
         out_channels: int,
             number of channels produced by the convolution
         kernel_size: int,
-            size of the convolving kernel
+            size (length) of the convolving kernel
         stride: int,
-            stride of the convolution
-        bn: bool or Module,
+            stride (subsample length) of the convolution
+        dilation: int, default 1,
+            spacing between the kernel points
+        groups: int, default 1,
+            connection pattern (of channels) of the inputs and outputs
+        bn: bool or Module, default True
             batch normalization,
             the Module itself or (if is bool) whether or not to use `nn.BatchNorm1d`
         activation: str or Module, optional,
@@ -225,12 +229,17 @@ class Conv_Bn_Activation(nn.Sequential):
         self.__out_channels = out_channels
         self.__kernel_size = kernel_size
         self.__stride = stride
+        self.__dilation = dilation
+        self.__groups = groups
         self.__padding = padding
         self.__bias = bias
         self.__kw_activation = kwargs.get("kw_activation", {})
         self.__kw_initializer = kwargs.get("kw_initializer", {})
 
-        conv_layer = nn.Conv1d(in_channels, out_channels, kernel_size, stride, padding, bias=bias)
+        conv_layer = nn.Conv1d(
+            in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias=bias,
+        )
+
         if kernel_initializer:
             if callable(kernel_initializer):
                 kernel_initializer(conv_layer.weight)
@@ -292,6 +301,7 @@ class Conv_Bn_Activation(nn.Sequential):
             num_filters=self.__out_channels,
             kernel_size=self.__kernel_size,
             stride=self.__stride,
+            dilation=self.__dilation,
             pad=self.__padding,
             channel_last=False,
         )
@@ -304,7 +314,7 @@ class DownSample(nn.Sequential):
     __name__ = "DownSample"
     __METHODS__ = ['max', 'avg', 'conv',]
 
-    def __init__(self, down_scale:int, in_channels:int, out_channels:Optional[int]=None, padding:int=0, bn:Union[bool,nn.Module]=True, method:str='max') -> NoReturn:
+    def __init__(self, down_scale:int, in_channels:int, out_channels:Optional[int]=None, groups:int=1, padding:int=0, bn:Union[bool,nn.Module]=True, method:str='max') -> NoReturn:
         """ finished, checked,
 
         Parameters:
@@ -312,6 +322,7 @@ class DownSample(nn.Sequential):
         down_scale: int,
         in_channels: int,
         out_channels: int, optional,
+        groups: int, default 1,
         padding: int, default 0,
         bn: bool or Module,
             batch normalization,
@@ -332,7 +343,10 @@ class DownSample(nn.Sequential):
             else:
                 down_layer = nn.Sequential((
                     nn.MaxPool1d(kernel_size=self.__down_scale, padding=self.__padding),
-                    nn.Conv1d(self.__in_channels,self.__out_channels,kernel_size=1,bias=False),
+                    nn.Conv1d(
+                        self.__in_channels,self.__out_channels,
+                        kernel_size=1,groups=groups,bias=False
+                    ),
                 ))
         elif self.__method == 'avg':
             if self.__in_channels == self.__out_channels:
@@ -340,13 +354,17 @@ class DownSample(nn.Sequential):
             else:
                 down_layer = nn.Sequential((
                     nn.AvgPool1d(kernel_size=self.__down_scale, padding=self.__padding),
-                    nn.Conv1d(self.__in_channels,self.__out_channels,kernel_size=1,bias=False),
+                    nn.Conv1d(
+                        self.__in_channels,self.__out_channels,
+                        kernel_size=1,groups=groups,bias=False
+                    ),
                 ))
         elif self.__method == 'conv':
             down_layer = nn.Conv1d(
                 in_channels=self.__in_channels,
                 out_channels=self.__out_channels,
                 kernel_size=1,
+                groups=groups,
                 bias=False,
                 stride=self.__down_scale,
             )

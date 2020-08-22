@@ -10,13 +10,13 @@ from cfg import ModelCfg
 
 __all__ = [
     "vgg_block_basic", "vgg_block_mish", "vgg_block_swish",
-    "vgg16",
+    "vgg16", "vgg16_leadwise",
     "resnet_block_basic", "resnet_bottle_neck",
-    "resnet",
+    "resnet", "resnet_leadwise",
     "resnet_block_stanford",
     "resnet_stanford",
     "cpsc_block_basic", "cpsc_block_mish", "cpsc_block_swish",
-    "cpsc_2018",
+    "cpsc_2018", "cpsc_2018_leadwise",
 ]
 
 
@@ -41,15 +41,21 @@ vgg_block_mish.activation = "swish"
 vgg16 = ED()
 vgg16.num_convs = [2, 2, 3, 3, 3]
 vgg16.num_filters = [64, 128, 256, 512, 512]
+vgg16.groups = 1
+
+
+vgg16_leadwise = deepcopy(vgg16)
+vgg16_leadwise.groups = 12
 
 
 # ResNet
 resnet = ED()
 resnet.num_blocks = [
-    2, 2, 2, 2,
+    2, 2, 2, 2, 2,
 ]
+resnet.groups = 1
 resnet.init_num_filters = 32
-resnet.init_filter_length = 5  # corr. to 10 ms
+resnet.init_filter_length = 15  # corr. to 30 ms
 resnet.init_conv_stride = 2
 resnet.init_pool_size = 3
 resnet.init_pool_stride = 2
@@ -59,6 +65,9 @@ resnet.kw_initializer = {}
 resnet.activation = "relu"  # "mish", "swish"
 resnet.kw_activation = {}
 resnet.bias = False
+
+resnet_leadwise = deepcopy(resnet)
+resnet_leadwise.groups = 12
 
 resnet_block_basic = ED()
 resnet_block_basic.increase_channels_method = 'conv'  # or 'zero_padding'
@@ -125,7 +134,7 @@ cpsc_2018.filter_lengths = [
     [3, 3, 24],
     [3, 3, 48],
 ]
-cpsc_2018.strides = [
+cpsc_2018.subsample_lengths = [
     [1, 1, 2],
     [1, 1, 2],
     [1, 1, 2],
@@ -133,6 +142,10 @@ cpsc_2018.strides = [
     [1, 1, 2],
 ]
 cpsc_2018.dropouts = [0.2, 0.2, 0.2, 0.2, 0.2]
+cpsc_2018.groups = 1
+
+cpsc_2018_leadwise = deepcopy(cpsc_2018)
+cpsc_2018_leadwise.groups = 12
 
 
 # TODO: add more
