@@ -30,17 +30,56 @@ from signal_processing.ecg_rpeaks import (
     xqrs_detect, gqrs_detect,
     hamilton_detect, ssf_detect, christov_detect, engzee_detect, gamboa_detect,
 )
-from signal_processing.ecg_preproc import rpeaks_detect_multi_leads
+from signal_processing.ecg_preproc import (
+    preprocess_multi_lead_signal,
+    rpeaks_detect_multi_leads,
+)
 from utils.utils_signal import detect_peaks
 from utils.misc import ms2samples, samples2ms, get_mask
 
 
 __all__ = [
+    "special_detectors",
     "pacing_rhythm_detector",
     "electrical_axis_detector",
     "brady_tachy_detector",
     "LQRSV_detector",
 ]
+
+
+def special_detectors(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", verbose:int=0) -> np.ndarray:
+    """ NOT finished, NOT checked,
+
+    Parameters:
+    -----------
+    raw_sig: ndarray,
+        the raw 12-lead ecg signal, with units in mV
+    fs: real number,
+        sampling frequency of `sig`
+    sig_fmt: str, default "channel_first",
+        format of the 12 lead ecg signal,
+        'channel_last' (alias 'lead_last'), or
+        'channel_first' (alias 'lead_first', original)
+    verbose: int, default 0,
+        print verbosity
+    """
+    preprocess = preprocess_multi_lead_signal(raw_sig, fs, sig_fmt, verbose=verbose)
+    filtered_sig = preprocess["filtered_ecg"]
+    rpeaks = preprocess["rpeaks"]
+    is_PR = pacing_rhythm_detector(raw_sig, fs, sig_fmt, verbose)
+    axis = electrical_axis_detector(filtered_sig, rpeaks, fs, sig_fmt, method='2-lead', verbose=verbose)
+    brady_tachy = brady_tachy_detector(rpeaks, fs, verbose=verbose)
+    is_LQRSV = LQRSV_detector(filtered_sig, rpeaks, fs, sig_fmt, verbose)
+    is_LAD = (axis=='LAD')
+    is_RAD = (axis=='RAD')
+    is_brady = (brady_tachy=='B')
+    is_tachy = (brady_tachy=='T')
+    conclusion = ED(
+        is_brady=is_brady, is_tachy=is_tachy,
+        is_LAD=is_LAD, is_RAD=is_RAD,
+        is_PR=is_PR, is_LQRSV=is_LQRSV,
+    )
+    return conclusion
 
 
 def pacing_rhythm_detector(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", verbose:int=0) -> bool:

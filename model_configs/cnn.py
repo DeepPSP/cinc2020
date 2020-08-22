@@ -36,7 +36,7 @@ vgg_block_mish = deepcopy(vgg_block_basic)
 vgg_block_mish.activation = "mish"
 
 vgg_block_swish = deepcopy(vgg_block_basic)
-vgg_block_mish.activation = "swish"
+vgg_block_swish.activation = "swish"
 
 vgg16 = ED()
 vgg16.num_convs = [2, 2, 3, 3, 3]

@@ -6,12 +6,7 @@ import joblib
 import numpy as np
 
 from get_12ECG_features import get_12ECG_features
-from models.special_detectors import (
-    pacing_rhythm_detector,
-    electrical_axis_detector,
-    brady_tachy_detector,
-    LQRSV_detector,
-)
+from models.special_detectors import special_detectors
 
 
 def run_12ECG_classifier(data, header_data, loaded_model):
