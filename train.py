@@ -66,7 +66,7 @@ __all__ = [
 ]
 
 
-def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, logger:Optional[logging.Logger]=None):
+def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, logger:Optional[logging.Logger]=None, debug:bool=False):
     """
 
     Parameters:
@@ -76,6 +76,7 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
     config: dict,
     log_step: int, default 20,
     logger: Logger, optional,
+    debug: bool, default False,
     """
     print(f"training configurations are as follows:\n{dict_to_str(config)}")
     train_dataset = CINC2020(config=config, training=True)
@@ -314,7 +315,7 @@ def collate_fn(batch:tuple) -> Tuple[Tensor, Tensor]:
 
 
 @torch.no_grad()
-def evaluate(model:nn.Module, data_loader:DataLoader, config:dict, device:torch.device) -> Tuple[float]:
+def evaluate(model:nn.Module, data_loader:DataLoader, config:dict, device:torch.device, debug:bool=False) -> Tuple[float]:
     """ finished, checked,
 
     Parameters:
@@ -327,6 +328,7 @@ def evaluate(model:nn.Module, data_loader:DataLoader, config:dict, device:torch.
         evaluation configurations
     device: torch.device,
         device for evaluation
+    debug: bool, default False
 
     Returns:
     --------
@@ -346,12 +348,15 @@ def evaluate(model:nn.Module, data_loader:DataLoader, config:dict, device:torch.
 
         if torch.cuda.is_available():
             torch.cuda.synchronize()
-        preds = model(signals)
+        preds, _ = model.inference(signals)
         all_preds.append(preds.cpu().detach().numpy())
     
     all_preds = np.concatenate(all_preds, axis=0)
     bin_preds = (all_preds >= config.bin_pred_thr).astype(int)
     all_labels = np.concatenate(all_labels, axis=0)
+
+    if debug:
+        print(f"")
 
     auroc, auprc, accuracy, f_measure, f_beta_measure, g_beta_measure, challenge_metric = \
         evaluate_12ECG_score(

@@ -590,6 +590,7 @@ class ECG_CRNN(nn.Module):
         """
         pred = self.forward(input)
         pred = self.sigmoid(pred)
+        bin_pred = (pred>=bin_pred_thr).int()
         if class_names:
             pred = pred.cpu().detach().numpy()
             pred = pd.DataFrame(pred)
@@ -598,4 +599,5 @@ class ECG_CRNN(nn.Module):
                 lambda row: np.array(self.classes)[np.where(row.values>=bin_pred_thr)[0]],
                 axis=1
             )
-        return pred
+            return pred
+        return pred, bin_pred
