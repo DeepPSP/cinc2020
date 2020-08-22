@@ -81,7 +81,7 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
     print(f"training configurations are as follows:\n{dict_to_str(config)}")
     train_dataset = CINC2020(config=config, training=True)
     val_train_dataset = CINC2020(config=config, training=True)
-    val_train_dataset.config.label_smoothing = 0
+    val_train_dataset.disable_data_augmentation()
     val_test_dataset = CINC2020(config=config, training=False)
 
     n_train = len(train_dataset)
@@ -230,8 +230,8 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
             writer.add_scalar('train/epoch_loss', epoch_loss, global_step)
 
             # eval for each epoch using `evaluate`
-            eval_train_res = evaluate(model, val_train_loader, config, device)
-            eval_test_res = evaluate(model, val_test_loader, config, device)
+            eval_train_res = evaluate(model, val_train_loader, config, device, debug)
+            eval_test_res = evaluate(model, val_test_loader, config, device, debug)
             model.train()
 
             writer.add_scalar('train/auroc', eval_train_res[0], global_step)
@@ -337,6 +337,7 @@ def evaluate(model:nn.Module, data_loader:DataLoader, config:dict, device:torch.
         auroc, auprc, accuracy, f_measure, f_beta_measure, g_beta_measure, challenge_metric
     """
     model.eval()
+    data_loader.dataset.disable_data_augmentation()
 
     all_preds = []
     all_labels = []
@@ -354,13 +355,31 @@ def evaluate(model:nn.Module, data_loader:DataLoader, config:dict, device:torch.
     all_preds = np.concatenate(all_preds, axis=0)
     bin_preds = (all_preds >= config.bin_pred_thr).astype(int)
     all_labels = np.concatenate(all_labels, axis=0)
+    classes = data_loader.dataset.all_classes
 
     if debug:
-        print(f"")
+        print(f"all_preds.shape = {all_preds.shape}, all_labels.shape = {all_labels.shape}")
+        head_num = 5
+        head_preds = all_preds[:head_num,...]
+        head_bin_preds = bin_preds[:head_num,...]
+        head_preds_classes = [np.array(classes)[row] for row in head_bin_preds]
+        head_labels = all_labels[:head_num,...]
+        head_labels_classes = [np.array(classes)[row] for row in head_labels]
+        for n in range(head_num):
+            print(f"""
+            ----------------------------------------------
+            scalar prediction:    {head_preds[n].tolist()}
+            binary prediction:    {head_bin_preds[n].tolist()}
+            labels:               {head_labels[n].tolist()}
+            predicted classes:    {head_preds_classes[n].tolist()}
+            label classes:        {head_labels_classes[n].tolist()}
+            ----------------------------------------------
+            """)
+            print(f"scalar prediction:")
 
     auroc, auprc, accuracy, f_measure, f_beta_measure, g_beta_measure, challenge_metric = \
         evaluate_12ECG_score(
-            classes=data_loader.dataset.all_classes,
+            classes=classes,
             truth=all_labels,
             scalar_pred=all_preds,
             binary_pred=bin_preds,

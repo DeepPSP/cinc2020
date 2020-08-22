@@ -65,6 +65,8 @@ class CINC2020(Dataset):
 
         self.records = self._train_test_split(config.train_ratio, force_recompute=False)
 
+        self.__data_aug = self.training
+
     def __getitem__(self, index):
         """ finished, checked,
         """
@@ -80,7 +82,7 @@ class CINC2020(Dataset):
             rec, scored_only=True, fmt='a', normalize=True
         )
         labels = np.isin(self.all_classes, labels).astype(int)
-        if self.training:
+        if self.__data_aug:
             labels = (1-self.config.label_smoothing) * labels + self.config.label_smoothing/self.n_classes
             if self.config.random_mask > 0:
                 mask_len = randint(0, self.config.random_mask)
@@ -97,9 +99,15 @@ class CINC2020(Dataset):
         """
         return len(self.records)
 
+
+    def disable_data_augmentation(self) -> NoReturn:
+        """
+        """
+        self.__data_aug = False
+
     
     def _train_test_split(self, train_ratio:float=0.8, force_recompute:bool=False) -> List[str]:
-        """ finished, NOT checked,
+        """ finished, checked,
 
         Parameters:
         -----------
