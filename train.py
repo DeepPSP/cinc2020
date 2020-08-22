@@ -159,20 +159,22 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
     if config.train_optimizer.lower() == 'adam':
         optimizer = optim.Adam(
             params=model.parameters(),
-            lr=lr/batch_size,
-            betas=(0.9, 0.999),
-            eps=1e-08,
+            lr=lr,
+            betas=(0.9, 0.999),  # default
+            eps=1e-08,  # default
         )
+        scheduler = None
     elif config.train_optimizer.lower() == 'sgd':
         optimizer = optim.SGD(
             params=model.parameters(),
-            lr=lr/batch_size,
+            lr=lr,
             momentum=config.momentum,
             weight_decay=config.decay,
         )
+        scheduler = optim.lr_scheduler.StepLR(optimizer, config.lr_step_size, config.lr_gamma)
     else:
         raise NotImplementedError(f"loss `{config.train_optimizer}` not implemented!")
-    scheduler = optim.lr_scheduler.LambdaLR(optimizer, burnin_schedule)
+    # scheduler = optim.lr_scheduler.LambdaLR(optimizer, burnin_schedule)
 
     if config.loss == "BCEWithLogitsLoss":
         criterion = nn.BCEWithLogitsLoss()
@@ -206,7 +208,8 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
                 loss = criterion(preds, labels)
                 loss.backward()
                 optimizer.step()
-                scheduler.step()
+                if scheduler:
+                    scheduler.step()
                 epoch_loss += loss.item()
 
                 if global_step % log_step == 0:
@@ -466,3 +469,4 @@ if __name__ == "__main__":
         except SystemExit:
             os._exit(0)
 
+torch.optim.lr_scheduler

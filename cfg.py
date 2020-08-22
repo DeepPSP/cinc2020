@@ -91,15 +91,17 @@ ModelCfg.bin_pred_thr = 0.5
 # training configurations for machine learning and deep learning
 TrainCfg = ED()
 
+# configs of files
 TrainCfg.db_dir = "/media/cfs/wenhao71/data/cinc2020_data/"
 TrainCfg.log_dir = os.path.join(_BASE_DIR, 'log')
 TrainCfg.checkpoints = os.path.join(_BASE_DIR, "checkpoints")
 TrainCfg.keep_checkpoint_max = 100
 
+# configs of training data
 TrainCfg.normalize_data = True
-
 TrainCfg.train_ratio = 0.8
 TrainCfg.min_class_weight = 0.5
+TrainCfg.tranches_for_training = ''  # one of '', 'AB', 'E', 'F'
 TrainCfg.tranche_class_counts = ED({
     # classes with too few recordings are ignored
     # classes dealt with special detectors are ignored
@@ -144,25 +146,37 @@ TrainCfg.class_weights = ED({
 })  # normalize so that the smallest weight equals `TrainCfg.min_class_weight`
 TrainCfg.classes = sorted(list(TrainCfg.class_weights.keys()))
 
-TrainCfg.tranches_for_training = ''  # one of '', 'AB', 'E', 'F'
+# configs of data aumentation
+TrainCfg.label_smoothing = 0.1
 
-TrainCfg.n_epochs = 1000
-TrainCfg.train_optimizer = "adam"  # "sgd"
+# configs of training epochs, batch, etc.
+TrainCfg.n_epochs = 300
 TrainCfg.batch_size = 32
 TrainCfg.max_batches = 500500
+
+# configs of optimizers and lr_schedulers
+TrainCfg.train_optimizer = "adam"  # "sgd"
+
+TrainCfg.learning_rate = 0.0001
+TrainCfg.lr = TrainCfg.learning_rate
+TrainCfg.lr_step_size = 50
+TrainCfg.lr_gamma = 0.1
+
+TrainCfg.burn_in = 400
 TrainCfg.steps = [5000, 10000]
 
 TrainCfg.momentum = 0.949
 TrainCfg.decay = 0.0005
-TrainCfg.learning_rate = 0.0001
-TrainCfg.burn_in = 1000
+
+# configs of loss function
 # TrainCfg.loss = 'BCEWithLogitsLoss'
 TrainCfg.loss = 'BCEWithLogitsWithClassWeightLoss'
 TrainCfg.eval_every = 20
 
-TrainCfg.cnn_name = "resnet"  # 'vgg16'
+# configs of model selection
+TrainCfg.cnn_name = "resnet"  # 'vgg16', 'resnet_leadwise', 'vgg16_leadwise'
 TrainCfg.rnn_name = 'lstm'  # 'none'
-TrainCfg.label_smoothing = 0.1
 
+# configs of inputs and outputs
 TrainCfg.input_len = int(500 * 8.0)  # almost all records has duration >= 8s
 TrainCfg.bin_pred_thr = ModelCfg.bin_pred_thr
