@@ -214,12 +214,13 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
 
                 if global_step % log_step == 0:
                     writer.add_scalar('train/loss', loss.item(), global_step)
-                    writer.add_scalar('lr', scheduler.get_lr()[0] * batch_size, global_step)
+                    # writer.add_scalar('lr', scheduler.get_lr()[0] * batch_size, global_step)
                     pbar.set_postfix(**{
                         'loss (batch)': loss.item(),
-                        'lr': scheduler.get_lr()[0] * batch_size
+                        # 'lr': scheduler.get_lr()[0] * batch_size
                     })
-                    msg = f'Train step_{global_step}: loss : {loss.item()}, lr : {scheduler.get_lr()[0] * batch_size}'
+                    # msg = f'Train step_{global_step}: loss : {loss.item()}, lr : {scheduler.get_lr()[0] * batch_size}'
+                    msg = f'Train step_{global_step}: loss : {loss.item()}'
                     print(msg)  # in case no logger
                     if logger:
                         logger.info(msg)
@@ -468,5 +469,3 @@ if __name__ == "__main__":
             sys.exit(0)
         except SystemExit:
             os._exit(0)
-
-torch.optim.lr_scheduler

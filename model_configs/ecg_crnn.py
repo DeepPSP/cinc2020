@@ -7,7 +7,7 @@ from easydict import EasyDict as ED
 
 from .cnn import (
     vgg_block_basic, vgg_block_mish, vgg_block_swish,
-    vgg16, vgg16_leadwise
+    vgg16, vgg16_leadwise,
     resnet_block_stanford, resnet_stanford,
     resnet_block_basic, resnet_bottle_neck,
     resnet, resnet_leadwise,

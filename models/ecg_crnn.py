@@ -569,7 +569,7 @@ class ECG_CRNN(nn.Module):
         """
         """
         x = self.cnn(input)  # batch_size, channels, seq_len
-        print(f"cnn out shape = {x.shape}")
+        # print(f"cnn out shape = {x.shape}")
         if self.rnn:
             # input shape of lstm: (seq_len, batch, input_size)
             x = x.permute(2,0,1)  # seq_len, batch_size, channels
