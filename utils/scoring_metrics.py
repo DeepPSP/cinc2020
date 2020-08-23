@@ -11,6 +11,11 @@ from .scoring_aux_data import load_weights
 
 __all__ = [
     "evaluate_12ECG_score",
+    "compute_auc",
+    "compute_accuracy",
+    "compute_f_measure",
+    "compute_beta_measures",
+    "compute_challenge_metric",
 ]
 
 

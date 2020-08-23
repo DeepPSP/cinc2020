@@ -213,17 +213,21 @@ class CINC2020(Dataset):
             ratio = int(self.config.train_ratio*100)
         else:
             ratio = 100 - int(self.config.train_ratio*100)
-        fn_suffix = f"_tranches_{self.self.tranches}_ratio_{ratio}_siglen_{self.siglen}"
+        fn_suffix = f"tranches_{self.tranches}_ratio_{ratio}_siglen_{self.siglen}"
 
         X, y = [], []
-        for idx in range(self.__len__()):
-            values, labels = self.__getitem__(idx)
-            X.append(values)
-            y.append(labels)
+        with tqdm(range(self.__len__()), total=self.__len__()) as bar:
+            for idx in bar:
+                values, labels = self.__getitem__(idx)
+                X.append(values)
+                y.append(labels)
         X, y = np.array(X), np.array(y)
+        print(f"X.shape = {X.shape}, y.shape = {y.shape}")
         filename = f"{'train' if self.training else 'test'}_X_{fn_suffix}.npy"
         np.save(os.path.join(self.reader.db_dir_base, filename), X)
+        print(f"X saved to {filename}")
         filename = f"{'train' if self.training else 'test'}_y_{fn_suffix}.npy"
-        np.save(os.path.join(self.reader.db_dir_basefilename), y)
+        np.save(os.path.join(self.reader.db_dir_base, filename), y)
+        print(f"y saved to {filename}")
 
         self.__data_aug = prev_state

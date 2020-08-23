@@ -219,7 +219,7 @@ class Conv_Bn_Activation(nn.Sequential):
             "linear" is equivalent to `activation=None`
         kernel_initializer: str or callable (function), optional,
             a function to initialize kernel weights of the convolution,
-            or name or the initialzer, can be one of the keys of Initializers
+            or name or the initialzer, can be one of the keys of `Initializers`
         bias: bool, default True,
             if True, adds a learnable bias to the output
         """
@@ -687,7 +687,7 @@ class BidirectionalLSTM(nn.Module):
     """
     __name__ = "BidirectionalLSTM"
 
-    def __init__(self, input_size:int, hidden_size:int, num_layers:int=1, bias:bool=True, dropout:float=0.0, return_sequences:bool=True) -> NoReturn:
+    def __init__(self, input_size:int, hidden_size:int, num_layers:int=1, bias:bool=True, dropout:float=0.0, return_sequences:bool=True, **kwargs) -> NoReturn:
         """ finished, checked,
 
         Parameters:
@@ -710,6 +710,7 @@ class BidirectionalLSTM(nn.Module):
         super().__init__()
         self.__output_size = 2 * hidden_size
         self.return_sequence = return_sequences
+
         self.lstm = nn.LSTM(
             input_size=input_size,
             hidden_size=hidden_size,
@@ -760,7 +761,7 @@ class StackedLSTM(nn.Sequential):
     __DEBUG__ = False
     __name__ = "StackedLSTM"
 
-    def __init__(self, input_size:int, hidden_sizes:Sequence[int], bias:Union[Sequence[bool], bool]=True, dropout:float=0.0, bidirectional:bool=True, return_sequences:bool=True) -> NoReturn:
+    def __init__(self, input_size:int, hidden_sizes:Sequence[int], bias:Union[Sequence[bool], bool]=True, dropout:float=0.0, bidirectional:bool=True, return_sequences:bool=True, **kwargs) -> NoReturn:
         """ finished, checked,
 
         Parameters:

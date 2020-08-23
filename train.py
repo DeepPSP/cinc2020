@@ -455,31 +455,31 @@ def get_args(**kwargs):
 DAS = True  # JD DAS platform
 
 if __name__ == "__main__":
-    cfg = get_args(**TrainCfg)
-    # os.environ["CUDA_VISIBLE_DEVICES"] = cfg.gpu
+    config = get_args(**TrainCfg)
+    # os.environ["CUDA_VISIBLE_DEVICES"] = config.gpu
     if not DAS:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     else:
         device = torch.device('cuda')
-    logger = init_logger(log_dir=cfg.log_dir)
+    logger = init_logger(log_dir=config.log_dir)
     logger.info(f"\n{'*'*20}   Start Training   {'*'*20}\n")
     logger.info(f'Using device {device}')
     logger.info(f"Using torch of version {torch.__version__}")
-    logger.info(f'with configuration {cfg}')
+    logger.info(f'with configuration {config}')
     print(f"\n{'*'*20}   Start Training   {'*'*20}\n")
     print(f'Using device {device}')
     print(f"Using torch of version {torch.__version__}")
-    print(f'with configuration {cfg}')
+    print(f'with configuration {config}')
 
-    tranches = cfg.tranches_for_training
+    tranches = config.tranches_for_training
     if tranches:
-        classes = cfg.tranche_classes[tranches]
+        classes = config.tranche_classes[tranches]
     else:
-        classes = cfg.classes
+        classes = config.classes
 
     model_config = deepcopy(ECG_CRNN_CONFIG)
-    model_config.cnn.name = cfg.cnn_name
-    model_config.rnn.name = cfg.rnn_name
+    model_config.cnn.name = config.cnn_name
+    model_config.rnn.name = config.rnn_name
 
     model = ECG_CRNN(classes=classes, config=model_config)
 
@@ -494,13 +494,13 @@ if __name__ == "__main__":
     try:
         train(
             model=model,
-            config=cfg,
+            config=config,
             device=device,
             logger=logger,
-            debug=cfg.debug,
+            debug=config.debug,
         )
     except KeyboardInterrupt:
-        torch.save(model.state_dict(), os.path.join(cfg.checkpoints, 'INTERRUPTED.pth'))
+        torch.save(model.state_dict(), os.path.join(config.checkpoints, 'INTERRUPTED.pth'))
         logger.info('Saved interrupt')
         try:
             sys.exit(0)
