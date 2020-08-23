@@ -32,6 +32,7 @@ __all__ = [
     "init_logger",
     "get_date_str",
     "rdheader",
+    "ensure_lead_fmt",
 ]
 
 
@@ -591,3 +592,31 @@ def rdheader(header_data:List[str]) -> Union[Record, MultiRecord]:
     record.comments = [line.strip(' \t#') for line in comment_lines]
 
     return record
+
+
+def ensure_lead_fmt(values:Sequence[Real], fmt:str="lead_first") -> np.ndarray:
+    """
+
+    Parameters:
+    -----------
+    values: sequence,
+        values of the 12-lead ECG signal
+    fmt: str, default "lead_first", case insensitive,
+        format of the output values, can be one of
+        "lead_first" (alias "channel_first"), "lead_last" (alias "channel_last")
+
+    Returns:
+    --------
+    out_values: ndarray,
+        ECG signal in the format of `fmt`
+    """
+    out_values = np.array(values)
+    lead_dim = np.where(np.array(out_values.shape) == 12)[0]
+    if not any([[0] == lead_dim or [1] == lead_dim]):
+        raise ValueError("not valid 12-lead ECG signal")
+    lead_dim = lead_dim[0]
+    if (lead_dim == 1 and fmt.lower() in ["lead_first", "channel_first"]) \
+        or (lead_dim == 0 and fmt.lower() in ["lead_last", "channel_last"]):
+        out_values = out_values.T
+        return out_values
+    return out_values

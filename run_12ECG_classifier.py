@@ -6,10 +6,12 @@ from io import StringIO
 
 import numpy as np
 import wfdb
+from scipy.signal import resample, resample_poly
 
 from get_12ECG_features import get_12ECG_features
 from models.special_detectors import special_detectors
-from utils.misc import rdheader
+from utils.misc import rdheader, ensure_lead_fmt
+from cfg import ModelCfg
 
 
 def run_12ECG_classifier(data, header_data, loaded_model):
@@ -17,19 +19,24 @@ def run_12ECG_classifier(data, header_data, loaded_model):
     """
     raise NotImplementedError
     header = rdheader(header_data)
-    # Use your classifier here to obtain a label and score for each class.
-    # model = loaded_model['model']
-    # imputer = loaded_model['imputer']
-    # classes = loaded_model['classes']
+    data = ensure_lead_fmt(data, fmt="lead_first")
+    baseline = np.array(header.baseline).reshape(data.shape[0], -1)
+    adc_gain = np.array(header.adc_gain).reshape(data.shape[0], -1)
+    data = (data - baseline) / adc_gain
 
-    # features=np.asarray(get_12ECG_features(data,header_data))
-    # feats_reshape = features.reshape(1, -1)
-    # feats_reshape = imputer.transform(feats_reshape)
-    # current_label = model.predict(feats_reshape)[0]
-    # current_label=current_label.astype(int)
-    # current_score = model.predict_proba(feats_reshape)
-    # current_score=np.asarray(current_score)
-    # current_score=current_score[:,0,1]
+    freq = header.fs
+    if freq != ModelCfg.freq:
+        data = resample_poly(data, ModelCfg.freq, freq)
+        freq = ModelCfg.freq
+
+    partial_conclusion = special_detectors(data, freq, sig_fmt="lead_first")
+
+    # normalize
+    normalized_data = (data - np.mean(data)) / np.std(data)
+    
+    # TODO: DL models to make decisions
+
+    # TODO: join results from DL models and special detectors
 
     return current_label, current_score, classes
 

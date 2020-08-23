@@ -427,13 +427,15 @@ class CINC2020Reader(object):
         #     data = self.load_resampled_data(rec)
         if backend.lower() == 'wfdb':
             rec_fp = os.path.join(self.db_dirs[tranche], rec)
+            # p_signal of 'lead_last' format
             data = np.asarray(wfdb.rdrecord(rec_fp).p_signal.T, dtype=np.float64)
         elif backend.lower() == 'scipy':
+            # loadmat of 'lead_first' format
             rec_fp = os.path.join(self.db_dirs[tranche], f'{rec}.{self.rec_ext}')
             data = loadmat(rec_fp)['val']
             header_info = self.load_ann(rec, raw=False)['df_leads']
-            baselines = header_info['baseline'].values.reshape(data.shape[0],-1)
-            adc_gain = header_info['adc_gain'].values.reshape(data.shape[0],-1)
+            baselines = header_info['baseline'].values.reshape(data.shape[0], -1)
+            adc_gain = header_info['adc_gain'].values.reshape(data.shape[0], -1)
             data = np.asarray(data-baselines, dtype=np.float64) / adc_gain
         else:
             raise ValueError(f"backend `{backend.lower()}` not supported for loading data")
