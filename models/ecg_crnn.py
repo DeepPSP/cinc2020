@@ -530,6 +530,7 @@ class ECG_CRNN(nn.Module):
             _, clf_input_size, _ = self.cnn.compute_output_shape(self.input_len, batch_size=None)
         elif rnn_choice == 'lstm':
             hidden_sizes = self.config.rnn.hidden_sizes + [self.n_classes]
+            print(f"lstm hidden sizes {self.config.rnn.hidden_sizes} ---> {hidden_sizes}")
             self.rnn = StackedLSTM(
                 input_size=rnn_input_size,
                 hidden_sizes=hidden_sizes,
