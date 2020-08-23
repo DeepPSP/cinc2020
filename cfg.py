@@ -160,7 +160,7 @@ TrainCfg.batch_size = 128
 # configs of optimizers and lr_schedulers
 TrainCfg.train_optimizer = "adam"  # "sgd"
 
-TrainCfg.learning_rate = 0.0001
+TrainCfg.learning_rate = 0.00001
 TrainCfg.lr = TrainCfg.learning_rate
 TrainCfg.lr_step_size = 50
 TrainCfg.lr_gamma = 0.1
