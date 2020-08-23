@@ -18,6 +18,7 @@ from typing import Union, Optional, Any, List, Dict, Callable, Sequence
 import numpy as np
 from scipy.signal import peak_prominences, peak_widths
 from biosppy.signals.tools import filter_signal
+from easydict import EasyDict as ED
 
 np.set_printoptions(precision=5, suppress=True)
 
@@ -48,7 +49,7 @@ __all__ = [
 
 
 def special_detectors(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", verbose:int=0) -> np.ndarray:
-    """ NOT finished, NOT checked,
+    """ finished, checked,
 
     Parameters:
     -----------
@@ -63,7 +64,7 @@ def special_detectors(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", 
     verbose: int, default 0,
         print verbosity
     """
-    preprocess = preprocess_multi_lead_signal(raw_sig, fs, sig_fmt, verbose=verbose)
+    preprocess = preprocess_multi_lead_signal(raw_sig, fs, sig_fmt, rpeak_fn='xqrs', verbose=verbose)
     filtered_sig = preprocess["filtered_ecg"]
     rpeaks = preprocess["rpeaks"]
     is_PR = pacing_rhythm_detector(raw_sig, fs, sig_fmt, verbose)
@@ -159,10 +160,10 @@ def pacing_rhythm_detector(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_fir
     
     # make decision using `potential_spikes`
     sig_duration_ms = samples2ms(sig_len, fs)
-    lead_has_enough_spikes = [sig_duration_ms / len(potential_spikes[l]) < FeatureCfg.pr_spike_inv_density_threshold for l in range(data_hp.shape[0])]
+    lead_has_enough_spikes = [False if len(potential_spikes[l]) ==0 else sig_duration_ms / len(potential_spikes[l]) < FeatureCfg.pr_spike_inv_density_threshold for l in range(data_hp.shape[0])]
     if verbose >= 1:
         print(f"lead_has_enough_spikes = {lead_has_enough_spikes}")
-        print(f"leads spikes density (units in ms) = {[sig_duration_ms / len(potential_spikes[l]) for l in range(data_hp.shape[0])]}")
+        print(f"leads spikes density (units in ms) = {[len(potential_spikes[l]) / sig_duration_ms for l in range(data_hp.shape[0])]}")
     is_PR = sum(lead_has_enough_spikes) >= FeatureCfg.pr_spike_leads_threshold
     return is_PR
 
@@ -209,6 +210,29 @@ def electrical_axis_detector(filtered_sig:np.ndarray, rpeaks:np.ndarray, fs:Real
     lead_I = s[Standard12Leads.index('I')]
     lead_II = s[Standard12Leads.index('II')]
     lead_aVF = s[Standard12Leads.index('aVF')]
+
+    if len(rpeaks==0):
+        # degenerate case
+        # voltage might be too low to detect rpeaks
+        lead_I_positive = np.max(lead_I) > np.abs(np.min(lead_I))
+        lead_II_positive = np.max(lead_II) > np.abs(np.min(lead_II))
+        lead_aVF_positive = np.max(lead_aVF) > np.abs(np.min(lead_aVF))
+        # decision making
+        if decision_method == '2-lead':
+            if lead_I_positive and not lead_aVF_positive:
+                axis = 'LAD'
+            elif not lead_I_positive and lead_aVF_positive:
+                axis = 'RAD'
+            else:  # if `rpeaks` is empty, all conditions are False
+                axis = 'normal'  # might also include extreme axis
+        elif decision_method == '3-lead':
+            if lead_I_positive and not lead_II_positive and not lead_aVF_positive:
+                axis = 'LAD'
+            elif not lead_I_positive and lead_aVF_positive:
+                axis = 'RAD'
+            else:
+                axis = 'normal'  # might also include extreme axis
+        return axis
 
     sig_len = s.shape[1]
     radius = ms2samples(FeatureCfg.axis_qrs_mask_radius, fs)

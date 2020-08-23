@@ -510,10 +510,10 @@ class ECG_CRNN(nn.Module):
             print(f"classes (totally {self.n_classes}) for prediction:{self.classes}")
         
         cnn_choice = self.config.cnn.name.lower()
-        if cnn_choice == "vgg16":
+        if "vgg16" in cnn_choice:
             self.cnn = VGG16(self.n_leads, **(self.config.cnn[cnn_choice]))
             rnn_input_size = self.config.cnn.vgg16.num_filters[-1]
-        elif cnn_choice == "resnet":
+        elif "resnet" in cnn_choice:
             self.cnn = ResNet(self.n_leads, **(self.config.cnn[cnn_choice]))
             rnn_input_size = \
                 2**len(self.config.cnn.resnet.num_blocks) * self.config.cnn.resnet.init_num_filters
@@ -587,7 +587,7 @@ class ECG_CRNN(nn.Module):
         pred = self.clf(x)
         return pred
 
-    def inference(self, input:Tensor, class_names:bool=False, bin_pred_thr:float=0.5) -> Union[Tensor, pd.DataFrame]:
+    def inference(self, input:Tensor, class_names:bool=False, bin_pred_thr:float=0.5) -> Union[np.ndarray, pd.DataFrame]:
         """
         """
         pred = self.forward(input)
@@ -602,4 +602,5 @@ class ECG_CRNN(nn.Module):
                 axis=1
             )
             return pred
+        pred = pred.cpu().detach().numpy()
         return pred, bin_pred
