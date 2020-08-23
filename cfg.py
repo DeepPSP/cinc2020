@@ -154,8 +154,8 @@ TrainCfg.stretch_compress = 1.0  # stretch or compress in time axis
 
 # configs of training epochs, batch, etc.
 TrainCfg.n_epochs = 300
-TrainCfg.batch_size = 32
-TrainCfg.max_batches = 500500
+TrainCfg.batch_size = 128
+# TrainCfg.max_batches = 500500
 
 # configs of optimizers and lr_schedulers
 TrainCfg.train_optimizer = "adam"  # "sgd"
