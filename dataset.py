@@ -12,6 +12,7 @@ from easydict import EasyDict as ED
 from tqdm import tqdm
 import torch
 from torch.utils.data.dataset import Dataset
+from sklearn.preprocessing import StandardScaler
 
 from cfg import TrainCfg
 from data_reader import CINC2020Reader as CR

@@ -107,3 +107,10 @@ if __name__ == "__main__":
         train_y.append(np.load(os.path.join(config.db_dir, f"train_y_tranches_{t}_ratio_{train_ratio}_siglen_{config.siglen}.npy")))
         test_x.append(np.load(os.path.join(config.db_dir, f"test_X_tranches_{t}_ratio_{test_ratio}_siglen_{config.siglen}.npy")))
         test_y.append(np.load(os.path.join(config.db_dir, f"test_y_tranches_{t}_ratio_{test_ratio}_siglen_{config.siglen}.npy")))
+
+    train_x = np.concatenate(train_x, axis=0)
+    train_y = np.concatenate(train_y, axis=0)
+    test_x = np.concatenate(test_x, axis=0)
+    test_y = np.concatenate(test_y, axis=0)
+
+    train(model, config, train_x, train_y, test_x, test_y)

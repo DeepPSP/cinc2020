@@ -2,17 +2,21 @@
 
 import os, sys
 import joblib
+from io import StringIO
 
 import numpy as np
+import wfdb
 
 from get_12ECG_features import get_12ECG_features
 from models.special_detectors import special_detectors
+from utils.misc import rdheader
 
 
 def run_12ECG_classifier(data, header_data, loaded_model):
     """
     """
     raise NotImplementedError
+    header = rdheader(header_data)
     # Use your classifier here to obtain a label and score for each class.
     # model = loaded_model['model']
     # imputer = loaded_model['imputer']
