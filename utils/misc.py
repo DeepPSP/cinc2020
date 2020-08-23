@@ -11,6 +11,8 @@ from numbers import Real, Number
 
 import numpy as np
 from scipy import interpolate
+from wfdb.io import _header
+from wfdb import Record, MultiRecord
 
 np.set_printoptions(precision=5, suppress=True)
 
@@ -29,6 +31,7 @@ __all__ = [
     "plot_single_lead",
     "init_logger",
     "get_date_str",
+    "rdheader",
 ]
 
 
@@ -515,3 +518,76 @@ def get_date_str(fmt:Optional[str]=None):
     now = datetime.datetime.now()
     date_str = now.strftime(fmt or '%m-%d_%H-%M')
     return date_str
+
+
+def rdheader(header_data:List[str]) -> Union[Record, MultiRecord]:
+    """
+    modified from `wfdb.rdheader`
+
+    Parameters
+    ----------
+    head_data: list of str,
+        lines of the .hea header file
+    """
+    # Read the header file. Separate comment and non-comment lines
+    header_lines, comment_lines = [], []
+    for line in header_data:
+        line = line.strip()
+        # Comment line
+        if line.startswith('#'):
+            comment_lines.append(line)
+        # Non-empty non-comment line = header line.
+        elif line:
+            # Look for a comment in the line
+            ci = line.find('#')
+            if ci > 0:
+                header_lines.append(line[:ci])
+                # comment on same line as header line
+                comment_lines.append(line[ci:])
+            else:
+                header_lines.append(line)
+
+    # Get fields from record line
+    record_fields = _header._parse_record_line(header_lines[0])
+
+    # Single segment header - Process signal specification lines
+    if record_fields['n_seg'] is None:
+        # Create a single-segment WFDB record object
+        record = Record()
+
+        # There are signals
+        if len(header_lines)>1:
+            # Read the fields from the signal lines
+            signal_fields = _header._parse_signal_lines(header_lines[1:])
+            # Set the object's signal fields
+            for field in signal_fields:
+                setattr(record, field, signal_fields[field])
+
+        # Set the object's record line fields
+        for field in record_fields:
+            if field == 'n_seg':
+                continue
+            setattr(record, field, record_fields[field])
+    # Multi segment header - Process segment specification lines
+    else:
+        # Create a multi-segment WFDB record object
+        record = MultiRecord()
+        # Read the fields from the segment lines
+        segment_fields = _header._read_segment_lines(header_lines[1:])
+        # Set the object's segment fields
+        for field in segment_fields:
+            setattr(record, field, segment_fields[field])
+        # Set the objects' record fields
+        for field in record_fields:
+            setattr(record, field, record_fields[field])
+
+        # Determine whether the record is fixed or variable
+        if record.seg_len[0] == 0:
+            record.layout = 'variable'
+        else:
+            record.layout = 'fixed'
+
+    # Set the comments field
+    record.comments = [line.strip(' \t#') for line in comment_lines]
+
+    return record
