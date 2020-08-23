@@ -529,22 +529,23 @@ class ECG_CRNN(nn.Module):
             self.rnn = None
             _, clf_input_size, _ = self.cnn.compute_output_shape(self.input_len, batch_size=None)
         elif rnn_choice == 'lstm':
-            # self.rnn = StackedLSTM(
-            #     input_size=rnn_input_size,
-            #     hidden_sizes=self.config.rnn.hidden_sizes,
-            #     bias=self.config.rnn.bias,
-            #     dropout=self.config.rnn.dropout,
-            #     bidirectional=self.config.rnn.bidirectional,
-            #     return_sequences=self.config.rnn.retseq,
-            # )
-            self.rnn = BidirectionalLSTM(
+            hidden_sizes = self.config.rnn.hidden_sizes + [self.n_classes]
+            self.rnn = StackedLSTM(
                 input_size=rnn_input_size,
-                hidden_size=self.config.rnn.hidden_sizes[-1],
-                num_layers=len(self.config.rnn.hidden_sizes),
+                hidden_sizes=hidden_sizes,
                 bias=self.config.rnn.bias,
                 dropout=self.config.rnn.dropout,
+                bidirectional=self.config.rnn.bidirectional,
                 return_sequences=self.config.rnn.retseq,
             )
+            # self.rnn = BidirectionalLSTM(
+            #     input_size=rnn_input_size,
+            #     hidden_size=self.config.rnn.hidden_sizes[-1],
+            #     num_layers=len(self.config.rnn.hidden_sizes),
+            #     bias=self.config.rnn.bias,
+            #     dropout=self.config.rnn.dropout,
+            #     return_sequences=self.config.rnn.retseq,
+            # )
             clf_input_size = self.rnn.compute_output_shape(None,None)[-1]
             # if self.config.rnn.bidirectional:
             #     clf_input_size = 2*self.config.rnn.hidden_sizes[-1]

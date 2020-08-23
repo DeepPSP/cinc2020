@@ -55,9 +55,9 @@ ECG_CRNN_CONFIG.rnn.name = 'lstm'
 if ECG_CRNN_CONFIG.rnn.name == 'lstm':
     ECG_CRNN_CONFIG.rnn.bias = True
     ECG_CRNN_CONFIG.rnn.dropout = 0.2
-    ECG_CRNN_CONFIG.rnn.bidirectional = True
+    ECG_CRNN_CONFIG.rnn.bidirectional = False
     ECG_CRNN_CONFIG.rnn.retseq = False
-    ECG_CRNN_CONFIG.rnn.hidden_sizes = [256, 128, 64]
+    ECG_CRNN_CONFIG.rnn.hidden_sizes = [256, 64]
 elif ECG_CRNN_CONFIG.rnn.name == 'attention':
     pass
 else:
