@@ -177,7 +177,7 @@ TrainCfg.loss = 'BCEWithLogitsWithClassWeightLoss'
 TrainCfg.eval_every = 20
 
 # configs of model selection
-TrainCfg.cnn_name = "resnet"  # 'vgg16', 'resnet_leadwise', 'vgg16_leadwise'
+TrainCfg.cnn_name = "resnet"  # 'vgg16', 'resnet_leadwise', 'vgg16_leadwise', 'cpsc', 'cpsc_leadwise'
 TrainCfg.rnn_name = 'lstm'  # 'none'
 
 # configs of inputs and outputs

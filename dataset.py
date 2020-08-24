@@ -36,6 +36,8 @@ class CINC2020(Dataset):
             configurations for the Dataset,
             ref. `cfg.TrainCfg`
             can be one of "A", "B", "AB", "E", "F", or None (or '', defaults to "ABEF")
+        training: bool, default True,
+            if True, the training set will be loaded, otherwise the test set
         """
         super().__init__()
         self.config = deepcopy(config)
@@ -83,14 +85,18 @@ class CINC2020(Dataset):
             rec, scored_only=True, fmt='a', normalize=True
         )
         labels = np.isin(self.all_classes, labels).astype(int)
+
         if self.__data_aug:
-            labels = (1-self.config.label_smoothing) * labels + self.config.label_smoothing/self.n_classes
+            # data augmentation for input
             if self.config.random_mask > 0:
                 mask_len = randint(0, self.config.random_mask)
                 mask_start = randint(0, self.siglen-mask_len-1)
                 values[...,mask_start:mask_start+mask_len] = 0
             if self.config.stretch_compress != 1:
                 pass  # not implemented
+            # data augmentation for labels
+            labels = (1 - self.config.label_smoothing) * labels \
+                + self.config.label_smoothing / self.n_classes
 
         return values, labels
 
@@ -206,7 +212,9 @@ class CINC2020(Dataset):
 
 
     def persistence(self) -> NoReturn:
-        """
+        """ finished, checked,
+
+        make the dataset persistent w.r.t. the tranches and the ratios
         """
         prev_state = self.__data_aug
         self.disable_data_augmentation()
