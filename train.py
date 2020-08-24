@@ -79,13 +79,16 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
     debug: bool, default False,
     """
     print(f"training configurations are as follows:\n{dict_to_str(config)}")
+
     train_dataset = CINC2020(config=config, training=True)
-    val_train_dataset = CINC2020(config=config, training=True)
-    val_train_dataset.disable_data_augmentation()
-    val_test_dataset = CINC2020(config=config, training=False)
+
+    if debug:
+        val_train_dataset = CINC2020(config=config, training=True)
+        val_train_dataset.disable_data_augmentation()
+    val_dataset = CINC2020(config=config, training=False)
 
     n_train = len(train_dataset)
-    n_val = len(val_test_dataset)
+    n_val = len(val_dataset)
 
     n_epochs = config.n_epochs
     batch_size = config.batch_size
@@ -101,17 +104,18 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
         collate_fn=collate_fn,
     )
 
-    val_train_loader = DataLoader(
-        dataset=val_train_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=8,
-        pin_memory=True,
-        drop_last=True,  # setting False would result in error
-        collate_fn=collate_fn,
-    )
-    val_test_loader = DataLoader(
-        dataset=val_test_dataset,
+    if debug:
+        val_train_loader = DataLoader(
+            dataset=val_train_dataset,
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=8,
+            pin_memory=True,
+            drop_last=True,  # setting False would result in error
+            collate_fn=collate_fn,
+        )
+    val_loader = DataLoader(
+        dataset=val_dataset,
         batch_size=batch_size,
         shuffle=True,
         num_workers=8,
@@ -238,29 +242,28 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
             writer.add_scalar('train/epoch_loss', epoch_loss, global_step)
 
             # eval for each epoch using `evaluate`
-            eval_train_res = evaluate(model, val_train_loader, config, device, debug)
-            eval_test_res = evaluate(model, val_test_loader, config, device, debug)
+            if debug:
+                eval_train_res = evaluate(model, val_train_loader, config, device, debug)
+                writer.add_scalar('train/auroc', eval_train_res[0], global_step)
+                writer.add_scalar('train/auprc', eval_train_res[1], global_step)
+                writer.add_scalar('train/accuracy', eval_train_res[2], global_step)
+                writer.add_scalar('train/f_measure', eval_train_res[3], global_step)
+                writer.add_scalar('train/f_beta_measure', eval_train_res[4], global_step)
+                writer.add_scalar('train/g_beta_measure', eval_train_res[5], global_step)
+                writer.add_scalar('train/challenge_metric', eval_train_res[6], global_step)
+
+            eval_res = evaluate(model, val_loader, config, device, debug)
             model.train()
+            writer.add_scalar('test/auroc', eval_res[0], global_step)
+            writer.add_scalar('test/auprc', eval_res[1], global_step)
+            writer.add_scalar('test/accuracy', eval_res[2], global_step)
+            writer.add_scalar('test/f_measure', eval_res[3], global_step)
+            writer.add_scalar('test/f_beta_measure', eval_res[4], global_step)
+            writer.add_scalar('test/g_beta_measure', eval_res[5], global_step)
+            writer.add_scalar('test/challenge_metric', eval_res[6], global_step)
 
-            writer.add_scalar('train/auroc', eval_train_res[0], global_step)
-            writer.add_scalar('train/auprc', eval_train_res[1], global_step)
-            writer.add_scalar('train/accuracy', eval_train_res[2], global_step)
-            writer.add_scalar('train/f_measure', eval_train_res[3], global_step)
-            writer.add_scalar('train/f_beta_measure', eval_train_res[4], global_step)
-            writer.add_scalar('train/g_beta_measure', eval_train_res[5], global_step)
-            writer.add_scalar('train/challenge_metric', eval_train_res[6], global_step)
-            writer.add_scalar('test/auroc', eval_test_res[0], global_step)
-            writer.add_scalar('test/auprc', eval_test_res[1], global_step)
-            writer.add_scalar('test/accuracy', eval_test_res[2], global_step)
-            writer.add_scalar('test/f_measure', eval_test_res[3], global_step)
-            writer.add_scalar('test/f_beta_measure', eval_test_res[4], global_step)
-            writer.add_scalar('test/g_beta_measure', eval_test_res[5], global_step)
-            writer.add_scalar('test/challenge_metric', eval_test_res[6], global_step)
-
-            msg = f'''
-                Train epoch_{epoch}:
-                --------------------
-                train/epoch_loss:        {epoch_loss}
+            if debug:
+                eval_train_msg = f"""
                 train/auroc:             {eval_train_res[0]}
                 train/auprc:             {eval_train_res[1]}
                 train/accuracy:          {eval_train_res[2]}
@@ -268,15 +271,22 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
                 train/f_beta_measure:    {eval_train_res[4]}
                 train/g_beta_measure:    {eval_train_res[5]}
                 train/challenge_metric:  {eval_train_res[6]}
-                test/auroc:              {eval_test_res[0]}
-                test/auprc:              {eval_test_res[1]}
-                test/accuracy:           {eval_test_res[2]}
-                test/f_measure:          {eval_test_res[3]}
-                test/f_beta_measure:     {eval_test_res[4]}
-                test/g_beta_measure:     {eval_test_res[5]}
-                test/challenge_metric:   {eval_test_res[6]}
+            """
+            else:
+                eval_train_msg = ""
+            msg = f"""
+                Train epoch_{epoch}:
+                --------------------
+                train/epoch_loss:        {epoch_loss}{eval_train_msg}
+                test/auroc:              {eval_res[0]}
+                test/auprc:              {eval_res[1]}
+                test/accuracy:           {eval_res[2]}
+                test/f_measure:          {eval_res[3]}
+                test/f_beta_measure:     {eval_res[4]}
+                test/g_beta_measure:     {eval_res[5]}
+                test/challenge_metric:   {eval_res[6]}
                 ---------------------------------
-            '''
+            """
             print(msg)  # in case no logger
             if logger:
                 logger.info(msg)
