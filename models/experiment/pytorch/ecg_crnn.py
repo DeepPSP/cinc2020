@@ -1007,22 +1007,28 @@ class CPSCCNN(nn.Sequential):
         """
         super().__init__()
         self.__in_channels = in_channels
-        self.config = deepcopy(config)
+        self.config = ED(deepcopy(config))
         if self.__DEBUG__:
             print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
 
+        num_filters = self.config.num_filters
         filter_lengths = self.config.filter_lengths
         subsample_lengths = self.config.subsample_lengths
         dropouts = self.config.dropouts
-        for blk_idx, (blk_fl, blk_sl, blk_dp) in enumerate(zip(filter_lengths, subsample_lengths, dropouts)):
+        blk_in = self.__in_channels
+        for blk_idx, (blk_nf, blk_fl, blk_sl, blk_dp) \
+            in enumerate(zip(num_filters, filter_lengths, subsample_lengths, dropouts)):
             self.add_module(
                 f"cpsc_block_{blk_idx+1}",
                 CPSCBlock(
+                    in_channels=blk_in,
+                    num_filters=blk_nf,
                     filter_lengths=blk_fl,
                     subsample_lengths=blk_sl,
                     dropout=blk_dp,
                 )
             )
+            blk_in = blk_nf[-1]
 
     def forward(self, input:Tensor) -> Tensor:
         """

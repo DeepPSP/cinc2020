@@ -470,6 +470,189 @@ class ResNet(nn.Sequential):
         return output_shape
 
 
+class CPSCBlock(nn.Sequential):
+    """
+    building block of the SOTA model of CPSC2018 challenge
+    """
+    __DEBUG__ = True
+    __name__ = "CPSCBlock"
+
+    def __init__(self, in_channels:int, num_filters:int, filter_lengths:Sequence[int], subsample_lengths:Sequence[int], dropout:Optional[float]=None, **config) -> NoReturn:
+        """
+
+        Parameters:
+        -----------
+        in_channels: int,
+            number of features (channels) of the input
+        num_filters:int,
+            number of filters for the convolutional layers
+        filter_lengths: sequence of int,
+            filter length (kernel size) of each convolutional layer
+        subsample_lengths: sequence of int,
+            subsample length (stride) of each convolutional layer
+        dropout: float, optional,
+            if positive, a `Dropout` layer will be introduced with this dropout probability
+        config: dict,
+            other hyper-parameters, including
+            filter length (kernel size), activation choices, weight initializer, etc.
+        """
+        super().__init__()
+        self.__num_convs = len(filter_lengths)
+        self.__in_channels = in_channels
+        self.__out_channels = num_filters
+        self.__dropout = dropout or 0.0
+        self.config = deepcopy(config)
+        if self.__DEBUG__:
+            print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
+
+        for idx, (kernel_size, stride) in enumerate(zip(filter_lengths[:-1], subsample_lengths[:-1])):
+            self.add_module(
+                f"baby_{idx+1}",
+                Conv_Bn_Activation(
+                    self.__in_channels, self.__out_channels,
+                    kernel_size=kernel_size,
+                    stride=stride,
+                    activation=self.config.activation,
+                    kw_activation=self.config.kw_activation,
+                    kernel_initializer=self.config.kernel_initializer,
+                    bn=self.config.batch_norm,
+                )
+            )
+        self.add_module(
+            "giant",
+            Conv_Bn_Activation(
+                self.__out_channels, self.__out_channels,
+                kernel_size=filter_lengths[-1],
+                stride=subsample_lengths[-1],
+                activation=self.config.activation,
+                kw_activation=self.config.kw_activation,
+                kernel_initializer=self.config.kernel_initializer,
+                bn=self.config.batch_norm,
+            )
+        )
+        if self.__dropout > 0:
+            self.add_module(
+                "dropout",
+                nn.Dropout(self.__dropout),
+            )
+
+    def forward(self, input:Tensor) -> Tensor:
+        """
+        keep up with `nn.Sequential.forward`
+        """
+        out = super().forward(input)
+        return out
+
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        seq_len: int,
+            length of the 1d sequence
+        batch_size: int, optional,
+            the batch size, can be None
+
+        Returns:
+        --------
+        output_shape: sequence,
+            the output shape of this block, given `seq_len` and `batch_size`
+        """
+        n_layers = 0
+        _seq_len = seq_len
+        for module in self:
+            if n_layers >= self.__num_convs:
+                break
+            output_shape = module.compute_output_shape(_seq_len, batch_size)
+            _, _, _seq_len = output_shape
+            n_layers += 1
+        return output_shape
+
+
+class CPSCCNN(nn.Sequential):
+    """
+    CNN part of the SOTA model of the CPSC2018 challenge
+    """
+    __DEBUG__ = True
+    __name__ = "CPSCCNN"
+
+    def __init__(self, in_channels:int, **config) -> NoReturn:
+        """ finished, checked,
+        
+        Parameters:
+        -----------
+        in_channels: int,
+            number of channels in the input
+        config: dict,
+            other hyper-parameters of the Module, ref. corresponding config file
+        """
+    def __init__(self, filter_lengths:Sequence[int], subsample_lengths:Sequence[int], dropouts:Optional[float]=None, **kwargs) -> NoReturn:
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        filter_lengths: sequence of int,
+            filter length (kernel size) of each convolutional layer in each `CPSCBlock`
+        subsample_lengths: sequence of int,
+            subsample length (stride) of each convolutional layer in each `CPSCBlock`
+        dropout: sequence of float, optional,
+            dropout for each `CPSCBlock`
+        kwargs: dict,
+        """
+        super().__init__()
+        self.__in_channels = in_channels
+        self.config = ED(deepcopy(config))
+        if self.__DEBUG__:
+            print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
+
+        num_filters = self.config.num_filters
+        filter_lengths = self.config.filter_lengths
+        subsample_lengths = self.config.subsample_lengths
+        dropouts = self.config.dropouts
+        blk_in = self.__in_channels
+        for blk_idx, (blk_nf, blk_fl, blk_sl, blk_dp) \
+            in enumerate(zip(num_filters, filter_lengths, subsample_lengths, dropouts)):
+            self.add_module(
+                f"cpsc_block_{blk_idx+1}",
+                CPSCBlock(
+                    in_channels=blk_in,
+                    num_filters=blk_nf,
+                    filter_lengths=blk_fl,
+                    subsample_lengths=blk_sl,
+                    dropout=blk_dp,
+                )
+            )
+            blk_in = blk_nf[-1]
+
+    def forward(self, input:Tensor) -> Tensor:
+        """
+        keep up with `nn.Sequential.forward`
+        """
+        out = super().forward(input)
+        return out
+    
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        seq_len: int,
+            length of the 1d sequence
+        batch_size: int, optional,
+            the batch size, can be None
+
+        Returns:
+        --------
+        output_shape: sequence,
+            the output shape of this block, given `seq_len` and `batch_size`
+        """
+        _seq_len = seq_len
+        for module in self:
+            output_shape = module.compute_output_shape(_seq_len, batch_size)
+            _, _, _seq_len = output_shape
+        return output_shape
+
+
 class ECG_CRNN(nn.Module):
     """
 

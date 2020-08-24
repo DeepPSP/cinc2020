@@ -127,6 +127,20 @@ cpsc_block_swish.activation = "swish"
 del cpsc_block_swish.kw_activation
 
 cpsc_2018 = ED()
+# cpsc_2018.num_filters = [  # original
+#     [12, 12, 12],
+#     [12, 12, 12],
+#     [12, 12, 12],
+#     [12, 12, 12],
+#     [12, 12, 12],
+# ]
+cpsc_2018.num_filters = [  # original
+    [32, 32, 32],
+    [64, 64, 64],
+    [128, 128, 128],
+    [256, 256, 256],
+    [512, 512, 512],
+]
 cpsc_2018.filter_lengths = [
     [3, 3, 24],
     [3, 3, 24],
