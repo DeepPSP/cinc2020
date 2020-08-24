@@ -64,7 +64,9 @@ def special_detectors(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", 
     verbose: int, default 0,
         print verbosity
     """
-    preprocess = preprocess_multi_lead_signal(raw_sig, fs, sig_fmt, rpeak_fn='xqrs', verbose=verbose)
+    preprocess = preprocess_multi_lead_signal(
+        raw_sig, fs, sig_fmt, rpeak_fn='xqrs', verbose=verbose
+    )
     filtered_sig = preprocess["filtered_ecg"]
     rpeaks = preprocess["rpeaks"]
     is_PR = pacing_rhythm_detector(raw_sig, fs, sig_fmt, verbose)
@@ -307,6 +309,11 @@ def brady_tachy_detector(rpeaks:np.ndarray, fs:Real, normal_rr_range:Optional[Se
     conclusion: str,
         one of "T" (tachycardia), "B" (bradycardia), "N" (normal)
     """
+    if len(rpeaks) <= 1:
+        # unable to make predictions
+        # TODO: try using spectral method
+        conclusion = "N"
+        return conclusion
     rr_intervals = np.diff(rpeaks)
     mean_rr = np.mean(rr_intervals)
     if verbose >= 1:

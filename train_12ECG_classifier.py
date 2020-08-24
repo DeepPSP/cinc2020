@@ -1,10 +1,14 @@
 #!/usr/bin/env python
 
 import numpy as np, os, sys, joblib
+
 from scipy.io import loadmat
 from sklearn.impute import SimpleImputer
 from sklearn.ensemble import RandomForestClassifier
+
 from get_12ECG_features import get_12ECG_features
+from utils import misc
+
 
 def train_12ECG_classifier(input_directory, output_directory):
     # Load data.
@@ -30,34 +34,7 @@ def train_12ECG_classifier(input_directory, output_directory):
     # Train model.
     print('Training model...')
 
-    features = list()
-    labels = list()
-
-    for i in range(num_files):
-        recording = recordings[i]
-        header = headers[i]
-
-        tmp = get_12ECG_features(recording, header)
-        features.append(tmp)
-
-        for l in header:
-            if l.startswith('#Dx:'):
-                labels_act = np.zeros(num_classes)
-                arrs = l.strip().split(' ')
-                for arr in arrs[1].split(','):
-                    class_index = classes.index(arr.rstrip()) # Only use first positive index
-                    labels_act[class_index] = 1
-        labels.append(labels_act)
-
-    features = np.array(features)
-    labels = np.array(labels)
-
-    # Replace NaN values with mean values
-    imputer=SimpleImputer().fit(features)
-    features=imputer.transform(features)
-
-    # Train the classifier
-    model = RandomForestClassifier().fit(features,labels)
+    # TODO: replace with functions in train.py
 
     # Save model.
     print('Saving model...')

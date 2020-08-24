@@ -71,6 +71,11 @@ def get_model(config:dict):
             )
         )
 
+    if cfg.tranches_for_training:
+        nb_classes = len(cfg.tranche_classes[cfg.tranches_for_training])
+    else:
+        nb_classes = len(cfg.classes)
+
     for units in [256, 64]:
         model.add(
             Bidirectional(LSTM(
@@ -79,16 +84,11 @@ def get_model(config:dict):
             ))
         )
     model.add(
-        LSTM(
-            32, kernel_initializer=Orthogonal(seed=SEED),
+        Bidirectional(LSTM(
+            nb_classes, kernel_initializer=Orthogonal(seed=SEED),
             return_sequences=False,
-        )
+        ))
     )
-
-    if cfg.tranches_for_training:
-        nb_classes = len(cfg.tranche_classes[cfg.tranches_for_training])
-    else:
-        nb_classes = len(cfg.classes)
 
     model.add(
         Dense(nb_classes, activation='sigmoid')

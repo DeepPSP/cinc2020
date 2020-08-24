@@ -12,7 +12,6 @@ from scipy.signal import resample, resample_poly
 from get_12ECG_features import get_12ECG_features
 from models.special_detectors import special_detectors
 from utils.misc import rdheader, ensure_lead_fmt
-from utils.scoring_aux_data import abbr_to_snomed_ct_code
 from cfg import ModelCfg, TrainCfg
 
 
@@ -55,10 +54,13 @@ def run_12ECG_classifier(data, header_data, loaded_model):
     current_score, _ = \
         loaded_model.inference(torch.from_numpy(normalized_data))
 
-    # TODO: join results from DL models and special detectors
+    # merge results from DL models with special detectors
+    # in a 'max pooling' manner
     current_score = np.max(np.array([partial_conclusion, scalar_pred]), axis=0)
 
     current_label = np.where(scalar_pred >= TrainCfg.bin_pred_thr)[0].astype(int).tolist()
+    if sum(current_label) == 0:
+        current_label[np.argmax(current_score)] = 1
 
     return current_label, current_score, classes
 

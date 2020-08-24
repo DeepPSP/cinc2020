@@ -1,4 +1,5 @@
 """
+basic building blocks, for 1d signal (time series)
 """
 import sys
 from math import floor
