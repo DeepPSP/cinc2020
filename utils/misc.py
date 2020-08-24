@@ -533,20 +533,20 @@ def rdheader(header_data:List[str]) -> Union[Record, MultiRecord]:
     # Read the header file. Separate comment and non-comment lines
     header_lines, comment_lines = [], []
     for line in header_data:
-        line = line.strip()
+        striped_line = line.strip()
         # Comment line
-        if line.startswith('#'):
-            comment_lines.append(line)
+        if striped_line.startswith('#'):
+            comment_lines.append(striped_line)
         # Non-empty non-comment line = header line.
-        elif line:
+        elif striped_line:
             # Look for a comment in the line
-            ci = line.find('#')
+            ci = striped_line.find('#')
             if ci > 0:
-                header_lines.append(line[:ci])
+                header_lines.append(striped_line[:ci])
                 # comment on same line as header line
-                comment_lines.append(line[ci:])
+                comment_lines.append(striped_line[ci:])
             else:
-                header_lines.append(line)
+                header_lines.append(striped_line)
 
     # Get fields from record line
     record_fields = _header._parse_record_line(header_lines[0])
