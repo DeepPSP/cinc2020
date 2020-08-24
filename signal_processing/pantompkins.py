@@ -2,6 +2,8 @@
 this file is borrowed and modified from wfdb 2.2.1, which is removed in wfdb 3.*.*
 
 source: https://pypi.org/project/wfdb/2.2.1/#files
+
+NOTE: there are still bugs in this file
 """
 import numpy as np
 import scipy.signal as scisig
@@ -109,8 +111,8 @@ class PanTompkins(object):
 
             # Determine whether the current index is a peak
             # for each signal
-            is_peak_F = ispeak(sig_F, self.siglen, i, 20)
-            is_peak_I = ispeak(sig_I, self.siglen, i, 20)
+            is_peak_F = ispeak_radius(sig_F, self.siglen, i, 20)
+            is_peak_I = ispeak_radius(sig_I, self.siglen, i, 20)
 
             # Keep track of common peaks that have not been classified as
             # signal peaks for future backsearch
@@ -225,7 +227,7 @@ class PanTompkins(object):
         if plotsteps:
             if 'plt' not in dir():
                 import matplotlib.pyplot as plt
-            plt.plot(sig_deriv)
+            plt.plot(sig_F_deriv)
             plt.plot(self.sig_I)
             plt.legend(['deriv', 'mwi'])
             plt.show()
@@ -500,7 +502,7 @@ def pantompkins(sig, fs):
 # Determine whether the signal contains a peak at index ind.
 # Check if it is the max value amoung samples ind-radius to ind+radius
 def ispeak_radius(sig, siglen, ind, radius):
-    if sig[ind] == max(sig[max(0,i-radius):min(siglen, i+radius)]):
+    if sig[ind] == max(sig[max(0,ind-radius):min(siglen, ind+radius)]):
         return True
     else:
         return False

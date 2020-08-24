@@ -29,6 +29,7 @@ from utils.misc import (
 from utils.scoring_aux_data import (
     dx_mapping_all, dx_mapping_scored, dx_mapping_unscored,
     normalize_class, abbr_to_snomed_ct_code,
+    df_weights_abbr,
 )
 from utils import ecg_arrhythmia_knowledge as EAK
 from cfg import PlotCfg
@@ -40,7 +41,7 @@ __all__ = [
 
 
 class CINC2020Reader(object):
-    """ NOT Finished,
+    """ finished, under improving,
 
     Classification of 12-lead ECGs: the PhysioNet/Computing in Cardiology Challenge 2020
 
