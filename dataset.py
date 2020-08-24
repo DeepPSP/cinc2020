@@ -214,7 +214,7 @@ class CINC2020(Dataset):
     def persistence(self) -> NoReturn:
         """ finished, checked,
 
-        make the dataset persistent w.r.t. the tranches and the ratios
+        make the dataset persistent w.r.t. the tranches and the ratios in `self.config`
         """
         prev_state = self.__data_aug
         self.disable_data_augmentation()

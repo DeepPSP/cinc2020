@@ -792,7 +792,7 @@ class ATI_CNN(nn.Module):
     __DEBUG__ = True
     __name__ = "ATI_CNN"
 
-    def __init__(self, classes:list, input_len:int, config) -> NoReturn:
+    def __init__(self, classes:list, input_len:int, config:dict) -> NoReturn:
         """ finished, checked,
 
         Parameters:
