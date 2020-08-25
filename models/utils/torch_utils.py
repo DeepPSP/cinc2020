@@ -3,6 +3,7 @@ basic building blocks, for 1d signal (time series)
 """
 import sys
 from math import floor
+from itertools import repeat
 from typing import Union, Sequence, Tuple, Optional, NoReturn
 
 from packaging import version
@@ -408,7 +409,7 @@ class DownSample(nn.Sequential):
                 input=input,
                 scale_factor=1/self.__down_scale,
                 mode=mode,
-                # align_corners=True,
+                # align_corners=align_corners,
             )
         return output
 
@@ -549,7 +550,7 @@ class StackedLSTM(nn.Sequential):
         super().__init__()
         self.__hidden_sizes = hidden_sizes
         self.num_lstm_layers = len(hidden_sizes)
-        l_bias = bias if isinstance(bias, Sequence) else [bias for _ in range(self.num_lstm_layers)]
+        l_bias = bias if isinstance(bias, Sequence) else list(repeat(bias, self.num_lstm_layers))
         self.__dropout = dropout
         self.bidirectional = bidirectional
         self.batch_first = False
@@ -863,10 +864,11 @@ class ZeroPadding(nn.Module):
         return output_shape
 
 
-def compute_output_shape(layer_type:str, input_shape:Sequence[Union[int, type(None)]], num_filters:Optional[int]=None, kernel_size:Union[Sequence[int], int]=1, stride:Union[Sequence[int], int]=1, pad:Union[Sequence[int], int]=0, dilation:Union[Sequence[int], int]=1, channel_last:bool=False) -> Tuple[Union[int, type(None)]]:
+# utils for computing output shape
+def compute_output_shape(layer_type:str, input_shape:Sequence[Union[int, type(None)]], num_filters:Optional[int]=None, kernel_size:Union[Sequence[int], int]=1, stride:Union[Sequence[int], int]=1, padding:Union[Sequence[int], int]=0, output_padding:Union[Sequence[int], int]=0, dilation:Union[Sequence[int], int]=1, channel_last:bool=False) -> Tuple[Union[int, type(None)]]:
     """ finished, checked,
 
-    compute the output shape of a convolution/maxpool/avgpool layer
+    compute the output shape of a (transpose) convolution/maxpool/avgpool layer
     
     Parameters:
     -----------
@@ -881,8 +883,11 @@ def compute_output_shape(layer_type:str, input_shape:Sequence[Union[int, type(No
         kernel size (filter size) of the layer, should be compatible with `input_shape`
     stride: int, or sequence of int, default 1,
         stride (down-sampling length) of the layer, should be compatible with `input_shape`
-    pad: int, or sequence of int, default 0,
-        pad length(s) of the layer, should be compatible with `input_shape`
+    padding: int, or sequence of int, default 0,
+        padding length(s) of the layer, should be compatible with `input_shape`
+    out_padding: int, or sequence of int, default 0,
+        additional size added to one side of the output shape,
+        used only for transpose convolution
     dilation: int, or sequence of int, default 1,
         dilation of the layer, should be compatible with `input_shape`
     channel_last: bool, default False,
@@ -900,6 +905,7 @@ def compute_output_shape(layer_type:str, input_shape:Sequence[Union[int, type(No
     """
     __TYPES__ = [
         'conv', 'convolution',
+        'deconv', 'deconvolution', 'transposeconv', 'transposeconvolution',
         'maxpool', 'maxpooling',
         'avgpool', 'avgpooling', 'averagepool', 'averagepooling',
     ]
@@ -914,7 +920,7 @@ def compute_output_shape(layer_type:str, input_shape:Sequence[Union[int, type(No
     elif lt in ['avgpool', 'avgpooling', 'averagepool', 'averagepooling',]:
         minus_term = lambda d, k: k
         out_channels = input_shape[-1] if channel_last else input_shape[1]
-    dim = len(input_shape)-2
+    dim = len(input_shape) - 2
     assert dim > 0, "input_shape should be a sequence of length at least 3, to be a valid (with batch and channel) shape of a non-degenerate Tensor"
 
     none_dim_msg = "only batch and channel dimension can be `None`"
@@ -924,28 +930,35 @@ def compute_output_shape(layer_type:str, input_shape:Sequence[Union[int, type(No
         assert all([n is not None for n in input_shape[2:]]), none_dim_msg
 
     if isinstance(kernel_size, int):
-        _kernel_size = [kernel_size for _ in range(dim)]
+        _kernel_size = list(repeat(kernel_size dim))
     elif len(kernel_size) == dim:
         _kernel_size = kernel_size
     else:
         raise ValueError(f"input has {dim} dimensions, while kernel has {len(kernel_size)} dimensions, both not including the channel dimension")
     
     if isinstance(stride, int):
-        _stride = [stride for _ in range(dim)]
+        _stride = list(repeat(stride, dim))
     elif len(stride) == dim:
         _stride = stride
     else:
         raise ValueError(f"input has {dim} dimensions, while kernel has {len(stride)} dimensions, both not including the channel dimension")
 
-    if isinstance(pad, int):
-        _pad = [pad for _ in range(dim)]
-    elif len(pad) == dim:
-        _pad = pad
+    if isinstance(padding, int):
+        _padding = list(repeat(padding, dim))
+    elif len(padding) == dim:
+        _padding = padding
     else:
-        raise ValueError(f"input has {dim} dimensions, while kernel has {len(pad)} dimensions, both not including the channel dimension")
+        raise ValueError(f"input has {dim} dimensions, while kernel has {len(padding)} dimensions, both not including the channel dimension")
+
+    if isinstance(output_padding, int):
+        _output_padding = list(repeat(output_padding, dim))
+    elif len(output_padding) == dim:
+        _output_padding = output_padding
+    else:
+        raise ValueError(f"input has {dim} dimensions, while kernel has {len(output_padding)} dimensions, both not including the channel dimension")
 
     if isinstance(dilation, int):
-        _dilation = [dilation for _ in range(dim)]
+        _dilation = list(repeat(dilation, dim))
     elif len(dilation) == dim:
         _dilation = dilation
     else:
@@ -955,11 +968,19 @@ def compute_output_shape(layer_type:str, input_shape:Sequence[Union[int, type(No
         _input_shape = input_shape[1:-1]
     else:
         _input_shape = input_shape[2:]
-    output_shape = [
-        floor( ( ( i + 2*p - minus_term(d, k) ) / s ) + 1 ) \
-            for i, p, d, k, s in zip(_input_shape, _pad, _dilation, _kernel_size, _stride)
-    ]
-    if lt in 
+    
+    if lt in ['deconv', 'deconvolution', 'transposeconv', 'transposeconvolution',]:
+        output_shape = [
+            (i-1) * s - 2 * p + d * (k-1) + o + 1 \
+                for i, p, o, d, k, s in \
+                    zip(_input_shape, _padding, _output_padding, _dilation, _kernel_size, _stride)
+        ]    
+    else:
+        output_shape = [
+            floor( ( ( i + 2*p - minus_term(d, k) ) / s ) + 1 ) \
+                for i, p, d, k, s in \
+                    zip(_input_shape, _padding, _dilation, _kernel_size, _stride)
+        ]
     if channel_last:
         output_shape = tuple([input_shape[0]] + output_shape + [out_channels])
     else:
@@ -968,7 +989,7 @@ def compute_output_shape(layer_type:str, input_shape:Sequence[Union[int, type(No
     return output_shape
 
 
-def compute_conv_output_shape(input_shape:Sequence[Union[int, type(None)]], num_filters:Optional[int]=None, kernel_size:Union[Sequence[int], int]=1, stride:Union[Sequence[int], int]=1, pad:Union[Sequence[int], int]=0, dilation:Union[Sequence[int], int]=1, channel_last:bool=False) -> Tuple[Union[int, type(None)]]:
+def compute_conv_output_shape(input_shape:Sequence[Union[int, type(None)]], num_filters:Optional[int]=None, kernel_size:Union[Sequence[int], int]=1, stride:Union[Sequence[int], int]=1, padding:Union[Sequence[int], int]=0, dilation:Union[Sequence[int], int]=1, channel_last:bool=False) -> Tuple[Union[int, type(None)]]:
     """ finished, cheched,
 
     compute the output shape of a convolution/maxpool/avgpool layer
@@ -982,8 +1003,8 @@ def compute_conv_output_shape(input_shape:Sequence[Union[int, type(None)]], num_
         kernel size (filter size) of the layer, should be compatible with `input_shape`
     stride: int, or sequence of int, default 1,
         stride (down-sampling length) of the layer, should be compatible with `input_shape`
-    pad: int, or sequence of int, default 0,
-        pad length(s) of the layer, should be compatible with `input_shape`
+    padding: int, or sequence of int, default 0,
+        padding length(s) of the layer, should be compatible with `input_shape`
     dilation: int, or sequence of int, default 1,
         dilation of the layer, should be compatible with `input_shape`
     channel_last: bool, default False,
@@ -997,12 +1018,13 @@ def compute_conv_output_shape(input_shape:Sequence[Union[int, type(None)]], num_
     """
     output_shape = compute_output_shape(
         'conv',
-        input_shape, num_filters, kernel_size, stride, pad, dilation, channel_last
+        input_shape, num_filters, kernel_size, stride, padding, 0, dilation,
+        channel_last,
     )
     return output_shape
 
 
-def compute_maxpool_output_shape(input_shape:Sequence[Union[int, type(None)]], kernel_size:Union[Sequence[int], int]=1, stride:Union[Sequence[int], int]=1, pad:Union[Sequence[int], int]=0, dilation:Union[Sequence[int], int]=1, channel_last:bool=False) -> Tuple[Union[int, type(None)]]:
+def compute_maxpool_output_shape(input_shape:Sequence[Union[int, type(None)]], kernel_size:Union[Sequence[int], int]=1, stride:Union[Sequence[int], int]=1, padding:Union[Sequence[int], int]=0, dilation:Union[Sequence[int], int]=1, channel_last:bool=False) -> Tuple[Union[int, type(None)]]:
     """ finished, cheched,
 
     compute the output shape of a maxpool layer
@@ -1014,8 +1036,8 @@ def compute_maxpool_output_shape(input_shape:Sequence[Union[int, type(None)]], k
         kernel size (filter size) of the layer, should be compatible with `input_shape`
     stride: int, or sequence of int, default 1,
         stride (down-sampling length) of the layer, should be compatible with `input_shape`
-    pad: int, or sequence of int, default 0,
-        pad length(s) of the layer, should be compatible with `input_shape`
+    padding: int, or sequence of int, default 0,
+        padding length(s) of the layer, should be compatible with `input_shape`
     dilation: int, or sequence of int, default 1,
         dilation of the layer, should be compatible with `input_shape`
     channel_last: bool, default False,
@@ -1029,12 +1051,13 @@ def compute_maxpool_output_shape(input_shape:Sequence[Union[int, type(None)]], k
     """
     output_shape = compute_output_shape(
         'maxpool',
-        input_shape, 1, kernel_size, stride, pad, dilation, channel_last
+        input_shape, 1, kernel_size, stride, padding, 0, dilation,
+        channel_last,
     )
     return output_shape
 
 
-def compute_avgpool_output_shape(input_shape:Sequence[Union[int, type(None)]], kernel_size:Union[Sequence[int], int]=1, stride:Union[Sequence[int], int]=1, pad:Union[Sequence[int], int]=0, channel_last:bool=False) -> Tuple[Union[int, type(None)]]:
+def compute_avgpool_output_shape(input_shape:Sequence[Union[int, type(None)]], kernel_size:Union[Sequence[int], int]=1, stride:Union[Sequence[int], int]=1, padding:Union[Sequence[int], int]=0, channel_last:bool=False) -> Tuple[Union[int, type(None)]]:
     """ finished, cheched,
 
     compute the output shape of a avgpool layer
@@ -1046,8 +1069,8 @@ def compute_avgpool_output_shape(input_shape:Sequence[Union[int, type(None)]], k
         kernel size (filter size) of the layer, should be compatible with `input_shape`
     stride: int, or sequence of int, default 1,
         stride (down-sampling length) of the layer, should be compatible with `input_shape`
-    pad: int, or sequence of int, default 0,
-        pad length(s) of the layer, should be compatible with `input_shape`
+    padding: int, or sequence of int, default 0,
+        padding length(s) of the layer, should be compatible with `input_shape`
     channel_last: bool, default False,
         channel dimension is the last dimension,
         or the second dimension (the first is the batch dimension by convention)
@@ -1059,11 +1082,53 @@ def compute_avgpool_output_shape(input_shape:Sequence[Union[int, type(None)]], k
     """
     output_shape = compute_output_shape(
         'avgpool',
-        input_shape, 1, kernel_size, stride, pad, 1, channel_last
+        input_shape, 1, kernel_size, stride, padding, 0, 1,
+        channel_last,
+    )
+    return output_shape
+
+
+def compute_deconv_output_shape(input_shape:Sequence[Union[int, type(None)]], num_filters:Optional[int]=None, kernel_size:Union[Sequence[int], int]=1, stride:Union[Sequence[int], int]=1, padding:Union[Sequence[int], int]=0, output_padding:Union[Sequence[int], int]=0, dilation:Union[Sequence[int], int]=1, channel_last:bool=False) -> Tuple[Union[int, type(None)]]:
+    """ finished, checked,
+
+    compute the output shape of a transpose convolution layer
+    
+    Parameters:
+    -----------
+    input_shape: sequence of int or None,
+        shape of an input Tensor,
+        the first dimension is the batch dimension, which is allowed to be `None`
+    num_filters: int, optional,
+        number of filters, also the channel dimension
+    kernel_size: int, or sequence of int, default 1,
+        kernel size (filter size) of the layer, should be compatible with `input_shape`
+    stride: int, or sequence of int, default 1,
+        stride (down-sampling length) of the layer, should be compatible with `input_shape`
+    padding: int, or sequence of int, default 0,
+        padding length(s) of the layer, should be compatible with `input_shape`
+    out_padding: int, or sequence of int, default 0,
+        additional size added to one side of the output shape,
+        used only for transpose convolution
+    dilation: int, or sequence of int, default 1,
+        dilation of the layer, should be compatible with `input_shape`
+    channel_last: bool, default False,
+        channel dimension is the last dimension,
+        or the second dimension (the first is the batch dimension by convention)
+
+    Returns:
+    --------
+    output_shape: tuple,
+        shape of the output Tensor
+    """
+    output_shape = compute_output_shape(
+        'deconv',
+        input_shape, num_filters, kernel_size, stride, padding, output_padding, dilation,
+        channel_last,
     )
     return output_shape
     
 
+# custom losses
 def weighted_binary_cross_entropy(sigmoid_x:Tensor, targets:Tensor, pos_weight:Tensor, weight:Optional[Tensor]=None, size_average:bool=True, reduce:bool=True) -> Tensor:
     """ NOT checked,
 

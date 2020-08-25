@@ -240,7 +240,6 @@ class UpDoubleConv(nn.Module):
         self.__mode == mode.lower()
         assert self.__mode in self.__MODES__
 
-        raise NotImplementedError
         # the following has to be checked
         # if bilinear, use the normal convolutions to reduce the number of channels
         if self.__mode == 'conv':
@@ -249,7 +248,7 @@ class UpDoubleConv(nn.Module):
         else:
             self.up = nn.Upsample(
                 scale_factor=self.__up_scale,
-                mode=mode, align_corners=True,
+                mode=mode,
             )
             self.conv = DoubleConv(
                 in_channels=self.__in_channels,
@@ -266,19 +265,18 @@ class UpDoubleConv(nn.Module):
         -----------
         to write
         """
-        raise NotImplementedError
-        # x1 = self.up(x1)
-        # # input is CHW
-        # diffY = x2.size()[2] - x1.size()[2]
-        # diffX = x2.size()[3] - x1.size()[3]
+        x1 = self.up(x1)
+        # input is CHW
+        diffY = x2.size()[2] - x1.size()[2]
+        diffX = x2.size()[3] - x1.size()[3]
 
-        # x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2,
-        #                 diffY // 2, diffY - diffY // 2])
-        # # if you have padding issues, see
-        # # https://github.com/HaiyongJiang/U-Net-Pytorch-Unstructured-Buggy/commit/0e854509c2cea854e247a9c615f175f76fbb2e3a
-        # # https://github.com/xiaopeng-liao/Pytorch-UNet/commit/8ebac70e633bac59fc22bb5195e513d5832fb3bd
-        # x = torch.cat([x2, x1], dim=1)
-        # return self.conv(x)
+        x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2,
+                        diffY // 2, diffY - diffY // 2])
+        # if you have padding issues, see
+        # https://github.com/HaiyongJiang/U-Net-Pytorch-Unstructured-Buggy/commit/0e854509c2cea854e247a9c615f175f76fbb2e3a
+        # https://github.com/xiaopeng-liao/Pytorch-UNet/commit/8ebac70e633bac59fc22bb5195e513d5832fb3bd
+        x = torch.cat([x2, x1], dim=1)
+        return self.conv(x)
 
     def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
         """ NOT finished,
