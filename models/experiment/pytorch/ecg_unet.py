@@ -12,6 +12,7 @@ import torch
 from torch import nn
 from torch import Tensor
 import torch.nn.functional as F
+from easydict import EasyDict as ED
 
 from models.utils.torch_utils import (
     Conv_Bn_Activation,
@@ -65,6 +66,7 @@ class DoubleConv(nn.Sequential):
                 in_channels=self.__in_channels,
                 out_channels=self.__mid_channels,
                 kernel_size=self.__kernel_size,
+                stride=1,
                 bn=True,
                 activation=activation,
             ),
@@ -75,6 +77,7 @@ class DoubleConv(nn.Sequential):
                 in_channels=self.__mid_channels,
                 out_channels=self.__out_channels,
                 kernel_size=self.__kernel_size,
+                stride=1,
                 bn=True,
                 activation=activation,
             )
@@ -306,6 +309,8 @@ class ECG_UNET(nn.Module):
         """
         """
         super().__init__()
+        self.__in_channels = in_channels
+        self.config = ED(deepcopy(config))
         raise NotImplementedError
 
     def forward(self, input:Tensor) -> Tensor:

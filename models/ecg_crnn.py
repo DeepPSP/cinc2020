@@ -462,7 +462,7 @@ class ResNet(nn.Sequential):
                     num_filters=self.config.init_filter_length,
                     kernel_size=self.config.init_pool_size,
                     stride=self.config.init_pool_stride,
-                    pad=(self.config.init_pool_size-1)//2,
+                    padding=(self.config.init_pool_size-1)//2,
                 )
             else:
                 output_shape = module.compute_output_shape(_seq_len, batch_size)

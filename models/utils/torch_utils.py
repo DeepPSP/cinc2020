@@ -310,7 +310,7 @@ class Conv_Bn_Activation(nn.Sequential):
             kernel_size=self.__kernel_size,
             stride=self.__stride,
             dilation=self.__dilation,
-            pad=self.__padding,
+            padding=self.__padding,
             channel_last=False,
         )
         return output_shape
@@ -432,7 +432,7 @@ class DownSample(nn.Sequential):
             out_seq_len = compute_conv_output_shape(
                 input_shape=(batch_size, self.__in_channels, seq_len),
                 stride=self.__down_scale,
-                pad=self.__padding,
+                padding=self.__padding,
             )[-1]
         elif self.__method == 'max':
             out_seq_len = compute_maxpool_output_shape(
@@ -920,6 +920,8 @@ def compute_output_shape(layer_type:str, input_shape:Sequence[Union[int, type(No
     elif lt in ['avgpool', 'avgpooling', 'averagepool', 'averagepooling',]:
         minus_term = lambda d, k: k
         out_channels = input_shape[-1] if channel_last else input_shape[1]
+    elif lt in ['deconv', 'deconvolution', 'transposeconv', 'transposeconvolution',]:
+        out_channels = num_filters
     dim = len(input_shape) - 2
     assert dim > 0, "input_shape should be a sequence of length at least 3, to be a valid (with batch and channel) shape of a non-degenerate Tensor"
 
@@ -930,7 +932,7 @@ def compute_output_shape(layer_type:str, input_shape:Sequence[Union[int, type(No
         assert all([n is not None for n in input_shape[2:]]), none_dim_msg
 
     if isinstance(kernel_size, int):
-        _kernel_size = list(repeat(kernel_size dim))
+        _kernel_size = list(repeat(kernel_size, dim))
     elif len(kernel_size) == dim:
         _kernel_size = kernel_size
     else:
