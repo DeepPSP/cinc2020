@@ -22,6 +22,7 @@ __all__ = [
 ]
 
 
+@DeprecationWarning
 ATI_CNN_CONFIG = ED()
 
 # cnn part

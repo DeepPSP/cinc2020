@@ -312,7 +312,7 @@ class ResNetStanfordBlock(nn.Module):
                     in_channels=self.__in_channels,
                     out_channels=self.__out_channels,
                     bn=False,
-                    method=self.config.subsample_method,
+                    mode=self.config.subsample_mode,
                 )
             if self.config.increase_channels_method.lower() == 'zero_padding':
                 short_cut = nn.Sequential(
@@ -321,7 +321,7 @@ class ResNetStanfordBlock(nn.Module):
                         in_channels=self.__in_channels,
                         out_channels=self.__in_channels,
                         bn=False,
-                        method=self.config.subsample_method,
+                        mode=self.config.subsample_mode,
                     ),
                     ZeroPadding(self.__in_channels, self.__out_channels),
                 )
@@ -551,17 +551,17 @@ class ResNetBasicBlock(nn.Module):
                     out_channels=self.__out_channels,
                     groups=self.__groups,
                     bn=True,
-                    method=self.config.subsample_method,
+                    mode=self.config.subsample_mode,
                 )
             if self.config.increase_channels_method.lower() == 'zero_padding':
-                bn = False if self.config.subsample_method.lower() != 'conv' else True
+                bn = False if self.config.subsample_mode.lower() != 'conv' else True
                 short_cut = nn.Sequential(
                     DownSample(
                         down_scale=self.__down_scale,
                         in_channels=self.__in_channels,
                         out_channels=self.__in_channels,
                         bn=bn,
-                        method=self.config.subsample_method,
+                        mode=self.config.subsample_mode,
                     ),
                     ZeroPadding(self.__in_channels, self.__out_channels),
                 )

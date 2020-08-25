@@ -25,7 +25,9 @@ __all__ = [
     "AttentionWithContext",
     "ZeroPadding",
     "WeightedBCELoss", "BCEWithLogitsWithClassWeightLoss",
+    "compute_output_shape",
     "compute_conv_output_shape",
+    "compute_maxpool_output_shape", "compute_avgpool_output_shape"
 ]
 
 
@@ -191,7 +193,7 @@ class Conv_Bn_Activation(nn.Sequential):
     """
     __name__ = "Conv_Bn_Activation"
 
-    def __init__(self, in_channels:int, out_channels:int, kernel_size:int, stride:int, dilation:int=1, groups:int=1, bn:Union[bool,nn.Module]=True, activation:Optional[Union[str,nn.Module]]=None, kernel_initializer:Optional[Union[str,callable]]=None, bias:bool=True, **kwargs) -> NoReturn:
+    def __init__(self, in_channels:int, out_channels:int, kernel_size:int, stride:int, padding:Optional[int]=None, dilation:int=1, groups:int=1, bn:Union[bool,nn.Module]=True, activation:Optional[Union[str,nn.Module]]=None, kernel_initializer:Optional[Union[str,callable]]=None, bias:bool=True, **kwargs) -> NoReturn:
         """ finished, checked,
 
         Parameters:
@@ -204,6 +206,8 @@ class Conv_Bn_Activation(nn.Sequential):
             size (length) of the convolving kernel
         stride: int,
             stride (subsample length) of the convolution
+        padding: int, optional,
+            zero-padding added to both sides of the input
         dilation: int, default 1,
             spacing between the kernel points
         groups: int, default 1,
@@ -223,20 +227,24 @@ class Conv_Bn_Activation(nn.Sequential):
             if True, adds a learnable bias to the output
         """
         super().__init__()
-        padding = (kernel_size - 1) // 2  # 'same' padding when stride = 1
+        if padding is None:
+            self.__padding = (kernel_size - 1) // 2  # 'same' padding when stride = 1
+        elif isinstance(padding, int):
+            self.__padding = padding
         self.__in_channels = in_channels
         self.__out_channels = out_channels
         self.__kernel_size = kernel_size
         self.__stride = stride
         self.__dilation = dilation
         self.__groups = groups
-        self.__padding = padding
         self.__bias = bias
         self.__kw_activation = kwargs.get("kw_activation", {})
         self.__kw_initializer = kwargs.get("kw_initializer", {})
 
         conv_layer = nn.Conv1d(
-            in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias=bias,
+            self.__in_channels, self.__out_channels,
+            self.__kernel_size, self.__stride, self.__padding, self.__dilation, self.__groups,
+            bias=self.__bias,
         )
 
         if kernel_initializer:
@@ -311,9 +319,9 @@ class DownSample(nn.Sequential):
     """
     """
     __name__ = "DownSample"
-    __METHODS__ = ['max', 'avg', 'conv',]
+    __MODES__ = ['max', 'avg', 'conv', 'nearest', 'area', 'linear',]
 
-    def __init__(self, down_scale:int, in_channels:int, out_channels:Optional[int]=None, groups:int=1, padding:int=0, bn:Union[bool,nn.Module]=True, method:str='max') -> NoReturn:
+    def __init__(self, down_scale:int, in_channels:int, out_channels:Optional[int]=None, groups:int=1, padding:int=0, bn:Union[bool,nn.Module]=True, mode:str='max') -> NoReturn:
         """ finished, checked,
 
         Parameters:
@@ -331,10 +339,10 @@ class DownSample(nn.Sequential):
         bn: bool or Module,
             batch normalization,
             the Module itself or (if is bool) whether or not to use `nn.BatchNorm1d`
-        method: str, default 'max',
+        mode: str, default 'max',
         """
         super().__init__()
-        self.__method = method.lower()
+        self.__mode = mode.lower()
         assert self.__method in self.__METHODS__
         self.__down_scale = down_scale
         self.__in_channels = in_channels
@@ -372,10 +380,13 @@ class DownSample(nn.Sequential):
                 bias=False,
                 stride=self.__down_scale,
             )
-        self.add_module(
-            "down_sample",
-            down_layer,
-        )
+        else:
+            down_layer = None
+        if down_layer:
+            self.add_module(
+                "down_sample",
+                down_layer,
+            )
 
         if bn:
             bn_layer = nn.BatchNorm1d(self.__out_channels) if isinstance(bn, bool) \
@@ -389,7 +400,16 @@ class DownSample(nn.Sequential):
         """
         use the forward method of `nn.Sequential`
         """
-        output = super().forward(input)
+        if self.__method in ['max', 'avg', 'conv',]:
+            output = super().forward(input)
+        else:
+            # align_corners = False if mode in ['nearest', 'area'] else True
+            output = F.interpolate(
+                input=input,
+                scale_factor=1/self.__down_scale,
+                mode=mode,
+                # align_corners=True,
+            )
         return output
 
     def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
@@ -411,11 +431,19 @@ class DownSample(nn.Sequential):
             out_seq_len = compute_conv_output_shape(
                 input_shape=(batch_size, self.__in_channels, seq_len),
                 stride=self.__down_scale,
+                pad=self.__padding,
             )[-1]
-        elif self.__method in ['max', 'avg',]:
-            out_seq_len = compute_conv_output_shape(
+        elif self.__method == 'max':
+            out_seq_len = compute_maxpool_output_shape(
                 input_shape=(batch_size, self.__in_channels, seq_len),
                 kernel_size=self.__down_scale, stride=self.__down_scale,
+                pad=self.__padding,
+            )[-1]
+        elif self.__method in ['avg', 'nearest', 'area', 'linear',]:
+            out_seq_len = compute_avgpool_output_shape(
+                input_shape=(batch_size, self.__in_channels, seq_len),
+                kernel_size=self.__down_scale, stride=self.__down_scale,
+                pad=self.__padding,
             )[-1]
         output_shape = (batch_size, self.__out_channels, out_seq_len)
         return output_shape
@@ -835,13 +863,15 @@ class ZeroPadding(nn.Module):
         return output_shape
 
 
-def compute_conv_output_shape(input_shape:Sequence[Union[int, type(None)]], num_filters:Optional[int]=None, kernel_size:Union[Sequence[int], int]=1, stride:Union[Sequence[int], int]=1, pad:Union[Sequence[int], int]=0, dilation:Union[Sequence[int], int]=1, channel_last:bool=False) -> Tuple[Union[int, type(None)]]:
+def compute_output_shape(layer_type:str, input_shape:Sequence[Union[int, type(None)]], num_filters:Optional[int]=None, kernel_size:Union[Sequence[int], int]=1, stride:Union[Sequence[int], int]=1, pad:Union[Sequence[int], int]=0, dilation:Union[Sequence[int], int]=1, channel_last:bool=False) -> Tuple[Union[int, type(None)]]:
     """ finished, checked,
 
-    compute the output shape of a convolution layer
+    compute the output shape of a convolution/maxpool/avgpool layer
     
     Parameters:
     -----------
+    layer_type: str,
+        type (conv, maxpool, avgpool, etc.) of the layer
     input_shape: sequence of int or None,
         shape of an input Tensor,
         the first dimension is the batch dimension, which is allowed to be `None`
@@ -868,6 +898,22 @@ def compute_conv_output_shape(input_shape:Sequence[Union[int, type(None)]], num_
     -----------
     [1] https://discuss.pytorch.org/t/utility-function-for-calculating-the-shape-of-a-conv-output/11173/5
     """
+    __TYPES__ = [
+        'conv', 'convolution',
+        'maxpool', 'maxpooling',
+        'avgpool', 'avgpooling', 'averagepool', 'averagepooling',
+    ]
+    lt = "".join(layer_type.lower().split("_"))
+    assert lt in __TYPES__
+    if lt in ['conv', 'convolution',]:
+        minus_term = lambda d, k: d * (k - 1) + 1
+        out_channels = num_filters
+    elif lt in ['maxpool', 'maxpooling',]:
+        minus_term = lambda d, k: d * (k - 1) + 1
+        out_channels = input_shape[-1] if channel_last else input_shape[1]
+    elif lt in ['avgpool', 'avgpooling', 'averagepool', 'averagepooling',]:
+        minus_term = lambda d, k: k
+        out_channels = input_shape[-1] if channel_last else input_shape[1]
     dim = len(input_shape)-2
     assert dim > 0, "input_shape should be a sequence of length at least 3, to be a valid (with batch and channel) shape of a non-degenerate Tensor"
 
@@ -910,16 +956,113 @@ def compute_conv_output_shape(input_shape:Sequence[Union[int, type(None)]], num_
     else:
         _input_shape = input_shape[2:]
     output_shape = [
-        floor( ( ( i + 2*p - d*(k-1) - 1 ) / s ) + 1 ) \
+        floor( ( ( i + 2*p - minus_term(d, k) ) / s ) + 1 ) \
             for i, p, d, k, s in zip(_input_shape, _pad, _dilation, _kernel_size, _stride)
     ]
+    if lt in 
     if channel_last:
-        output_shape = tuple([input_shape[0]] + output_shape + [num_filters])
+        output_shape = tuple([input_shape[0]] + output_shape + [out_channels])
     else:
-        output_shape = tuple([input_shape[0], num_filters] + output_shape)
+        output_shape = tuple([input_shape[0], out_channels] + output_shape)
 
     return output_shape
 
+
+def compute_conv_output_shape(input_shape:Sequence[Union[int, type(None)]], num_filters:Optional[int]=None, kernel_size:Union[Sequence[int], int]=1, stride:Union[Sequence[int], int]=1, pad:Union[Sequence[int], int]=0, dilation:Union[Sequence[int], int]=1, channel_last:bool=False) -> Tuple[Union[int, type(None)]]:
+    """ finished, cheched,
+
+    compute the output shape of a convolution/maxpool/avgpool layer
+
+    input_shape: sequence of int or None,
+        shape of an input Tensor,
+        the first dimension is the batch dimension, which is allowed to be `None`
+    num_filters: int, optional,
+        number of filters, also the channel dimension
+    kernel_size: int, or sequence of int, default 1,
+        kernel size (filter size) of the layer, should be compatible with `input_shape`
+    stride: int, or sequence of int, default 1,
+        stride (down-sampling length) of the layer, should be compatible with `input_shape`
+    pad: int, or sequence of int, default 0,
+        pad length(s) of the layer, should be compatible with `input_shape`
+    dilation: int, or sequence of int, default 1,
+        dilation of the layer, should be compatible with `input_shape`
+    channel_last: bool, default False,
+        channel dimension is the last dimension,
+        or the second dimension (the first is the batch dimension by convention)
+
+    Returns:
+    --------
+    output_shape: tuple,
+        shape of the output Tensor
+    """
+    output_shape = compute_output_shape(
+        'conv',
+        input_shape, num_filters, kernel_size, stride, pad, dilation, channel_last
+    )
+    return output_shape
+
+
+def compute_maxpool_output_shape(input_shape:Sequence[Union[int, type(None)]], kernel_size:Union[Sequence[int], int]=1, stride:Union[Sequence[int], int]=1, pad:Union[Sequence[int], int]=0, dilation:Union[Sequence[int], int]=1, channel_last:bool=False) -> Tuple[Union[int, type(None)]]:
+    """ finished, cheched,
+
+    compute the output shape of a maxpool layer
+
+    input_shape: sequence of int or None,
+        shape of an input Tensor,
+        the first dimension is the batch dimension, which is allowed to be `None`
+    kernel_size: int, or sequence of int, default 1,
+        kernel size (filter size) of the layer, should be compatible with `input_shape`
+    stride: int, or sequence of int, default 1,
+        stride (down-sampling length) of the layer, should be compatible with `input_shape`
+    pad: int, or sequence of int, default 0,
+        pad length(s) of the layer, should be compatible with `input_shape`
+    dilation: int, or sequence of int, default 1,
+        dilation of the layer, should be compatible with `input_shape`
+    channel_last: bool, default False,
+        channel dimension is the last dimension,
+        or the second dimension (the first is the batch dimension by convention)
+
+    Returns:
+    --------
+    output_shape: tuple,
+        shape of the output Tensor
+    """
+    output_shape = compute_output_shape(
+        'maxpool',
+        input_shape, 1, kernel_size, stride, pad, dilation, channel_last
+    )
+    return output_shape
+
+
+def compute_avgpool_output_shape(input_shape:Sequence[Union[int, type(None)]], kernel_size:Union[Sequence[int], int]=1, stride:Union[Sequence[int], int]=1, pad:Union[Sequence[int], int]=0, channel_last:bool=False) -> Tuple[Union[int, type(None)]]:
+    """ finished, cheched,
+
+    compute the output shape of a avgpool layer
+
+    input_shape: sequence of int or None,
+        shape of an input Tensor,
+        the first dimension is the batch dimension, which is allowed to be `None`
+    kernel_size: int, or sequence of int, default 1,
+        kernel size (filter size) of the layer, should be compatible with `input_shape`
+    stride: int, or sequence of int, default 1,
+        stride (down-sampling length) of the layer, should be compatible with `input_shape`
+    pad: int, or sequence of int, default 0,
+        pad length(s) of the layer, should be compatible with `input_shape`
+    channel_last: bool, default False,
+        channel dimension is the last dimension,
+        or the second dimension (the first is the batch dimension by convention)
+
+    Returns:
+    --------
+    output_shape: tuple,
+        shape of the output Tensor
+    """
+    output_shape = compute_output_shape(
+        'avgpool',
+        input_shape, 1, kernel_size, stride, pad, 1, channel_last
+    )
+    return output_shape
+    
 
 def weighted_binary_cross_entropy(sigmoid_x:Tensor, targets:Tensor, pos_weight:Tensor, weight:Optional[Tensor]=None, size_average:bool=True, reduce:bool=True) -> Tensor:
     """ NOT checked,

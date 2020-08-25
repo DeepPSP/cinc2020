@@ -58,7 +58,7 @@ class CINC2020(Dataset):
         cw = np.zeros((len(self.class_weights),), dtype=np.float32)
         for idx, c in enumerate(self.all_classes):
             cw[idx] = self.class_weights[c]
-        self.class_weights = torch.from_numpy(cw.astype(np.float32))
+        self.class_weights = torch.from_numpy(cw.astype(np.float32)).view((1, self.n_classes))
         # if self.training:
         #     self.siglen = self.config.siglen
         # else:

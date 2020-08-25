@@ -119,8 +119,9 @@ class DownDoubleConv(nn.Sequential):
     """
     __DEBUG__ = True
     __name__ = "DownDoubleConv"
+    __MODES__ = deepcopy(DownSample.__MODES__)
 
-    def __init__(self, down_scale:int, in_channels:int, out_channels:int, filter_length:int, activation:Union[str, nn.Module]='relu', mid_channels:Optional[int]=None, down_method:str='max') -> NoReturn:
+    def __init__(self, down_scale:int, in_channels:int, out_channels:int, filter_length:int, activation:Union[str, nn.Module]='relu', mid_channels:Optional[int]=None, mode:str='max') -> NoReturn:
         """ finished, NOT checked,
 
         Parameters:
@@ -136,10 +137,13 @@ class DownDoubleConv(nn.Sequential):
         mid_channels: int, optional,
             number of channels produced by the first convolutional layer,
             defaults to `out_channels`
-        down_method: str, default 'max',
-            method for down sampling, can be one of 'max', 'avg', 'conv'
+        mode: str, default 'max',
+            mode for down sampling,
+            can be one of 'max', 'avg', 'conv', 'nearest', 'linear', 'bilinear'
         """
         super().__init__()
+        self.__mode = mode.lower()
+        assert self.__mode in self.__MODES__
         self.__down_scale = down_scale
         self.__in_channels = in_channels
         self.__mid_channels = mid_channels if mid_channels is not None else out_channels
@@ -152,7 +156,7 @@ class DownDoubleConv(nn.Sequential):
                 down_scale=self.__down_scale,
                 in_channels=self.__in_channels,
                 bn=False,
-                method=down_method,
+                mode=mode,
             )
         )
         self.add_module(
@@ -196,13 +200,15 @@ class DownDoubleConv(nn.Sequential):
 
 class UpDoubleConv(nn.Module):
     """
-    Upscaling then double conv
+    Upscaling then double conv (up sampling --> double convolution)
     
     References:
     -----------
     https://github.com/milesial/Pytorch-UNet/blob/master/unet/unet_parts.py
     """
+    __DEBUG__ = True
     __name__ = "UpDoubleConv"
+    __MODES__ = ['nearest', 'linear', 'bilinear', 'conv',]
 
     def __init__(self, up_scale:int, in_channels:int, out_channels:int, filter_length:int, activation:Union[str,nn.Module]='relu', mode:str='bilinear', mid_channels:Optional[int]=None) -> NoReturn:
         """ NOT finished, NOT checked,
@@ -219,7 +225,7 @@ class UpDoubleConv(nn.Module):
             length of the filters (kernel size)
         activation: str or Module, default 'relu',
             activation of the convolutional layers
-        mode: str, default 'bilinear',
+        mode: str, default 'bilinear', case insensitive,
             mode of up sampling
         mid_channels: int, optional,
             number of channels produced by the first convolutional layer,
@@ -231,25 +237,27 @@ class UpDoubleConv(nn.Module):
         self.__mid_channels = mid_channels if mid_channels is not None else in_channels // 2
         self.__out_channels = out_channels
         self.__kernel_size = filter_length
+        self.__mode == mode.lower()
+        assert self.__mode in self.__MODES__
 
         raise NotImplementedError
         # the following has to be checked
         # if bilinear, use the normal convolutions to reduce the number of channels
-        # if bilinear:
-        #     self.up = nn.Upsample(
-        #         scale_factor=self.__up_scale,
-        #         mode=mode, align_corners=True,
-        #     )
-        #     self.conv = DoubleConv(
-        #         in_channels=self.__in_channels,
-        #         out_channels=self.__out_channels,
-        #         filter_length=self.__kernel_size,
-        #         activation=activation,
-        #         mid_channels=self.__mid_channels,
-        #     )
-        # else:
-        #     self.up = nn.ConvTranspose1d(in_channels , in_channels // 2, kernel_size=2, stride=2)
-        #     self.conv = DoubleConv(in_channels, out_channels)
+        if self.__mode == 'conv':
+            self.up = nn.ConvTranspose1d(in_channels , in_channels // 2, kernel_size=2, stride=2)
+            self.conv = DoubleConv(in_channels, out_channels)
+        else:
+            self.up = nn.Upsample(
+                scale_factor=self.__up_scale,
+                mode=mode, align_corners=True,
+            )
+            self.conv = DoubleConv(
+                in_channels=self.__in_channels,
+                out_channels=self.__out_channels,
+                filter_length=self.__kernel_size,
+                activation=activation,
+                mid_channels=self.__mid_channels,
+            )
 
     def forward(self, x1:Tensor, x2:Tensor) -> Tensor:
         """

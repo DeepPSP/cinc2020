@@ -71,7 +71,7 @@ resnet_leadwise.groups = 12
 
 resnet_block_basic = ED()
 resnet_block_basic.increase_channels_method = 'conv'  # or 'zero_padding'
-resnet_block_basic.subsample_method = 'conv'  # or 'max', 'avg'
+resnet_block_basic.subsample_mode = 'conv'  # or 'max', 'avg', 'nearest', 'linear', 'bilinear'
 resnet_block_basic.filter_length = 3
 resnet_block_basic.kernel_initializer = resnet.kernel_initializer
 resnet_block_basic.kw_initializer = deepcopy(resnet.kw_initializer)
@@ -100,7 +100,7 @@ resnet_block_stanford.subsample_lengths = [
     1, 2, 1, 2,
     1, 2, 1, 2,
 ]
-resnet_block_stanford.subsample_method = 'conv'  # 'max', 'avg'
+resnet_block_stanford.subsample_mode = 'conv'  # 'max', 'avg'
 resnet_block_stanford.filter_length = 17
 resnet_block_stanford.num_filters_start = 32
 resnet_block_stanford.kernel_initializer = "he_normal"
