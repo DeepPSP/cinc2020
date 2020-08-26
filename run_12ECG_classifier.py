@@ -29,7 +29,7 @@ def run_12ECG_classifier(data, header_data, loaded_model):
 
     freq = header.fs
     if freq != ModelCfg.freq:
-        data = resample_poly(data, ModelCfg.freq, freq)
+        data = resample_poly(data, ModelCfg.freq, freq, axis=1)
         freq = ModelCfg.freq
 
     partial_conclusion = special_detectors(data, freq, sig_fmt="lead_first")
