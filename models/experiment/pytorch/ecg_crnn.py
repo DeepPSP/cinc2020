@@ -13,6 +13,8 @@ from torch import Tensor
 import torch.nn.functional as F
 from easydict import EasyDict as ED
 
+torch.set_default_tensor_type(torch.DoubleTensor)
+
 # from cfg import ModelCfg
 from model_configs.ati_cnn import ATI_CNN_CONFIG
 from model_configs.cpsc import CPSC_CONFIG

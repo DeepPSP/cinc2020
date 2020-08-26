@@ -14,6 +14,8 @@ import torch
 from torch.utils.data.dataset import Dataset
 from sklearn.preprocessing import StandardScaler
 
+torch.set_default_tensor_type(torch.DoubleTensor)
+
 from cfg import TrainCfg
 from data_reader import CINC2020Reader as CR
 from utils.misc import dict_to_str
@@ -55,10 +57,10 @@ class CINC2020(Dataset):
         self.n_classes = len(self.all_classes)
         # print(f"tranches = {self.tranches}, all_classes = {self.all_classes}")
         # print(f"class_weights = {dict_to_str(self.class_weights)}")
-        cw = np.zeros((len(self.class_weights),), dtype=np.float32)
+        cw = np.zeros((len(self.class_weights),), dtype=np.float64)
         for idx, c in enumerate(self.all_classes):
             cw[idx] = self.class_weights[c]
-        self.class_weights = torch.from_numpy(cw.astype(np.float32)).view((1, self.n_classes))
+        self.class_weights = torch.from_numpy(cw.astype(np.float64)).view((1, self.n_classes))
         # if self.training:
         #     self.siglen = self.config.siglen
         # else:

@@ -52,6 +52,8 @@ import torch.nn.functional as F
 from tensorboardX import SummaryWriter
 from easydict import EasyDict as ED
 
+torch.set_default_tensor_type(torch.DoubleTensor)
+
 from models.ecg_crnn import ECG_CRNN
 from models.utils.torch_utils import BCEWithLogitsWithClassWeightLoss
 from model_configs import ECG_CRNN_CONFIG
@@ -188,7 +190,7 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
         criterion = nn.BCEWithLogitsLoss()
     elif config.loss == "BCEWithLogitsWithClassWeightLoss":
         criterion = BCEWithLogitsWithClassWeightLoss(
-            class_weight=train_dataset.class_weights.to(device=device, dtype=torch.float32)
+            class_weight=train_dataset.class_weights.to(device=device, dtype=torch.float64)
         )
     else:
         raise NotImplementedError(f"loss `{config.loss}` not implemented!")
@@ -207,8 +209,8 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
         with tqdm(total=n_train, desc=f'Epoch {epoch + 1}/{n_epochs}', ncols=100) as pbar:
             for epoch_step, (signals, labels) in enumerate(train_loader):
                 global_step += 1
-                signals = signals.to(device=device, dtype=torch.float32)
-                labels = labels.to(device=device, dtype=torch.float32)
+                signals = signals.to(device=device, dtype=torch.float64)
+                labels = labels.to(device=device, dtype=torch.float64)
                 
                 optimizer.zero_grad()
 
@@ -320,9 +322,9 @@ def collate_fn(batch:tuple) -> Tuple[Tensor, Tensor]:
     """
     signals = [[item[0]] for item in batch]
     labels = [[item[1]] for item in batch]
-    signals = np.concatenate(signals, axis=0).astype(np.float32)
+    signals = np.concatenate(signals, axis=0).astype(np.float64)
     signals = torch.from_numpy(signals)
-    labels = np.concatenate(labels, axis=0).astype(np.float32)
+    labels = np.concatenate(labels, axis=0).astype(np.float64)
     labels = torch.from_numpy(labels)
     return signals, labels
 
@@ -361,7 +363,7 @@ def evaluate(model:nn.Module, data_loader:DataLoader, config:dict, device:torch.
     all_labels = []
 
     for signals, labels in data_loader:
-        signals = signals.to(device=device, dtype=torch.float32)
+        signals = signals.to(device=device, dtype=torch.float64)
         labels = labels.numpy()
         all_labels.append(labels)
 

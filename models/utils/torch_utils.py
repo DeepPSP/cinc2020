@@ -15,6 +15,8 @@ import torch.nn.functional as F
 from torch.nn.utils.rnn import PackedSequence
 from easydict import EasyDict as ED
 
+torch.set_default_tensor_type(torch.DoubleTensor)
+
 
 __all__ = [
     "Mish", "Swish",

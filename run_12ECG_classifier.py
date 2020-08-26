@@ -9,6 +9,8 @@ import wfdb
 import torch
 from scipy.signal import resample, resample_poly
 
+torch.set_default_tensor_type(torch.DoubleTensor)
+
 from get_12ECG_features import get_12ECG_features
 from models.special_detectors import special_detectors
 from utils.misc import rdheader, ensure_lead_fmt

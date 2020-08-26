@@ -522,7 +522,8 @@ def get_date_str(fmt:Optional[str]=None):
 
 
 def rdheader(header_data:List[str]) -> Union[Record, MultiRecord]:
-    """
+    """ finished, checked,
+    
     modified from `wfdb.rdheader`
 
     Parameters
@@ -594,13 +595,15 @@ def rdheader(header_data:List[str]) -> Union[Record, MultiRecord]:
     return record
 
 
-def ensure_lead_fmt(values:Sequence[Real], fmt:str="lead_first") -> np.ndarray:
-    """
+def ensure_lead_fmt(values:Sequence[Real], n_leads:int=12, fmt:str="lead_first") -> np.ndarray:
+    """ finished, checked,
+
+    ensure the `n_leads`-lead (ECG) signal to be of the format of `fmt`
 
     Parameters:
     -----------
     values: sequence,
-        values of the 12-lead ECG signal
+        values of the `n_leads`-lead (ECG) signal
     fmt: str, default "lead_first", case insensitive,
         format of the output values, can be one of
         "lead_first" (alias "channel_first"), "lead_last" (alias "channel_last")
@@ -611,9 +614,9 @@ def ensure_lead_fmt(values:Sequence[Real], fmt:str="lead_first") -> np.ndarray:
         ECG signal in the format of `fmt`
     """
     out_values = np.array(values)
-    lead_dim = np.where(np.array(out_values.shape) == 12)[0]
+    lead_dim = np.where(np.array(out_values.shape) == n_leads)[0]
     if not any([[0] == lead_dim or [1] == lead_dim]):
-        raise ValueError("not valid 12-lead ECG signal")
+        raise ValueError(f"not valid {n_leads}-lead signal")
     lead_dim = lead_dim[0]
     if (lead_dim == 1 and fmt.lower() in ["lead_first", "channel_first"]) \
         or (lead_dim == 0 and fmt.lower() in ["lead_last", "channel_last"]):

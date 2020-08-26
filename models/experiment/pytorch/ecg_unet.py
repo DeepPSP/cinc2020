@@ -14,6 +14,8 @@ from torch import Tensor
 import torch.nn.functional as F
 from easydict import EasyDict as ED
 
+torch.set_default_tensor_type(torch.DoubleTensor)
+
 from models.utils.torch_utils import (
     Conv_Bn_Activation,
     DownSample,

@@ -15,6 +15,8 @@ from torch import Tensor
 import torch.nn.functional as F
 from easydict import EasyDict as ED
 
+torch.set_default_tensor_type(torch.DoubleTensor)
+
 # from cfg import ModelCfg
 from model_configs import ECG_CRNN_CONFIG
 from cfg import TrainCfg
