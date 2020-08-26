@@ -25,6 +25,10 @@ vgg16 = ED()
 vgg16.num_convs = [2, 2, 3, 3, 3]
 vgg16.num_filters = [12*4, 12*8, 12*16, 12*32, 12*32]
 vgg16.groups = 1
+vgg16.kernel_initializer = "he_normal"
+vgg16.kw_initializer = {}
+vgg16.activation = "relu"
+vgg16.kw_activation = {}
 
 vgg16_leadwise = deepcopy(vgg16)
 vgg16_leadwise.groups = 12
@@ -34,17 +38,19 @@ vgg_block_basic.subsample_length = 1
 vgg_block_basic.dilation = 1
 vgg_block_basic.batch_norm = True
 vgg_block_basic.pool_size = 3
-vgg_block_basic.pool_stride = 3  # 2
-vgg_block_basic.kernel_initializer = "he_normal"
-vgg_block_basic.kw_initializer = {}
-vgg_block_basic.activation = "relu"
-vgg_block_basic.kw_activation = {}
+vgg_block_basic.pool_stride = 2  # 2
+vgg_block_basic.kernel_initializer = vgg16.kernel_initializer
+vgg_block_basic.kw_initializer = deepcopy(vgg16.kw_initializer)
+vgg_block_basic.activation = activation
+vgg_block_basic.kw_activation = deepcopy(vgg16.kw_activation)
 
 vgg_block_mish = deepcopy(vgg_block_basic)
 vgg_block_mish.activation = "mish"
+del vgg_block_mish.kw_activation
 
 vgg_block_swish = deepcopy(vgg_block_basic)
 vgg_block_swish.activation = "swish"
+del vgg_block_swish.kw_activation
 
 
 
@@ -53,14 +59,14 @@ resnet = ED()
 resnet.num_blocks = [
     2, 2, 2, 2, 2,
 ]
+resnet.subsample_lengths = 2
+resnet.filter_lengths = 3
 resnet.groups = 1
 resnet.init_num_filters = 12*2
 resnet.init_filter_length = 15  # corr. to 30 ms
 resnet.init_conv_stride = 2
 resnet.init_pool_size = 3
 resnet.init_pool_stride = 2
-resnet.subsample_lengths = 2
-resnet.filter_lengths = 3
 resnet.kernel_initializer = "he_normal"
 resnet.kw_initializer = {}
 resnet.activation = "relu"  # "mish", "swish"
@@ -97,6 +103,10 @@ resnet_stanford.subsample_lengths = [
 ]
 resnet_stanford.filter_lengths = 17
 resnet_stanford.num_filters_start = 12*2
+resnet_stanford.kernel_initializer = "he_normal"
+resnet_stanford.kw_initializer = {}
+resnet_stanford.activation = "relu"
+resnet_stanford.kw_activation = {}
 
 
 resnet_block_stanford = ED()
@@ -104,10 +114,10 @@ resnet_block_stanford.increase_channels_at = 4
 resnet_block_stanford.increase_channels_method = 'conv'  # or 'zero_padding'
 resnet_block_stanford.num_skip = 2
 resnet_block_stanford.subsample_mode = 'conv'  # 'max', 'avg'
-resnet_block_stanford.kernel_initializer = "he_normal"
-resnet_block_stanford.kw_initializer = {}
-resnet_block_stanford.activation = "relu"
-resnet_block_stanford.kw_activation = {}
+resnet_block_stanford.kernel_initializer = resnet_stanford.kernel_initializer
+resnet_block_stanford.kw_initializer = deepcopy(resnet_stanford.kw_initializer)
+resnet_block_stanford.activation = resnet_stanford.activation
+resnet_block_stanford.kw_activation = deepcopy(resnet_stanford.kw_activation)
 resnet_block_stanford.dropout = 0.2
 
 
@@ -144,17 +154,21 @@ cpsc_2018.subsample_lengths = [
 ]
 cpsc_2018.dropouts = [0.2, 0.2, 0.2, 0.2, 0.2]
 cpsc_2018.groups = 1
+cpsc_2018.activation = "leaky"
+cpsc_2018.kw_activation = ED(negative_slope=0.3)
+cpsc_2018.kernel_initializer = "he_normal"
+cpsc_2018.kw_initializer = {}
 
 cpsc_2018_leadwise = deepcopy(cpsc_2018)
 cpsc_2018_leadwise.groups = 12
 
 
 cpsc_block_basic = ED()
-cpsc_block_basic.activation = "leaky"
-cpsc_block_basic.kw_activation = ED(negative_slope=0.3)
+cpsc_block_basic.activation = cpsc_2018.activation
+cpsc_block_basic.kw_activation = deepcopy(cpsc_2018.kw_activation)
+cpsc_block_basic.kernel_initializer = cpsc_2018.kernel_initializer
+cpsc_block_basic.kw_initializer = deepcopy(cpsc_2018.kw_initializer)
 cpsc_block_basic.batch_norm = False
-cpsc_block_basic.kernel_initializer = "he_normal"
-cpsc_block_basic.kw_initializer = {}
 
 cpsc_block_mish = deepcopy(cpsc_block_basic)
 cpsc_block_mish.activation = "mish"
