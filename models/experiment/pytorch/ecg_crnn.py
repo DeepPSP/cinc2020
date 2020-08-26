@@ -3,6 +3,7 @@ CRNN structure models,
 for classifying ECG arrhythmias
 """
 from copy import deepcopy
+from itertools import repeat
 from typing import Union, Optional, Sequence, NoReturn
 from numbers import Real, Number
 
@@ -218,7 +219,7 @@ class ResNetStanfordBlock(nn.Module):
     __DEBUG__ = True
     __name__ = "ResNetStanfordBlock"
     
-    def __init__(self, block_index:int, in_channels:int, num_filters:int, subsample_length:int, dilation:int=1, **config) -> NoReturn:
+    def __init__(self, block_index:int, in_channels:int, num_filters:int, filter_length:int, subsample_length:int, dilation:int=1, **config) -> NoReturn:
         """ finished, checked,
 
         the main stream uses `subsample_length` as stride to perform down-sampling,
@@ -232,6 +233,8 @@ class ResNetStanfordBlock(nn.Module):
             number of features (channels) of the input
         num_filters: int,
             number of filters for the convolutional layers
+        filter_length: int,
+            length (size) of the filter kernels
         subsample_length: int,
             subsample length,
             including pool size for short cut, and stride for the top convolutional layer
@@ -248,6 +251,7 @@ class ResNetStanfordBlock(nn.Module):
         self.__block_index = block_index
         self.__in_channels = in_channels
         self.__out_channels = num_filters
+        self.__kernel_size = filter_length
         self.__down_scale = subsample_length
         self.__stride = subsample_length
         self.config = ED(deepcopy(config))
@@ -274,7 +278,7 @@ class ResNetStanfordBlock(nn.Module):
                 Conv_Bn_Activation(
                     in_channels=conv_in_channels,
                     out_channels=self.__out_channels,
-                    kernel_size=self.config.filter_length,
+                    kernel_size=self.__kernel_size,
                     stride = (self.__stride if i == 0 else 1),
                     bn=False,
                     activation=None,
@@ -386,13 +390,13 @@ class ResNetStanford(nn.Sequential):
             Conv_Bn_Activation(
                 in_channels=self.__in_channels,
                 out_channels=self.config.num_filters_start,
-                kernel_size=self.config.filter_length,
+                kernel_size=self.config.filter_lengths,
                 stride=1,
                 bn=True,
-                activation=self.config.activation,
-                kw_activation=self.config.kw_activation,
-                kernel_initializer=self.config.kernel_initializer,
-                kw_initializer=self.config.kw_initializer,
+                activation=self.config.block.activation,
+                kw_activation=self.config.block.kw_activation,
+                kernel_initializer=self.config.block.kernel_initializer,
+                kw_initializer=self.config.block.kw_initializer,
             )
         )
 
@@ -405,8 +409,9 @@ class ResNetStanford(nn.Sequential):
                     block_index=idx,
                     in_channels=module_in_channels,
                     num_filters=num_filters,
+                    filter_length=self.config.filter_lengths,
                     subsample_length=subsample_length,
-                    **self.config,
+                    **(self.config.block),
                 )
             )
             module_in_channels = num_filters
@@ -468,7 +473,7 @@ class ResNetBasicBlock(nn.Module):
     __name__ = "ResNetBasicBlock"
     expansion = 1
 
-    def __init__(self, in_channels:int, num_filters:int, subsample_length:int, groups:int=1, dilation:int=1, **config) -> NoReturn:
+    def __init__(self, in_channels:int, num_filters:int, filter_length:int, subsample_length:int, groups:int=1, dilation:int=1, **config) -> NoReturn:
         """ finished, checked,
 
         Parameters:
@@ -477,7 +482,9 @@ class ResNetBasicBlock(nn.Module):
             number of features (channels) of the input
         num_filters: int,
             number of filters for the convolutional layers
-        subsample_length: int,
+        filter_length: int,
+            length (size) of the filter kernels
+        subsample_lengths: int,
             subsample length,
             including pool size for short cut, and stride for the top convolutional layer
         groups: int, default 1,
@@ -496,10 +503,11 @@ class ResNetBasicBlock(nn.Module):
         self.__num_convs = 2
         self.__in_channels = in_channels
         self.__out_channels = num_filters
+        self.__kernel_size = filter_length
         self.__down_scale = subsample_length
         self.__stride = subsample_length
         self.__groups = groups
-        self.config = ED(config)
+        self.config = ED(deepcopy(config))
         if self.__DEBUG__:
             print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
 
@@ -518,7 +526,7 @@ class ResNetBasicBlock(nn.Module):
                 Conv_Bn_Activation(
                     in_channels=conv_in_channels,
                     out_channels=self.__out_channels,
-                    kernel_size=self.config.filter_length,
+                    kernel_size=self.__kernel_size,
                     stride=(self.__stride if i == 0 else 1),
                     groups = self.__groups,
                     bn=True,
@@ -689,7 +697,7 @@ class ResNet(nn.Sequential):
         """
         super().__init__()
         self.__in_channels = in_channels
-        self.config = ED(config)
+        self.config = ED(deepcopy(config))
         if self.__DEBUG__:
             print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
         # self.__building_block = \
@@ -721,6 +729,12 @@ class ResNet(nn.Sequential):
                 )
             )
 
+        if isinstance(self.config.filter_lengths, int):
+            self.__filter_lengths = list(repeat(self.config.filter_lengths, self.config.num_blocks))
+        else:
+            self.__filter_lengths = self.config.filter_lengths
+            assert len(self.__filter_lengths) == self.config.num_blocks
+
         # grouped resnet (basic) blocks,
         # number of channels are doubled at the first block of each group
         for group_idx, nb in enumerate(self.config.num_blocks):
@@ -728,12 +742,14 @@ class ResNet(nn.Sequential):
             block_in_channels = group_in_channels
             block_num_filters = 2 * block_in_channels
             for block_idx in range(nb):
+                block_filter_length = self.__filter_lengths[block_idx]
                 block_subsample_length = self.config.subsample_length if block_idx == 0 else 1
                 self.add_module(
                     f"block_{group_idx}_{block_idx}",
                     self.building_block(
                         in_channels=block_in_channels,
                         num_filters=block_num_filters,
+                        filter_length=block_filter_length,
                         subsample_length=block_subsample_length,
                         groups=self.config.groups,
                         dilation=1,
@@ -873,7 +889,6 @@ class ATI_CNN(nn.Module):
             x = torch.flatten(x, 1)  # (batch, channels)
         pred = self.clf(x)
         return pred
-
 
 
 class CPSCBlock(nn.Sequential):

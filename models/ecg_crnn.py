@@ -3,6 +3,7 @@ validated CRNN structure models,
 for classifying ECG arrhythmias
 """
 from copy import deepcopy
+from itertools import repeat
 from typing import Union, Optional, Sequence, NoReturn
 from numbers import Real, Number
 
@@ -216,7 +217,7 @@ class ResNetBasicBlock(nn.Module):
     __name__ = "ResNetBasicBlock"
     expansion = 1
 
-    def __init__(self, in_channels:int, num_filters:int, subsample_length:int, groups:int=1, dilation:int=1, **config) -> NoReturn:
+    def __init__(self, in_channels:int, num_filters:int, filter_length:int, subsample_length:int, groups:int=1, dilation:int=1, **config) -> NoReturn:
         """ finished, checked,
 
         Parameters:
@@ -225,7 +226,9 @@ class ResNetBasicBlock(nn.Module):
             number of features (channels) of the input
         num_filters: int,
             number of filters for the convolutional layers
-        subsample_length: int,
+        filter_length: int,
+            length (size) of the filter kernels
+        subsample_lengths: int,
             subsample length,
             including pool size for short cut, and stride for the top convolutional layer
         groups: int, default 1,
@@ -244,13 +247,14 @@ class ResNetBasicBlock(nn.Module):
         self.__num_convs = 2
         self.__in_channels = in_channels
         self.__out_channels = num_filters
+        self.__kernel_size = filter_length
         self.__down_scale = subsample_length
         self.__stride = subsample_length
         self.__groups = groups
         self.config = ED(deepcopy(config))
         if self.__DEBUG__:
             print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
-        
+
         if self.config.increase_channels_method.lower() == 'zero_padding' and self.__groups != 1:
             raise ValueError("zero padding for increasing channels can not be used with groups != 1")
         
@@ -266,8 +270,9 @@ class ResNetBasicBlock(nn.Module):
                 Conv_Bn_Activation(
                     in_channels=conv_in_channels,
                     out_channels=self.__out_channels,
-                    kernel_size=self.config.filter_length,
+                    kernel_size=self.__kernel_size,
                     stride=(self.__stride if i == 0 else 1),
+                    groups = self.__groups,
                     bn=True,
                     activation=conv_activation,
                     kw_activation=self.config.kw_activation,
@@ -296,6 +301,7 @@ class ResNetBasicBlock(nn.Module):
                     down_scale=self.__down_scale,
                     in_channels=self.__in_channels,
                     out_channels=self.__out_channels,
+                    groups=self.__groups,
                     bn=True,
                     mode=self.config.subsample_mode,
                 )
@@ -394,6 +400,7 @@ class ResNet(nn.Sequential):
                 out_channels=self.config.init_num_filters,
                 kernel_size=self.config.init_filter_length,
                 stride=self.config.init_conv_stride,
+                groups=self.config.groups,
                 activation=self.config.activation,
                 kw_activation=self.config.kw_activation,
                 kernel_initializer=self.config.kernel_initializer,
@@ -412,6 +419,12 @@ class ResNet(nn.Sequential):
                 )
             )
 
+        if isinstance(self.config.filter_lengths, int):
+            self.__filter_lengths = list(repeat(self.config.filter_lengths, self.config.num_blocks))
+        else:
+            self.__filter_lengths = self.config.filter_lengths
+            assert len(self.__filter_lengths) == self.config.num_blocks
+
         # grouped resnet (basic) blocks,
         # number of channels are doubled at the first block of each group
         for group_idx, nb in enumerate(self.config.num_blocks):
@@ -419,21 +432,23 @@ class ResNet(nn.Sequential):
             block_in_channels = group_in_channels
             block_num_filters = 2 * block_in_channels
             for block_idx in range(nb):
+                block_filter_length = self.__filter_lengths[block_idx]
                 block_subsample_length = self.config.subsample_length if block_idx == 0 else 1
                 self.add_module(
                     f"block_{group_idx}_{block_idx}",
                     self.building_block(
                         in_channels=block_in_channels,
                         num_filters=block_num_filters,
+                        filter_length=block_filter_length,
                         subsample_length=block_subsample_length,
-                        groups=1,
+                        groups=self.config.groups,
                         dilation=1,
                         **(self.config.block)
                     )
                 )
                 block_in_channels = block_num_filters
 
-    def forward(self, input:Tensor) -> Tensor:
+    def forward(self, input):
         """
         """
         output = super().forward(input)
@@ -666,7 +681,7 @@ class ECG_CRNN(nn.Module):
     __DEBUG__ = True
     __name__ = 'ECG_CRNN'
 
-    def __init__(self, classes:list, input_len:Optional[int]=None, config:Optional[ED]=None) -> NoReturn:
+    def __init__(self, classes:Sequence[str], input_len:Optional[int]=None, config:Optional[ED]=None) -> NoReturn:
         """ finished, checked,
 
         Parameters:
@@ -682,7 +697,7 @@ class ECG_CRNN(nn.Module):
             ref. the corresponding config file
         """
         super().__init__()
-        self.classes = classes
+        self.classes = list(classes)
         self.n_classes = len(classes)
         self.n_leads = 12
         self.input_len = input_len or TrainCfg.input_len

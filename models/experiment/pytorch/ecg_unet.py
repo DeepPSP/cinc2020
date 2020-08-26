@@ -305,11 +305,13 @@ class ECG_UNET(nn.Module):
     __DEBUG__ = True
     __name__ = "ECG_UNET"
     
-    def __init__(self, in_channels:int, config:dict) -> NoReturn:
+    def __init__(self, classes:Sequence[str], n_leads:int, config:dict) -> NoReturn:
         """
         """
         super().__init__()
-        self.__in_channels = in_channels
+        self.classes = list(classes)
+        self.n_classes = len(classes)  # final out_channels
+        self.__in_channels = n_leads
         self.config = ED(deepcopy(config))
         raise NotImplementedError
 
