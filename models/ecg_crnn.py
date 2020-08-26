@@ -103,7 +103,7 @@ class VGGBlock(nn.Sequential):
             )
         self.add_module(
             "max_pool",
-            nn.MaxPool1d(self.config.pool_size)
+            nn.MaxPool1d(self.config.pool_size, self.config.pool_stride)
         )
 
     def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:

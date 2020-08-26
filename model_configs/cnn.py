@@ -34,6 +34,7 @@ vgg_block_basic.subsample_length = 1
 vgg_block_basic.dilation = 1
 vgg_block_basic.batch_norm = True
 vgg_block_basic.pool_size = 3
+vgg_block_basic.pool_stride = 3  # 2
 vgg_block_basic.kernel_initializer = "he_normal"
 vgg_block_basic.kw_initializer = {}
 vgg_block_basic.activation = "relu"
@@ -95,7 +96,7 @@ resnet_stanford.subsample_lengths = [
     1, 2, 1, 2,
 ]
 resnet_stanford.filter_lengths = 17
-resnet_block_stanford.num_filters_start = 12*2
+resnet_stanford.num_filters_start = 12*2
 
 
 resnet_block_stanford = ED()
