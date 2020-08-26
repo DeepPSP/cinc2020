@@ -730,27 +730,35 @@ class ResNet(nn.Sequential):
             )
 
         if isinstance(self.config.filter_lengths, int):
-            self.__filter_lengths = list(repeat(self.config.filter_lengths, self.config.num_blocks))
+            self.__filter_lengths = \
+                list(repeat(self.config.filter_lengths, len(self.config.num_blocks)))
         else:
             self.__filter_lengths = self.config.filter_lengths
             assert len(self.__filter_lengths) == self.config.num_blocks
+        if isinstance(self.config.subsample_lengths, int):
+            self.__subsample_lengths = \
+                list(repeat(self.config.subsample_lengths, len(self.config.num_blocks)))
+        else:
+            self.__subsample_lengths = self.config.subsample_lengths
+            assert len(self.__subsample_lengths) == self.config.num_blocks
 
         # grouped resnet (basic) blocks,
-        # number of channels are doubled at the first block of each group
-        for group_idx, nb in enumerate(self.config.num_blocks):
-            group_in_channels = (2**group_idx) * self.config.init_num_filters
-            block_in_channels = group_in_channels
+        # number of channels are doubled at the first block of each macro-block
+        for macro_idx, nb in enumerate(self.config.num_blocks):
+            macro_in_channels = (2**macro_idx) * self.config.init_num_filters
+            macro_filter_length = self.__filter_lengths[macro_idx]
+            macro_subsample_length = self.__subsample_lengths[macro_idx]
+            block_in_channels = macro_in_channels
             block_num_filters = 2 * block_in_channels
             for block_idx in range(nb):
-                block_filter_length = self.__filter_lengths[block_idx]
                 block_subsample_length = self.config.subsample_length if block_idx == 0 else 1
                 self.add_module(
-                    f"block_{group_idx}_{block_idx}",
+                    f"block_{macro_idx}_{block_idx}",
                     self.building_block(
                         in_channels=block_in_channels,
                         num_filters=block_num_filters,
-                        filter_length=block_filter_length,
-                        subsample_length=block_subsample_length,
+                        filter_length=macro_filter_length,
+                        subsample_length=macro_subsample_length,
                         groups=self.config.groups,
                         dilation=1,
                         **(self.config.block)

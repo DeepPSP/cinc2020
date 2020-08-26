@@ -41,7 +41,7 @@ vgg_block_basic.pool_size = 3
 vgg_block_basic.pool_stride = 2  # 2
 vgg_block_basic.kernel_initializer = vgg16.kernel_initializer
 vgg_block_basic.kw_initializer = deepcopy(vgg16.kw_initializer)
-vgg_block_basic.activation = activation
+vgg_block_basic.activation = vgg16.activation
 vgg_block_basic.kw_activation = deepcopy(vgg16.kw_activation)
 
 vgg_block_mish = deepcopy(vgg_block_basic)
