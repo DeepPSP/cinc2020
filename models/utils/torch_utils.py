@@ -344,13 +344,13 @@ class DownSample(nn.Sequential):
         """
         super().__init__()
         self.__mode = mode.lower()
-        assert self.__method in self.__METHODS__
+        assert self.__mode in self.__MODES__
         self.__down_scale = down_scale
         self.__in_channels = in_channels
         self.__out_channels = out_channels or in_channels
         self.__padding = padding
 
-        if self.__method == 'max':
+        if self.__mode == 'max':
             if self.__in_channels == self.__out_channels:
                 down_layer = nn.MaxPool1d(kernel_size=self.__down_scale, padding=self.__padding)
             else:
@@ -361,7 +361,7 @@ class DownSample(nn.Sequential):
                         kernel_size=1,groups=groups,bias=False
                     ),
                 ))
-        elif self.__method == 'avg':
+        elif self.__mode == 'avg':
             if self.__in_channels == self.__out_channels:
                 down_layer = nn.AvgPool1d(kernel_size=self.__down_scale, padding=self.__padding)
             else:
@@ -372,7 +372,7 @@ class DownSample(nn.Sequential):
                         kernel_size=1,groups=groups,bias=False
                     ),
                 ))
-        elif self.__method == 'conv':
+        elif self.__mode == 'conv':
             down_layer = nn.Conv1d(
                 in_channels=self.__in_channels,
                 out_channels=self.__out_channels,
@@ -401,7 +401,7 @@ class DownSample(nn.Sequential):
         """
         use the forward method of `nn.Sequential`
         """
-        if self.__method in ['max', 'avg', 'conv',]:
+        if self.__mode in ['max', 'avg', 'conv',]:
             output = super().forward(input)
         else:
             # align_corners = False if mode in ['nearest', 'area'] else True
@@ -428,19 +428,19 @@ class DownSample(nn.Sequential):
         output_shape: sequence,
             the output shape of this `Bn_Activation` layer, given `seq_len` and `batch_size`
         """
-        if self.__method == 'conv':
+        if self.__mode == 'conv':
             out_seq_len = compute_conv_output_shape(
                 input_shape=(batch_size, self.__in_channels, seq_len),
                 stride=self.__down_scale,
                 padding=self.__padding,
             )[-1]
-        elif self.__method == 'max':
+        elif self.__mode == 'max':
             out_seq_len = compute_maxpool_output_shape(
                 input_shape=(batch_size, self.__in_channels, seq_len),
                 kernel_size=self.__down_scale, stride=self.__down_scale,
                 pad=self.__padding,
             )[-1]
-        elif self.__method in ['avg', 'nearest', 'area', 'linear',]:
+        elif self.__mode in ['avg', 'nearest', 'area', 'linear',]:
             out_seq_len = compute_avgpool_output_shape(
                 input_shape=(batch_size, self.__in_channels, seq_len),
                 kernel_size=self.__down_scale, stride=self.__down_scale,

@@ -441,14 +441,14 @@ class ResNet(nn.Sequential):
             block_in_channels = macro_in_channels
             block_num_filters = 2 * block_in_channels
             for block_idx in range(nb):
-                block_subsample_length = self.config.subsample_length if block_idx == 0 else 1
+                block_subsample_length = macro_subsample_length if block_idx == 0 else 1
                 self.add_module(
                     f"block_{macro_idx}_{block_idx}",
                     self.building_block(
                         in_channels=block_in_channels,
                         num_filters=block_num_filters,
                         filter_length=macro_filter_length,
-                        subsample_length=macro_subsample_length,
+                        subsample_length=block_subsample_length,
                         groups=self.config.groups,
                         dilation=1,
                         **(self.config.block)
