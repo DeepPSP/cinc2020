@@ -50,8 +50,10 @@ References:
 """
 
 from .ecg_crnn import *
-from .ati_cnn import *
-from .cpsc import *
+from .ecg_unet import *
+from .cnn import *
+# from .ati_cnn import *
+# from .cpsc import *
 
 
 __all__ = [s for s in dir() if not s.startswith('_')]

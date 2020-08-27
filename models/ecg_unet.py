@@ -43,7 +43,7 @@ class DoubleConv(nn.Sequential):
     -----------
     https://github.com/milesial/Pytorch-UNet/blob/master/unet/unet_parts.py
     """
-    __DEBUG__ = True
+    __DEBUG__ = False
     __name__ = "DoubleConv"
 
     def __init__(self, in_channels:int, out_channels:int, filter_lengths:Union[Sequence[int],int], subsample_lengths:Union[Sequence[int],int]=1, groups:int=1, mid_channels:Optional[int]=None, **config) -> NoReturn:
@@ -159,7 +159,7 @@ class DownDoubleConv(nn.Sequential):
     -----------
     https://github.com/milesial/Pytorch-UNet/blob/master/unet/unet_parts.py
     """
-    __DEBUG__ = True
+    __DEBUG__ = False
     __name__ = "DownDoubleConv"
     __MODES__ = deepcopy(DownSample.__MODES__)
 
@@ -258,7 +258,7 @@ class UpDoubleConv(nn.Module):
 
     channels are shrinked after up sampling
     """
-    __DEBUG__ = True
+    __DEBUG__ = False
     __name__ = "UpDoubleConv"
     __MODES__ = ['nearest', 'linear', 'area', 'deconv',]
 
@@ -389,7 +389,7 @@ class UpDoubleConv(nn.Module):
 class ECG_UNET(nn.Module):
     """
     """
-    __DEBUG__ = True
+    __DEBUG__ = False
     __name__ = "ECG_UNET"
     
     def __init__(self, classes:Sequence[str], n_leads:int, config:dict) -> NoReturn:
@@ -412,7 +412,6 @@ class ECG_UNET(nn.Module):
         self.config = ED(deepcopy(config))
         if self.__DEBUG__:
             print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
-            __debug_seq_len = 4000
 
         self.init_conv = DoubleConv(
             in_channels=self.__in_channels,
@@ -426,10 +425,6 @@ class ECG_UNET(nn.Module):
             kernel_initializer=self.config.kernel_initializer,
             kw_initializer=self.config.kw_initializer,
         )
-        if self.__DEBUG__:
-            __debug_output_shape = self.init_conv.compute_output_shape(__debug_seq_len)
-            print(f"given seq_len = {__debug_seq_len}, init_conv output shape = {__debug_output_shape}")
-            _, _, __debug_seq_len = __debug_output_shape
 
         self.down_blocks = nn.ModuleDict()
         in_channels = self.n_classes
@@ -445,10 +440,6 @@ class ECG_UNET(nn.Module):
                     **(self.config.down_block)
                 )
             in_channels = self.config.down_num_filters[idx]
-            if self.__DEBUG__:
-                __debug_output_shape = self.down_blocks[f'down_{idx}'].compute_output_shape(__debug_seq_len)
-                print(f"given seq_len = {__debug_seq_len}, down_{idx} output shape = {__debug_output_shape}")
-                _, _, __debug_seq_len = __debug_output_shape
 
         self.up_blocks = nn.ModuleDict()
         in_channels = self.config.down_num_filters[-1]
@@ -465,10 +456,6 @@ class ECG_UNET(nn.Module):
                     **(self.config.up_block)
                 )
             in_channels = self.config.up_num_filters[idx]
-            if self.__DEBUG__:
-                __debug_output_shape = self.up_blocks[f'up_{idx}'].compute_output_shape(__debug_seq_len)
-                print(f"given seq_len = {__debug_seq_len}, up_{idx} output shape = {__debug_output_shape}")
-                _, _, __debug_seq_len = __debug_output_shape
 
         self.out_conv = Conv_Bn_Activation(
             in_channels=self.config.up_num_filters[-1],
@@ -482,30 +469,19 @@ class ECG_UNET(nn.Module):
             kernel_initializer=self.config.kernel_initializer,
             kw_initializer=self.config.kw_initializer,
         )
-        if self.__DEBUG__:
-            __debug_output_shape = self.out_conv.compute_output_shape(__debug_seq_len)
-            print(f"given seq_len = {__debug_seq_len}, out_conv output shape = {__debug_output_shape}")
 
     def forward(self, input:Tensor) -> Tensor:
         """
         """
         to_concat = [self.init_conv(input)]
-        if self.__DEBUG__:
-            print(f"shape of init conv block output = {to_concat[-1].shape}")
         for idx in range(self.config.down_up_block_num):
             to_concat.append(self.down_blocks[f"down_{idx}"](to_concat[-1]))
-            if self.__DEBUG__:
-                print(f"shape of {idx}-th down block output = {to_concat[-1].shape}")
         up_input = to_concat[-1]
         to_concat = to_concat[-2::-1]
         for idx in range(self.config.down_up_block_num):
             up_output = self.up_blocks[f"up_{idx}"](up_input, to_concat[idx])
             up_input = up_output
-            if self.__DEBUG__:
-                print(f"shape of {idx}-th up block output = {up_output.shape}")
         output = self.out_conv(up_output)
-        if self.__DEBUG__:
-            print(f"shape of out_conv layer output = {output.shape}")
 
         return output
 
