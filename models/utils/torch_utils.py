@@ -117,7 +117,7 @@ Activations.leaky_relu = Activations.leaky
 # ---------------------------------------------
 # basic building blocks of CNN
 class Bn_Activation(nn.Sequential):
-    """ finished, checked
+    """ finished, checked,
 
     batch normalization --> activation
     """
@@ -189,7 +189,7 @@ class Bn_Activation(nn.Sequential):
 
 
 class Conv_Bn_Activation(nn.Sequential):
-    """ finished, checked
+    """ finished, checked,
 
     1d convolution --> batch normalization (optional) -- > activation (optional),
     with "same" padding
@@ -448,13 +448,13 @@ class DownSample(nn.Sequential):
             out_seq_len = compute_maxpool_output_shape(
                 input_shape=(batch_size, self.__in_channels, seq_len),
                 kernel_size=self.__down_scale, stride=self.__down_scale,
-                pad=self.__padding,
+                padding=self.__padding,
             )[-1]
         elif self.__mode in ['avg', 'nearest', 'area', 'linear',]:
             out_seq_len = compute_avgpool_output_shape(
                 input_shape=(batch_size, self.__in_channels, seq_len),
                 kernel_size=self.__down_scale, stride=self.__down_scale,
-                pad=self.__padding,
+                padding=self.__padding,
             )[-1]
         output_shape = (batch_size, self.__out_channels, out_seq_len)
         return output_shape
@@ -842,6 +842,7 @@ class ZeroPadding(nn.Module):
         loc: str, default "top", case insensitive,
             padding to the head or the tail channel
         """
+        super().__init__()
         self.__in_channels = in_channels
         self.__out_channels = out_channels
         self.__increase_channels = out_channels - in_channels
