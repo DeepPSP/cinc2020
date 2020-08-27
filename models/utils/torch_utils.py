@@ -196,7 +196,7 @@ class Conv_Bn_Activation(nn.Sequential):
     """
     __name__ = "Conv_Bn_Activation"
 
-    def __init__(self, in_channels:int, out_channels:int, kernel_size:int, stride:int, padding:Optional[int]=None, dilation:int=1, groups:int=1, bn:Union[bool,nn.Module]=True, activation:Optional[Union[str,nn.Module]]=None, kernel_initializer:Optional[Union[str,callable]]=None, bias:bool=True, **kwargs) -> NoReturn:
+    def __init__(self, in_channels:int, out_channels:int, kernel_size:int, stride:int, padding:Optional[int]=None, dilation:int=1, groups:int=1, batch_norm:Union[bool,nn.Module]=True, activation:Optional[Union[str,nn.Module]]=None, kernel_initializer:Optional[Union[str,callable]]=None, bias:bool=True, **kwargs) -> NoReturn:
         """ finished, checked,
 
         Parameters:
@@ -215,7 +215,7 @@ class Conv_Bn_Activation(nn.Sequential):
             spacing between the kernel points
         groups: int, default 1,
             connection pattern (of channels) of the inputs and outputs
-        bn: bool or Module, default True
+        batch_norm: bool or Module, default True,
             batch normalization,
             the Module itself or (if is bool) whether or not to use `nn.BatchNorm1d`
         activation: str or Module, optional,
@@ -259,8 +259,8 @@ class Conv_Bn_Activation(nn.Sequential):
                 raise ValueError(f"initializer `{kernel_initializer}` not supported")
         self.add_module("conv1d", conv_layer)
 
-        if bn:
-            bn_layer = nn.BatchNorm1d(out_channels) if isinstance(bn, bool) else bn(out_channels)
+        if batch_norm:
+            bn_layer = nn.BatchNorm1d(out_channels) if isinstance(batch_norm, bool) else batch_norm(out_channels)
             self.add_module("batch_norm", bn_layer)
 
         if isinstance(activation, str):
@@ -320,11 +320,16 @@ class Conv_Bn_Activation(nn.Sequential):
 
 class DownSample(nn.Sequential):
     """
+
+    NOTE: this down sampling module allows changement of number of channels,
+    via additional convolution, with some abuse of terminology
+
+    the 'conv' mode is not simply down 'sampling' if `group` != `in_channels`
     """
     __name__ = "DownSample"
     __MODES__ = ['max', 'avg', 'conv', 'nearest', 'area', 'linear',]
 
-    def __init__(self, down_scale:int, in_channels:int, out_channels:Optional[int]=None, groups:int=1, padding:int=0, bn:Union[bool,nn.Module]=True, mode:str='max') -> NoReturn:
+    def __init__(self, down_scale:int, in_channels:int, out_channels:Optional[int]=None, groups:Optional[int]=None, padding:int=0, batch_norm:Union[bool,nn.Module]=False, mode:str='max') -> NoReturn:
         """ finished, checked,
 
         Parameters:
@@ -335,11 +340,11 @@ class DownSample(nn.Sequential):
             number of channels of the input
         out_channels: int, optional,
             number of channels of the output
-        groups: int, default 1,
+        groups: int, optional,
             connection pattern (of channels) of the inputs and outputs
         padding: int, default 0,
             zero-padding added to both sides of the input
-        bn: bool or Module,
+        batch_norm: bool or Module, default False,
             batch normalization,
             the Module itself or (if is bool) whether or not to use `nn.BatchNorm1d`
         mode: str, default 'max',
@@ -350,6 +355,7 @@ class DownSample(nn.Sequential):
         self.__down_scale = down_scale
         self.__in_channels = in_channels
         self.__out_channels = out_channels or in_channels
+        self.__groups = groups or self.__in_channels
         self.__padding = padding
 
         if self.__mode == 'max':
@@ -359,27 +365,29 @@ class DownSample(nn.Sequential):
                 down_layer = nn.Sequential((
                     nn.MaxPool1d(kernel_size=self.__down_scale, padding=self.__padding),
                     nn.Conv1d(
-                        self.__in_channels,self.__out_channels,
-                        kernel_size=1,groups=groups,bias=False
+                        self.__in_channels, self.__out_channels, 
+                        kernel_size=1, groups=self.__groups, bias=False
                     ),
                 ))
         elif self.__mode == 'avg':
             if self.__in_channels == self.__out_channels:
                 down_layer = nn.AvgPool1d(kernel_size=self.__down_scale, padding=self.__padding)
             else:
-                down_layer = nn.Sequential((
-                    nn.AvgPool1d(kernel_size=self.__down_scale, padding=self.__padding),
-                    nn.Conv1d(
-                        self.__in_channels,self.__out_channels,
-                        kernel_size=1,groups=groups,bias=False
-                    ),
-                ))
+                down_layer = nn.Sequential(
+                    (
+                        nn.AvgPool1d(kernel_size=self.__down_scale, padding=self.__padding),
+                        nn.Conv1d(
+                            self.__in_channels,self.__out_channels,
+                            kernel_size=1,groups=self.__groups, bias=False,
+                        ),
+                    )
+                )
         elif self.__mode == 'conv':
             down_layer = nn.Conv1d(
                 in_channels=self.__in_channels,
                 out_channels=self.__out_channels,
                 kernel_size=1,
-                groups=groups,
+                groups=self.__groups,
                 bias=False,
                 stride=self.__down_scale,
             )
@@ -391,9 +399,9 @@ class DownSample(nn.Sequential):
                 down_layer,
             )
 
-        if bn:
-            bn_layer = nn.BatchNorm1d(self.__out_channels) if isinstance(bn, bool) \
-                else bn(self.__out_channels)
+        if batch_norm:
+            bn_layer = nn.BatchNorm1d(self.__out_channels) if isinstance(batch_norm, bool) \
+                else batch_norm(self.__out_channels)
             self.add_module(
                 "batch_normalization",
                 bn_layer,
@@ -820,8 +828,9 @@ class ZeroPadding(nn.Module):
     degenerates to `identity` if in and out channels are equal
     """
     __name__ = "ZeroPadding"
+    __LOC__ = ["head", "tail",]
 
-    def __init__(self, in_channels:int, out_channels:int) -> NoReturn:
+    def __init__(self, in_channels:int, out_channels:int, loc:str="head") -> NoReturn:
         """ finished, checked,
 
         Parameters:
@@ -830,11 +839,15 @@ class ZeroPadding(nn.Module):
             number of channels in the input
         out_channels: int,
             number of channels for the output
+        loc: str, default "top", case insensitive,
+            padding to the head or the tail channel
         """
         self.__in_channels = in_channels
         self.__out_channels = out_channels
         self.__increase_channels = out_channels - in_channels
         assert self.__increase_channels >= 0
+        self.__loc = loc.lower()
+        assert self.__loc in self.__LOC__
 
     def forward(self, input:Tensor) -> Tensor:
         """
@@ -842,7 +855,10 @@ class ZeroPadding(nn.Module):
         batch_size, _, seq_len = input.shape
         if self.__increase_channels > 0:
             output = torch.zeros((batch_size, self.__increase_channels, seq_len))
-            output = torch.cat((input, output), dim=1)
+            if self.__loc == "head":
+                output = torch.cat((output, input), dim=1)
+            elif self.__loc == "tail":
+                output = torch.cat((input, output), dim=1)
         else:
             output = input
         return output

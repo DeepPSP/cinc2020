@@ -89,7 +89,7 @@ class VGGBlock(nn.Sequential):
                 kw_activation=self.config.kw_activation,
                 kernel_initializer=self.config.kernel_initializer,
                 kw_initializer=self.config.kw_initializer,
-                bn=self.config.batch_norm,
+                batch_norm=self.config.batch_norm,
             )
         )
         for idx in range(num_convs-1):
@@ -104,7 +104,7 @@ class VGGBlock(nn.Sequential):
                     kw_activation=self.config.kw_activation,
                     kernel_initializer=self.config.kernel_initializer,
                     kw_initializer=self.config.kw_initializer,
-                    bn=self.config.batch_norm,
+                    batch_norm=self.config.batch_norm,
                 )
             )
         self.add_module(
@@ -282,7 +282,7 @@ class ResNetStanfordBlock(nn.Module):
                     out_channels=self.__out_channels,
                     kernel_size=self.__kernel_size,
                     stride = (self.__stride if i == 0 else 1),
-                    bn=False,
+                    batch_norm=False,
                     activation=None,
                     kernel_initializer=self.config.kernel_initializer,
                     kw_initializer=self.config.kw_initializer,
@@ -317,7 +317,7 @@ class ResNetStanfordBlock(nn.Module):
                     down_scale=self.__down_scale,
                     in_channels=self.__in_channels,
                     out_channels=self.__out_channels,
-                    bn=False,
+                    batch_norm=False,
                     mode=self.config.subsample_mode,
                 )
             if self.config.increase_channels_method.lower() == 'zero_padding':
@@ -326,7 +326,7 @@ class ResNetStanfordBlock(nn.Module):
                         down_scale=self.__down_scale,
                         in_channels=self.__in_channels,
                         out_channels=self.__in_channels,
-                        bn=False,
+                        batch_norm=False,
                         mode=self.config.subsample_mode,
                     ),
                     ZeroPadding(self.__in_channels, self.__out_channels),
@@ -394,7 +394,7 @@ class ResNetStanford(nn.Sequential):
                 out_channels=self.config.num_filters_start,
                 kernel_size=self.config.filter_lengths,
                 stride=1,
-                bn=True,
+                batch_norm=True,
                 activation=self.config.block.activation,
                 kw_activation=self.config.block.kw_activation,
                 kernel_initializer=self.config.block.kernel_initializer,
@@ -531,7 +531,7 @@ class ResNetBasicBlock(nn.Module):
                     kernel_size=self.__kernel_size,
                     stride=(self.__stride if i == 0 else 1),
                     groups = self.__groups,
-                    bn=True,
+                    batch_norm=True,
                     activation=conv_activation,
                     kw_activation=self.config.kw_activation,
                     kernel_initializer=self.config.kernel_initializer,
@@ -560,17 +560,17 @@ class ResNetBasicBlock(nn.Module):
                     in_channels=self.__in_channels,
                     out_channels=self.__out_channels,
                     groups=self.__groups,
-                    bn=True,
+                    batch_norm=True,
                     mode=self.config.subsample_mode,
                 )
             if self.config.increase_channels_method.lower() == 'zero_padding':
-                bn = False if self.config.subsample_mode.lower() != 'conv' else True
+                batch_norm = False if self.config.subsample_mode.lower() != 'conv' else True
                 short_cut = nn.Sequential(
                     DownSample(
                         down_scale=self.__down_scale,
                         in_channels=self.__in_channels,
                         out_channels=self.__in_channels,
-                        bn=bn,
+                        batch_norm=batch_norm,
                         mode=self.config.subsample_mode,
                     ),
                     ZeroPadding(self.__in_channels, self.__out_channels),
@@ -946,7 +946,7 @@ class CPSCBlock(nn.Sequential):
                     activation=self.config.activation,
                     kw_activation=self.config.kw_activation,
                     kernel_initializer=self.config.kernel_initializer,
-                    bn=self.config.batch_norm,
+                    batch_norm=self.config.batch_norm,
                 )
             )
         self.add_module(
@@ -958,7 +958,7 @@ class CPSCBlock(nn.Sequential):
                 activation=self.config.activation,
                 kw_activation=self.config.kw_activation,
                 kernel_initializer=self.config.kernel_initializer,
-                bn=self.config.batch_norm,
+                batch_norm=self.config.batch_norm,
             )
         )
         if self.__dropout > 0:
