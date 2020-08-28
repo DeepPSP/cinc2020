@@ -186,7 +186,7 @@ class LUDBReader(object):
         self.all_leads_lower = [l.lower() for l in self.all_leads]
         self.beat_ann_ext = [f"atr_{item}" for item in self.all_leads_lower]
 
-        self._all_symbols = ['(', ')', 'N', 'p', 't']
+        self._all_symbols = ['(', ')', 'p', 'N', 't']
         """
         this can be obtained using the following code:
         >>> data_gen = LUDB(db_dir="/home/wenhao71/data/PhysioNet/ludb/1.0.0/")
@@ -197,6 +197,10 @@ class LUDBReader(object):
         ...         all_symbols.update(ann.symbol)
         """
         self._symbol_to_wavename = ED(N='qrs', p='pwave', t='twave')
+        self._wavename_to_symbol = ED({v:k for k,v in self._symbol_to_wavename.items()})
+        self.class_map = ED(
+            p=1, N=2, t=3, i=0  # an extra isoelectric
+        )
 
         self._all_records = None
         self._ls_rec()
@@ -300,12 +304,7 @@ class LUDBReader(object):
             the ecg data
         """
         assert data_format.lower() in ['channel_first', 'lead_first', 'channel_last', 'lead_last']
-        if not leads:
-            _leads = self.all_leads_lower
-        elif isinstance(leads, str):
-            _leads = [leads.lower()]
-        else:
-            _leads = [l.lower() for l in leads]
+        _leads = self._normalize_leads(leads, standard_ordering=True, lower_cases=True)
         
         rec_fp = os.path.join(self.db_dir, rec)
         wfdb_rec = wfdb.rdrecord(rec_fp, physical=True, channel_names=_leads)
@@ -328,7 +327,7 @@ class LUDBReader(object):
     def load_ann(self, rec:str, leads:Optional[Sequence[str]]=None, metadata:bool=False) -> dict:
         """ finished, checked,
 
-        loading the wave delineation, along with metadata if specified
+        load the wave delineation, along with metadata if specified
 
         Parameters:
         -----------
@@ -347,11 +346,10 @@ class LUDBReader(object):
         rec_fp = os.path.join(self.db_dir, rec)
 
         # wave delineation annotations
-        _leads = leads or self.all_leads_lower
-        _lead_indices = [self.all_leads_lower.index(l) for l in _leads]
-        _ann_ext = [f"atr_{item}" for item in _leads]
-        ann_dict['waves'] = ED({self.all_leads[l]:[] for l in _lead_indices})
-        for l, e in zip(_lead_indices, _ann_ext):
+        _leads = self._normalize_leads(leads, standard_ordering=True, lower_cases=False)
+        _ann_ext = [f"atr_{l.lower()}" for l in _leads]
+        ann_dict['waves'] = ED({l:[] for l in _leads})
+        for l, e in zip(_leads, _ann_ext):
             ann = wfdb.rdann(rec_fp, extension=e)
             df_lead_ann = pd.DataFrame()
             symbols = np.array(ann.symbol)
@@ -400,7 +398,7 @@ class LUDBReader(object):
                     peak=int(row.peak),
                     duration=row.duration,
                 )
-                ann_dict['waves'][self.all_leads[l]].append(w)
+                ann_dict['waves'][l].append(w)
 
         if metadata:
             header_dict = self._load_header(rec)
@@ -425,6 +423,34 @@ class LUDBReader(object):
         """
         diagnoses = self._load_header(rec)['diagnoses']
         return diagnoses
+
+
+    def load_masks(self, rec:str, leads:Optional[Sequence[str]]=None, data_format='channel_first') -> np.ndarray:
+        """ finished, checked,
+
+        load the wave delineation in the form of masks
+
+        Parameters:
+        -----------
+        rec: str,
+            name of the record
+        leads: str or list of str, optional,
+            the leads to load
+
+        Returns:
+        --------
+        masks: ndarray
+        """
+        _leads = self._normalize_leads(leads, standard_ordering=True, lower_cases=True)
+        data = self.load_data(rec, leads=_leads, data_format='channel_first')
+        masks = np.full_like(data, fill_value=self.class_map.i, dtype=int)
+        waves = self.load_ann(rec, leads=_leads, metadata=False)['waves']
+        for idx, (l, l_w) in enumerate(waves.items()):
+            for w in l_w:
+                masks[idx, w.onset: w.offset] = self.class_map[self._wavename_to_symbol[w.name]]
+        if data_format not in ['channel_first', 'lead_first',]:
+            masks = masks.T
+        return masks
 
 
     def _load_header(self, rec:str) -> dict:
@@ -456,9 +482,38 @@ class LUDBReader(object):
             header_dict['sex'] = [l for l in header_reader.comments if '<sex>' in l][0].split(': ')[-1]
         except:
             header_dict['sex'] = ''
-        d_start = [idx for idx, l in header_reader.comments if '<diagnoses>' in l][0] + 1
+        d_start = [idx for idx, l in enumerate(header_reader.comments) if '<diagnoses>' in l][0] + 1
         header_dict['diagnoses'] = header_reader.comments[d_start:]
         return header_dict
+
+
+    def _normalize_leads(self, leads:Optional[Sequence[str]]=None, standard_ordering:bool=True, lower_cases:bool=False) -> List[str]:
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        leads: str or list of str, optional,
+            the (names of) leads to normalize
+        starndard_ordering: bool, default True,
+            if True, the ordering will be re-aranged to be accordance with `self.all_leads`
+        lower_cases: bool, default False,
+            if True, all names of the leads will be in lower cases
+        """
+        if leads is None:
+            _leads = self.all_leads_lower
+        elif isinstance(leads, str):
+            _leads = [leads.lower()]
+        else:
+            _leads = [l.lower() for l in leads]
+
+        if standard_ordering:
+            _leads = [l for l in self.all_leads_lower if l in _leads]
+        
+        if not lower_cases:
+            _lead_indices = [idx for idx, l in enumerate(self.all_leads_lower) if l in _leads]
+            _leads = [self.all_leads[idx] for idx in _lead_indices]
+        
+        return _leads
 
 
     def plot(self, rec:str, data:Optional[np.ndarray]=None, ticks_granularity:int=0, leads:Optional[Union[str, List[str]]]=None, same_range:bool=False, waves:Optional[ECGWaveForm]=None, **kwargs) -> NoReturn:
@@ -501,17 +556,11 @@ class LUDBReader(object):
         if 'plt' not in dir():
             import matplotlib.pyplot as plt
             plt.MultipleLocator.MAXTICKS = 3000
-        if leads is None or leads == 'all':
-            _leads = self.all_leads_lower
-        elif isinstance(leads, str):
-            _leads = [leads.lower()]
-        else:
-            _leads = [l.lower() for l in leads]
-            _leads = [l for l in self.all_leads_lower if l in leads]  # keep in order
+        _leads = self._normalize_leads(leads, standard_ordering=True, lower_cases=False)
 
         # lead_list = self.load_ann(rec)['df_leads']['lead_name'].tolist()
         # _lead_indices = [lead_list.index(l) for l in leads]
-        _lead_indices = [self.all_leads_lower.index(l) for l in _leads]
+        _lead_indices = [self.all_leads.index(l) for l in _leads]
         if data is None:
             _data = self.load_data(rec, data_format='channel_first', units='μV')[_lead_indices]
         else:
@@ -531,9 +580,9 @@ class LUDBReader(object):
             waves = self.load_ann(rec, leads=_leads)['waves']
 
         if waves is not None:
-            pwaves = {self.all_leads[l]:[] for l in _lead_indices}
-            qrs = {self.all_leads[l]:[] for l in _lead_indices}
-            twaves = {self.all_leads[l]:[] for l in _lead_indices}
+            pwaves = {l:[] for l in _leads}
+            qrs = {l:[] for l in _leads}
+            twaves = {l:[] for l in _leads}
             for l, l_w in waves.items():
                 for w in l_w:
                     itv = [w.onset, w.offset]
