@@ -52,9 +52,10 @@ class LUDB(Dataset):
                 for idx,l in enumerate(self.leads) if l.lower() in self.reader.all_leads_lower
         ]
 
-        self.records = self._train_test_split(config.train_ratio, force_recompute=False)
+        self.records = self._train_test_split(config.train_ratio)
 
-        self.__data_aug = self.training
+        # self.__data_aug = self.training
+        self.__data_aug = False
 
     def __getitem__(self, index):
         """ finished, checked,
@@ -65,15 +66,22 @@ class LUDB(Dataset):
         )
         if self.config.normalize_data:
             values = (values - np.mean(values)) / np.std(values)
-        labels = self.reader.load_ann(
-            rec, leads=self.leads, metadata=False
-        )['waves']
+        masks = self.reader.load_masks(
+            rec, leads=self.leads, data_format='channel_first',
+        )
+        sampfrom = randint(
+            self.config.start_from,
+            masks.shape[1] - self.config.config.end_to - self.siglen
+        )
+        sampto = sampfrom + self.siglen
+        values = values[..., sampfrom:sampto]
+        masks = masks[..., sampfrom:sampto]
 
         if self.__data_aug:
             # data augmentation for input
             raise NotImplementedError
 
-        return values, labels
+        return values, masks
 
 
     def __len__(self):
@@ -104,11 +112,38 @@ class LUDB(Dataset):
         records: list of str,
             list of the records split for training or validation
         """
-        raise NotImplementedError
+        file_suffix = f"_siglen_{self.siglen}.json"
+        train_file = os.path.join(self.reader.db_dir, f"train_ratio_{_train_ratio}{file_suffix}")
+        test_file = os.path.join(self.reader.db_dir, f"test_ratio_{_test_ratio}{file_suffix}")
+
+        if force_recompute or not all([os.path.isfile(train_file), os.path.isfile(test_file)]):
+            all_records = deepcopy(self.reader.all_records)
+            shuffle(all_records)
+            split_idx = int(train_ratio * len(all_records))
+            train_set = all_records[:split_idx]
+            test_set = all_records[split_idx:]
+            with open(train_file, "w") as f:
+                json.dump(train_set, f, ensure_ascii=False)
+            with open(test_file, "w") as f:
+                json.dump(test_set, f, ensure_ascii=False)
+        else:
+            with open(train_file, "r") as f:
+                train_set = json.load(f)
+            with open(test_file, "r") as f:
+                test_set = json.load(f)
+        if self.training:
+            records = train_set
+        else:
+            records = test_set
+        if self.config.over_sampling > 1:
+            records = records * self.config.over_sampling
+            shuffle(records)
+        return records
 
 
+    @DeprecationWarning
     def persistence(self) -> NoReturn:
-        """ finished, checked,
+        """ NOT finished, NOT checked,
 
         make the dataset persistent w.r.t. the tranches and the ratios in `self.config`
         """

@@ -3,6 +3,7 @@ UNet structure models,
 mainly for ECG wave delineation
 
 References:
+-----------
 [1] Moskalenko, Viktor, Nikolai Zolotykh, and Grigory Osipov. "Deep Learning for ECG Segmentation." International Conference on Neuroinformatics. Springer, Cham, 2019.
 [2] https://github.com/milesial/Pytorch-UNet/
 """
@@ -47,7 +48,7 @@ class DoubleConv(nn.Sequential):
     __name__ = "DoubleConv"
 
     def __init__(self, in_channels:int, out_channels:int, filter_lengths:Union[Sequence[int],int], subsample_lengths:Union[Sequence[int],int]=1, groups:int=1, mid_channels:Optional[int]=None, **config) -> NoReturn:
-        """ finished, NOT checked,
+        """ finished, checked,
 
         Parameters:
         -----------
@@ -164,7 +165,7 @@ class DownDoubleConv(nn.Sequential):
     __MODES__ = deepcopy(DownSample.__MODES__)
 
     def __init__(self, down_scale:int, in_channels:int, out_channels:int, filter_lengths:Union[Sequence[int],int], groups:int=1, mid_channels:Optional[int]=None, mode:str='max', **config) -> NoReturn:
-        """ finished, NOT checked,
+        """ finished, checked,
 
         Parameters:
         -----------
@@ -263,7 +264,7 @@ class UpDoubleConv(nn.Module):
     __MODES__ = ['nearest', 'linear', 'area', 'deconv',]
 
     def __init__(self, up_scale:int, in_channels:int, out_channels:int, filter_lengths:Union[Sequence[int],int], deconv_filter_length:Optional[int]=None, groups:int=1, mode:str='deconv', mid_channels:Optional[int]=None, **config) -> NoReturn:
-        """ finished, NOT checked,
+        """ finished, checked,
 
         Parameters:
         -----------
@@ -333,7 +334,7 @@ class UpDoubleConv(nn.Module):
         )
 
     def forward(self, input:Tensor, down_output:Tensor) -> Tensor:
-        """
+        """ finished, checked,
 
         Parameters:
         -----------
@@ -471,7 +472,7 @@ class ECG_UNET(nn.Module):
         )
 
     def forward(self, input:Tensor) -> Tensor:
-        """
+        """ finished, checked,
         """
         to_concat = [self.init_conv(input)]
         for idx in range(self.config.down_up_block_num):
@@ -485,13 +486,13 @@ class ECG_UNET(nn.Module):
 
         return output
 
-    def inference(self, input:Tensor) -> Tensor:
-        """
+    def inference(self, input:Tensor, class_map:Optional[dict]=None) -> Tensor:
+        """ NOT finished, NOT checked,
         """
         raise NotImplementedError
 
     def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
-        """ finished, NOT checked,
+        """ finished, checked,
 
         Parameters:
         -----------
