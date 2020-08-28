@@ -34,7 +34,7 @@ ECGWaveForm = namedtuple(
 )
 
 
-class LUDB(object):
+class LUDBReader(object):
     """ NOT Finished, 
 
     Lobachevsky University Electrocardiography Database
