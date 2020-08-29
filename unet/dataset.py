@@ -57,7 +57,7 @@ class LUDB(Dataset):
         # self.__data_aug = self.training
         self.__data_aug = False
 
-    def __getitem__(self, index):
+    def __getitem__(self, index:int) -> Tuple[np.ndarray, np.ndarray]:
         """ finished, checked,
         """
         rec = self.records[index]
@@ -84,7 +84,7 @@ class LUDB(Dataset):
         return values, masks
 
 
-    def __len__(self):
+    def __len__(self) -> int:
         """
         """
         return len(self.records)

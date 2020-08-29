@@ -1260,7 +1260,7 @@ class BCEWithLogitsWithClassWeightLoss(nn.BCEWithLogitsLoss):
 
 
 
-def default_collate_fn(batch:Sequence[Tuple[Tensor, Tensor]]) -> Tuple[Tensor, Tensor]:
+def default_collate_fn(batch:Sequence[Tuple[np.ndarray, np.ndarray]]) -> Tuple[Tensor, Tensor]:
     """ finished, checked,
 
     collate functions for model training
@@ -1275,15 +1275,15 @@ def default_collate_fn(batch:Sequence[Tuple[Tensor, Tensor]]) -> Tuple[Tensor, T
     
     Returns:
     --------
-    signals: Tensor,
-        the concatenated signals
+    values: Tensor,
+        the concatenated values as input for training
     labels: Tensor,
-        the concatenated labels
+        the concatenated labels as ground truth for training
     """
-    signals = [[item[0]] for item in batch]
+    values = [[item[0]] for item in batch]
     labels = [[item[1]] for item in batch]
-    signals = np.concatenate(signals, axis=0).astype(np.float64)
-    signals = torch.from_numpy(signals)
+    values = np.concatenate(values, axis=0).astype(np.float64)
+    values = torch.from_numpy(values)
     labels = np.concatenate(labels, axis=0).astype(np.float64)
     labels = torch.from_numpy(labels)
-    return signals, labels
+    return values, labels

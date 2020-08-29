@@ -72,7 +72,7 @@ class CINC2020(Dataset):
 
         self.__data_aug = self.training
 
-    def __getitem__(self, index):
+    def __getitem__(self, index:int) -> Tuple[np.ndarray, np.ndarray]:
         """ finished, checked,
         """
         rec = self.records[index]
@@ -103,7 +103,7 @@ class CINC2020(Dataset):
         return values, labels
 
 
-    def __len__(self):
+    def __len__(self) -> int:
         """
         """
         return len(self.records)
