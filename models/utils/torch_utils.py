@@ -30,7 +30,8 @@ __all__ = [
     "WeightedBCELoss", "BCEWithLogitsWithClassWeightLoss",
     "compute_output_shape",
     "compute_conv_output_shape",
-    "compute_maxpool_output_shape", "compute_avgpool_output_shape"
+    "compute_maxpool_output_shape", "compute_avgpool_output_shape",
+    "default_"
 ]
 
 
@@ -1255,3 +1256,34 @@ class BCEWithLogitsWithClassWeightLoss(nn.BCEWithLogitsLoss):
         loss = super().forward(input, target)
         loss = torch.mean(loss * self.class_weight)
         return loss
+
+
+
+
+def default_collate_fn(batch:Sequence[Tuple[Tensor, Tensor]]) -> Tuple[Tensor, Tensor]:
+    """ finished, checked,
+
+    collate functions for model training
+
+    the data generator (`Dataset`) should generate (`__getitem__`) 2-tuples `signals, labels`
+
+    Parameters:
+    -----------
+    batch: sequence,
+        sequence of 2-tuples,
+        in which the first element is the signal, the second is the label
+    
+    Returns:
+    --------
+    signals: Tensor,
+        the concatenated signals
+    labels: Tensor,
+        the concatenated labels
+    """
+    signals = [[item[0]] for item in batch]
+    labels = [[item[1]] for item in batch]
+    signals = np.concatenate(signals, axis=0).astype(np.float64)
+    signals = torch.from_numpy(signals)
+    labels = np.concatenate(labels, axis=0).astype(np.float64)
+    labels = torch.from_numpy(labels)
+    return signals, labels

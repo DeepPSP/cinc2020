@@ -147,6 +147,10 @@ TrainCfg.class_weights = ED({
 })  # normalize so that the smallest weight equals `TrainCfg.min_class_weight`
 TrainCfg.classes = sorted(list(TrainCfg.class_weights.keys()))
 
+# configs of signal preprocessing
+# frequency band of the filter to apply, should be chosen very carefully
+TrainCfg.bandpass = None  # [0.5, 30]
+
 # configs of data aumentation
 TrainCfg.label_smoothing = 0.1
 TrainCfg.random_mask = int(TrainCfg.fs * 0.0)  # 1.0s, 0 for no masking

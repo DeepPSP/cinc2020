@@ -55,7 +55,10 @@ from easydict import EasyDict as ED
 torch.set_default_tensor_type(torch.DoubleTensor)
 
 from models.ecg_crnn import ECG_CRNN
-from models.utils.torch_utils import BCEWithLogitsWithClassWeightLoss
+from models.utils.torch_utils import (
+    BCEWithLogitsWithClassWeightLoss,
+    default_collate_fn as collate_fn,
+)
 from model_configs import ECG_CRNN_CONFIG
 from cfg import ModelCfg, TrainCfg
 from dataset import CINC2020
@@ -102,7 +105,7 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
         shuffle=True,
         num_workers=8,
         pin_memory=True,
-        drop_last=True,  # setting False would result in error
+        drop_last=False,
         collate_fn=collate_fn,
     )
 
@@ -113,7 +116,7 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
             shuffle=True,
             num_workers=8,
             pin_memory=True,
-            drop_last=True,  # setting False would result in error
+            drop_last=False,
             collate_fn=collate_fn,
         )
     val_loader = DataLoader(
@@ -122,7 +125,7 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
         shuffle=True,
         num_workers=8,
         pin_memory=True,
-        drop_last=True,  # setting False would result in error
+        drop_last=False,
         collate_fn=collate_fn,
     )
 
@@ -173,7 +176,7 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
             betas=(0.9, 0.999),  # default
             eps=1e-08,  # default
         )
-        scheduler = None
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=2)
     elif config.train_optimizer.lower() == 'sgd':
         optimizer = optim.SGD(
             params=model.parameters(),
@@ -183,7 +186,7 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
         )
         scheduler = optim.lr_scheduler.StepLR(optimizer, config.lr_step_size, config.lr_gamma)
     else:
-        raise NotImplementedError(f"loss `{config.train_optimizer}` not implemented!")
+        raise NotImplementedError(f"optimizer `{config.train_optimizer}` not implemented!")
     # scheduler = optim.lr_scheduler.LambdaLR(optimizer, burnin_schedule)
 
     if config.loss == "BCEWithLogitsLoss":
@@ -315,18 +318,6 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
                     logger.info(f'failed to remove {model_to_remove}')
 
     writer.close()
-
-
-def collate_fn(batch:tuple) -> Tuple[Tensor, Tensor]:
-    """ finished, checked,
-    """
-    signals = [[item[0]] for item in batch]
-    labels = [[item[1]] for item in batch]
-    signals = np.concatenate(signals, axis=0).astype(np.float64)
-    signals = torch.from_numpy(signals)
-    labels = np.concatenate(labels, axis=0).astype(np.float64)
-    labels = torch.from_numpy(labels)
-    return signals, labels
 
 
 # def train_one_epoch(model:nn.Module, criterion:nn.Module, optimizer:optim.Optimizer, data_loader:DataLoader, device:torch.device, epoch:int) -> NoReturn:
