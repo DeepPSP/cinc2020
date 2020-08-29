@@ -30,3 +30,20 @@ TrainCfg.end_at = int(2 * TrainCfg.fs)
 TrainCfg.input_len = int(4 * TrainCfg.fs)
 
 TrainCfg.over_sampling = 2
+
+# configs of training epochs, batch, etc.
+TrainCfg.n_epochs = 300
+TrainCfg.batch_size = 128
+# TrainCfg.max_batches = 500500
+
+# configs of optimizers and lr_schedulers
+TrainCfg.train_optimizer = "adam"  # "sgd", "rmsprop",
+
+TrainCfg.learning_rate = 0.0001
+TrainCfg.lr = TrainCfg.learning_rate
+TrainCfg.lr_step_size = 50
+TrainCfg.lr_gamma = 0.1
+
+# configs of loss function
+TrainCfg.loss = 'CrossEntropyLoss'
+TrainCfg.eval_every = 20
