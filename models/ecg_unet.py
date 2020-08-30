@@ -14,6 +14,7 @@ from itertools import repeat
 from typing import Union, Optional, Sequence, NoReturn
 from numbers import Real
 
+import numpy as np
 import torch
 from torch import nn
 from torch import Tensor
@@ -471,6 +472,8 @@ class ECG_UNET(nn.Module):
             kw_initializer=self.config.kw_initializer,
         )
 
+        self.softmax = nn.Softmax(dim=-1)  # for making inference
+
     def forward(self, input:Tensor) -> Tensor:
         """ finished, checked,
         """
@@ -486,10 +489,16 @@ class ECG_UNET(nn.Module):
 
         return output
 
-    def inference(self, input:Tensor, class_map:Optional[dict]=None) -> Tensor:
-        """ NOT finished, NOT checked,
+    @torch.no_grad()
+    def inference(self, input:Tensor, class_map:Optional[dict]=None) -> np.ndarray:
+        """ finished, checked,
         """
-        raise NotImplementedError
+        output_masks = self.forward(input)  # batch_size, channels(n_classes), seq_len
+        output_masks = output_masks.permute(0,2,1)  # batch_size, seq_len, channels(n_classes)
+        output_masks = self.softmax(output_masks)  # batch_size, seq_len, channels(n_classes)
+        output_masks = output_masks.cpu().detach().numpy()
+        output_masks = np.argmax(output_masks, axis=-1)
+        return output_masks
 
     def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
         """ finished, checked,

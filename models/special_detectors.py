@@ -10,6 +10,10 @@ NOTE:
 2. almost all the rules can be found in `utils.ecg_arrhythmia_knowledge`
 3. 'PR' is superior to electrical axis deviation, which should be considered in the final decision.
 the co-occurrence of 'PR' and 'LAD' is 7; the co-occurrence of 'PR' and 'RAD' is 3, whose probabilities are both relatively low
+
+TODO:
+-----
+currently all are binary detectors, --> detectors producing a probability?
 """
 import multiprocessing as mp
 from numbers import Real

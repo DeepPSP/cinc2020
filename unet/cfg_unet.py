@@ -23,6 +23,7 @@ TrainCfg.classes = [
     't',  # twave
     'i',  # isoelectric
 ]
+TrainCfg.class_map = ED(p=1, N=2, t=3, i=0)
 
 # as for `start_from` and `end_at`, see ref. [1] section 3.1
 TrainCfg.start_from = int(2 * TrainCfg.fs)

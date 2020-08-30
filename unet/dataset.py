@@ -67,7 +67,7 @@ class LUDB(Dataset):
         if self.config.normalize_data:
             values = (values - np.mean(values)) / np.std(values)
         masks = self.reader.load_masks(
-            rec, leads=self.leads, data_format='channel_first',
+            rec, leads=self.leads, mask_format='channel_first',
             class_map=self.config.class_map,
         )
         sampfrom = randint(
