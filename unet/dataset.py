@@ -60,7 +60,11 @@ class LUDB(Dataset):
     def __getitem__(self, index:int) -> Tuple[np.ndarray, np.ndarray]:
         """ finished, checked,
         """
-        rec = self.records[index]
+        if self.config.use_single_lead:
+            rec_idx, lead_idx = divmod(index, 12)
+        else:
+            rec_idx, lead_idx = index, None
+        rec = self.records[rec_idx]
         values = self.reader.load_data(
             rec, data_format='channel_first', units='mV',
         )
@@ -82,12 +86,18 @@ class LUDB(Dataset):
             # data augmentation for input
             raise NotImplementedError
 
+        if lead_idx is not None:
+            values = values[idx:idx+1, ...]
+            masks = masks[idx:idx+1, ...]
+
         return values, masks
 
 
     def __len__(self) -> int:
         """
         """
+        if self.config.use_single_lead:
+            return 12 * len(self.records)
         return len(self.records)
 
 

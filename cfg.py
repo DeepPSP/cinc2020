@@ -95,7 +95,7 @@ TrainCfg = ED()
 TrainCfg.db_dir = "/media/cfs/wenhao71/data/cinc2020_data/"
 TrainCfg.log_dir = os.path.join(_BASE_DIR, 'log')
 TrainCfg.checkpoints = os.path.join(_BASE_DIR, "checkpoints")
-TrainCfg.keep_checkpoint_max = 100
+TrainCfg.keep_checkpoint_max = 20
 
 # configs of training data
 TrainCfg.fs = ModelCfg.fs

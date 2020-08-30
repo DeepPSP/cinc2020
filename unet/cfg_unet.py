@@ -13,8 +13,16 @@ __all__ = [
     "TrainCfg",
 ]
 
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 TrainCfg = ED()
+
+# configs of files
+TrainCfg.db_dir = "/media/cfs/wenhao71/data/PhysioNet/ludb/1.0.0/"
+TrainCfg.log_dir = os.path.join(_BASE_DIR, 'log')
+TrainCfg.checkpoints = os.path.join(_BASE_DIR, "checkpoints")
+TrainCfg.keep_checkpoint_max = 20
+
 TrainCfg.fs = 500
 TrainCfg.train_ratio = 0.8
 TrainCfg.classes = [
@@ -24,6 +32,7 @@ TrainCfg.classes = [
     'i',  # isoelectric
 ]
 TrainCfg.class_map = ED(p=1, N=2, t=3, i=0)
+TrainCfg.use_single_lead = True  # use single lead as input or use all 12 leads
 
 # as for `start_from` and `end_at`, see ref. [1] section 3.1
 TrainCfg.start_from = int(2 * TrainCfg.fs)

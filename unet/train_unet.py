@@ -196,7 +196,23 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
 
             writer.add_scalar('train/epoch_loss', epoch_loss, global_step)
 
-            # TODO: eval
+            if debug:
+                eval_train_res = evaluate(model, val_train_loader, config, device, debug)
+                for wave in ["pwave", "qrs", "twave",]:
+                    for term in ["onset", "offset"]:
+                        for metric in ["sensitivity", "precision", "f1_score", "mean_error", "standard_deviation"]:
+                            scalar_name = f"{wave}_{term}_{metric}"
+                            scalar = eval(f"eval_train_res.{wave}_{term}.{metric}")
+                            writer.add_scalar(f'train/{scalar_name}', scalar, global_step)
+            
+            eval_res = evaluate(model, val_loader, config, device, debug)
+            model.train()
+            for wave in ["pwave", "qrs", "twave",]:
+                for term in ["onset", "offset"]:
+                    for metric in ["sensitivity", "precision", "f1_score", "mean_error", "standard_deviation"]:
+                        scalar_name = f"{wave}_{term}_{metric}"
+                        scalar = eval(f"eval_res.{wave}_{term}.{metric}")
+                        writer.add_scalar(f'test/{scalar_name}', scalar, global_step)
 
             try:
                 os.makedirs(config.checkpoints, exist_ok=True)
@@ -252,6 +268,8 @@ def evaluate(model:nn.Module, data_loader:DataLoader, config:dict, device:torch.
         freq=config.fs,
         mask_format="channel_first",
     )
+    model.train()
+
     return eval_res
 
 
