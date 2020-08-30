@@ -7,6 +7,7 @@ from itertools import repeat
 from typing import Union, Sequence, Tuple, Optional, NoReturn
 
 from packaging import version
+import numpy as np
 import torch
 from torch import nn
 from torch import Tensor
@@ -31,7 +32,7 @@ __all__ = [
     "compute_output_shape",
     "compute_conv_output_shape",
     "compute_maxpool_output_shape", "compute_avgpool_output_shape",
-    "default_"
+    "default_collate_fn",
 ]
 
 

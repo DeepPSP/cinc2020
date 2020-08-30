@@ -781,20 +781,25 @@ class ECG_CRNN(nn.Module):
         x = self.cnn(input)  # batch_size, channels, seq_len
         # print(f"cnn out shape = {x.shape}")
         if self.rnn:
-            # input shape of lstm: (seq_len, batch, input_size)
+            # input shape of lstm: (seq_len, batch_size, input_size)
             x = x.permute(2,0,1)  # seq_len, batch_size, channels
             x = self.rnn(x)
             if self.config.rnn.retseq:
-                # (seq_len, batch, channels) -> (batch, channels, seq_len)
+                # (seq_len, batch_size, channels) -> (batch_size, channels, seq_len)
                 x = x.permute(1,2,0)
-                x = self.max_pool(x)  # (batch, channels, 1)
-                x = torch.flatten(x, 1)  # (batch, channels)
+                x = self.max_pool(x)  # (batch_size, channels, 1)
+                x = torch.flatten(x, 1)  # (batch_size, channels)
+            else:
+                # x of shape (batch_size, channels)
+                pass
         else:
+            # (batch_size, channels, seq_len) --> (batch_size, channels)
             x = self.max_pool(x)
             x = torch.flatten(x, 1)
         pred = self.clf(x)
         return pred
 
+    @torch.no_grad()
     def inference(self, input:Tensor, class_names:bool=False, bin_pred_thr:float=0.5) -> Union[np.ndarray, pd.DataFrame]:
         """
         """

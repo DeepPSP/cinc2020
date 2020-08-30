@@ -114,4 +114,3 @@ if __name__ == "__main__":
     test_y = np.concatenate(test_y, axis=0)
 
     train(model, config, train_x, train_y, test_x, test_y)
-keras.layers.Embedding

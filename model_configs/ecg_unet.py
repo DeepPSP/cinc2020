@@ -45,7 +45,7 @@ ECG_UNET_CONFIG.up_num_filters = [
 ECG_UNET_CONFIG.up_deconv_filter_lengths = \
     list(repeat(9, ECG_UNET_CONFIG.down_up_block_num))
 ECG_UNET_CONFIG.up_conv_filter_lengths = \
-    list(repeat(ECG_UNET_CONFIG.init_filter_length, unet.down_up_block_num))
+    list(repeat(ECG_UNET_CONFIG.init_filter_length, ECG_UNET_CONFIG.down_up_block_num))
 
 
 unet_down_block = ED()
