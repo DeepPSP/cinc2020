@@ -33,7 +33,13 @@ from models.utils.torch_utils import default_collate_fn as collate_fn
 from model_configs import ECG_UNET_CONFIG
 from .cfg_unet import TrainCfg
 from .dataset import LUDB
+from .metrics import compute_metrics
 from utils.misc import init_logger, get_date_str, dict_to_str, str2bool
+
+
+__all__ = [
+    "train",
+]
 
 
 def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, logger:Optional[logging.Logger]=None, debug:bool=False):
@@ -223,23 +229,21 @@ def evaluate(model:nn.Module, data_loader:DataLoader, config:dict, device:torch.
     model.eval()
     data_loader.dataset.disable_data_augmentation()
 
-    all_preds = []
-    all_labels = []
-    
-    for signals, labels in data_loader:
+    all_masks_pred = []
+    all_masks_truth = []
+
+    for signals, masks_truth in data_loader:
         signals = signals.to(device=device, dtype=torch.float64)
-        labels = labels.numpy()
-        all_labels.append(labels)
+        masks_truth = masks_truth.numpy()
+        all_masks_truth.append(masks_truth)
 
         if torch.cuda.is_available():
             torch.cuda.synchronize()
-        preds, _ = model.inference(signals)
-        all_preds.append(preds.cpu().detach().numpy())
+        masks_pred, _ = model.inference(signals)
+        all_masks_pred.append(masks_pred.cpu().detach().numpy())
     
-    all_preds = np.concatenate(all_preds, axis=0)
-    bin_preds = (all_preds >= config.bin_pred_thr).astype(int)
-    all_labels = np.concatenate(all_labels, axis=0)
-    classes = data_loader.dataset.all_classes
+    all_masks_pred = np.concatenate(all_masks_pred, axis=0)
+    all_masks_truth = np.concatenate(all_masks_truth, axis=0)
 
 
 DAS = True
