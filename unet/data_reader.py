@@ -292,7 +292,7 @@ class LUDBReader(object):
         data_format: str, default 'channel_first',
             format of the ecg data,
             'channel_last' (alias 'lead_last'), or
-            'channel_first' (alias 'lead_first', original)
+            'channel_first' (alias 'lead_first')
         units: str, default 'mV',
             units of the output signal, can also be 'μV', with an alias of 'uV'
         freq: real number, optional,
@@ -425,7 +425,7 @@ class LUDBReader(object):
         return diagnoses
 
 
-    def load_masks(self, rec:str, leads:Optional[Sequence[str]]=None, data_format='channel_first', class_map:Optional[Dict[str, int]]) -> np.ndarray:
+    def load_masks(self, rec:str, leads:Optional[Sequence[str]]=None, mask_format:str="channel_first", class_map:Optional[Dict[str, int]]=None) -> np.ndarray:
         """ finished, checked,
 
         load the wave delineation in the form of masks
@@ -436,13 +436,18 @@ class LUDBReader(object):
             name of the record
         leads: str or list of str, optional,
             the leads to load
+        mask_format: str, default "channel_first",
+            format of the mask,
+            'channel_last' (alias 'lead_last'), or
+            'channel_first' (alias 'lead_first')
         class_map: dict, optional,
             custom class map,
             if not set, `self.class_map` will be used
 
         Returns:
         --------
-        masks: ndarray
+        masks: ndarray,
+            the masks corresponding to the wave delineation annotations of `rec`
         """
         _class_map = ED(class_map) if class_map is not None else self.class_map
         _leads = self._normalize_leads(leads, standard_ordering=True, lower_cases=True)
@@ -452,10 +457,85 @@ class LUDBReader(object):
         for idx, (l, l_w) in enumerate(waves.items()):
             for w in l_w:
                 masks[idx, w.onset: w.offset] = _class_map[self._wavename_to_symbol[w.name]]
-        if data_format not in ['channel_first', 'lead_first',]:
+        if mask_format.lower() not in ['channel_first', 'lead_first',]:
             masks = masks.T
         return masks
 
+
+    @staticmethod
+    def from_masks(masks:np.ndarray, mask_format:str="channel_first", leads:Optional[Sequence[str]]=None, class_map:Optional[Dict[str, int]]=None, freq:Optional[Real]=None) -> Dict[str, List[ECGWaveForm]]:
+        """
+
+        convert masks into lists of waveforms
+
+        Parameters:
+        -----------
+        masks: ndarray,
+            wave delineation in the form of masks,
+            of shape (n_leads, seq_len), or (seq_len,)
+        mask_format: str, default "channel_first",
+            format of the mask, used only when `masks.ndim = 2`
+            'channel_last' (alias 'lead_last'), or
+            'channel_first' (alias 'lead_first')
+        leads: str or list of str, optional,
+            the leads to load
+        class_map: dict, optional,
+            custom class map,
+            if not set, `self.class_map` will be used
+        freq: real number, optional,
+            sampling frequency of the signal corresponding to the `masks`,
+            if is None, `self.freq` will be used, to compute `duration` of the ecg waveforms
+
+        Returns:
+        --------
+        waves: dict,
+            each item value is a list containing the `ECGWaveForm`s corr. to the lead (item key)
+        """
+        if masks.ndim == 1:
+            _masks = masks[np.newaxis,...]
+        elif masks.ndim == 2:
+            if mask_format.lower() not in ['channel_first', 'lead_first',]:
+                _masks = masks.T
+            else:
+                _masks = masks.copy()
+        else:
+            raise ValueError(f"masks should be of dim 1 or 2, but got a {masks.ndim}d array")
+
+        if leads is not None:
+            _leads = self._normalize_leads(leads, standard_ordering=False, lower_cases=False)
+        else:
+            _leads = [f"lead_{idx}" for idx in range(_masks.shape[0])]
+        assert len(_leads) == _masks.shape[0]
+
+        _class_map = ED(class_map) if class_map is not None else self.class_map
+
+        _freq = freq if freq is not None else self.freq
+
+        waves = ED({lead_name:[] for lead_name in _leads})
+        for channel_idx, lead_name in enumerate(_leads):
+            current_mask = _masks[channel_idx,...]
+            for wave_symbol, wave_number in _class_map.items():
+                if wave_symbol not in ['p', 'N', 't',]:
+                    continue
+                wave_name = self._symbol_to_wavename[wave_symbol]
+                current_wave_inds = np.where(current_mask==wave_number)[0]
+                if len(current_wave_inds) == 0:
+                    continue
+                np.where(np.diff(current_wave_inds)>1)
+                split_inds = np.where(np.diff(current_wave_inds)>1)[0].tolist()
+                split_inds = [0] + split_inds + [len(current_wave_inds)]
+                for i in range(len(split_inds)-1):
+                    itv_start = current_wave_inds[split_inds[i]]
+                    itv_end = current_wave_inds[split_inds[i+1]-1]+1
+                    w = ECGWaveForm(
+                        name=wave_name,
+                        onset=itv_start,
+                        offset=itv_end,
+                        duration=1000*(itv_end-itv_start)/_freq,  # ms
+                    )
+                    waves[lead_name].append(w)
+            waves[lead_name].sort(key=lambda w: w.onset)
+        return waves
 
     def _load_header(self, rec:str) -> dict:
         """ finished, checked,
