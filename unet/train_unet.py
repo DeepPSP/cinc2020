@@ -242,8 +242,17 @@ def evaluate(model:nn.Module, data_loader:DataLoader, config:dict, device:torch.
         masks_pred, _ = model.inference(signals)
         all_masks_pred.append(masks_pred.cpu().detach().numpy())
     
-    all_masks_pred = np.concatenate(all_masks_pred, axis=0)
-    all_masks_truth = np.concatenate(all_masks_truth, axis=0)
+    # all_masks_pred = np.concatenate(all_masks_pred, axis=0)
+    # all_masks_truth = np.concatenate(all_masks_truth, axis=0)
+
+    eval_res = compute_metrics(
+        truth_masks=all_masks_truth,
+        pred_masks=all_masks_pred,
+        class_map=config.class_map,
+        freq=config.fs,
+        mask_format="channel_first",
+    )
+    return eval_res
 
 
 DAS = True

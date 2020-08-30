@@ -33,6 +33,7 @@ __all__ = [
     "get_date_str",
     "rdheader",
     "ensure_lead_fmt",
+    "ECGWaveForm", "masks_to_waveforms",
 ]
 
 
@@ -623,3 +624,82 @@ def ensure_lead_fmt(values:Sequence[Real], n_leads:int=12, fmt:str="lead_first")
         out_values = out_values.T
         return out_values
     return out_values
+
+
+ECGWaveForm = namedtuple(
+    typename='ECGWaveForm',
+    field_names=['name', 'onset', 'offset', 'peak', 'duration'],
+)
+
+
+def masks_to_waveforms(self, masks:np.ndarray, class_map:Dict[str, int], freq:Real, mask_format:str="channel_first", leads:Optional[Sequence[str]]=None) -> Dict[str, List[ECGWaveForm]]:
+    """
+
+    convert masks into lists of waveforms
+
+    Parameters:
+    -----------
+    masks: ndarray,
+        wave delineation in the form of masks,
+        of shape (n_leads, seq_len), or (seq_len,)
+    class_map: dict,
+        class map, mapping names to waves to numbers from 0 to n_classes-1,
+        the keys should contain 'pwave', 'qrs', 'twave'
+    freq: real number,
+        sampling frequency of the signal corresponding to the `masks`,
+        used to compute the duration of each waveform
+    mask_format: str, default "channel_first",
+        format of the mask, used only when `masks.ndim = 2`
+        'channel_last' (alias 'lead_last'), or
+        'channel_first' (alias 'lead_first')
+    leads: str or list of str, optional,
+        the names of leads corresponding to the channels of the `masks`
+
+    Returns:
+    --------
+    waves: dict,
+        each item value is a list containing the `ECGWaveForm`s corr. to the lead;
+        each item key is from `leads` if `leads` is set,
+        otherwise would be 'lead_1', 'lead_2', ..., 'lead_n'
+    """
+    if masks.ndim == 1:
+        _masks = masks[np.newaxis,...]
+    elif masks.ndim == 2:
+        if mask_format.lower() not in ['channel_first', 'lead_first',]:
+            _masks = masks.T
+        else:
+            _masks = masks.copy()
+    else:
+        raise ValueError(f"masks should be of dim 1 or 2, but got a {masks.ndim}d array")
+
+    _leads = [f"lead_{idx}" for idx in range(_masks.shape[0])] if leads is None else leads
+    assert len(_leads) == _masks.shape[0]
+
+    _class_map = ED(deepcopy(class_map))
+
+    waves = ED({lead_name:[] for lead_name in _leads})
+    for channel_idx, lead_name in enumerate(_leads):
+        current_mask = _masks[channel_idx,...]
+        for wave_name, wave_number in _class_map.items():
+            if wave_name.lower() not in ['pwave', 'qrs', 'twave',]:
+                continue
+            current_wave_inds = np.where(current_mask==wave_number)[0]
+            if len(current_wave_inds) == 0:
+                continue
+            np.where(np.diff(current_wave_inds)>1)
+            split_inds = np.where(np.diff(current_wave_inds)>1)[0].tolist()
+            split_inds = sorted(split_inds+[i+1 for i in split_inds])
+            split_inds = [0] + split_inds + [len(current_wave_inds)-1]
+            for i in range(len(split_inds)//2):
+                itv_start = current_wave_inds[split_inds[2*i]]
+                itv_end = current_wave_inds[split_inds[2*i+1]]+1
+                w = ECGWaveForm(
+                    name=wave_name.lower(),
+                    onset=itv_start,
+                    offset=itv_end,
+                    peak=np.nan,
+                    duration=1000*(itv_end-itv_start)/_freq,  # ms
+                )
+                waves[lead_name].append(w)
+        waves[lead_name].sort(key=lambda w: w.onset)
+    return waves

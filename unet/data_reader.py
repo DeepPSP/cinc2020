@@ -20,18 +20,13 @@ from utils.misc import (
     get_record_list_recursive3,
     dict_to_str,
     ms2samples,
+    ECGWaveForm, masks_to_waveforms,
 )
 
 
 __all__ = [
     "LUDBReader",
 ]
-
-
-ECGWaveForm = namedtuple(
-    typename='ECGWaveForm',
-    field_names=['name', 'onset', 'offset', 'peak', 'duration'],
-)
 
 
 class LUDBReader(object):
@@ -463,7 +458,7 @@ class LUDBReader(object):
 
 
     def from_masks(self, masks:np.ndarray, mask_format:str="channel_first", leads:Optional[Sequence[str]]=None, class_map:Optional[Dict[str, int]]=None, freq:Optional[Real]=None) -> Dict[str, List[ECGWaveForm]]:
-        """
+        """ finished, checked,
 
         convert masks into lists of waveforms
 
@@ -477,29 +472,22 @@ class LUDBReader(object):
             'channel_last' (alias 'lead_last'), or
             'channel_first' (alias 'lead_first')
         leads: str or list of str, optional,
-            the leads to load
+            the names of leads corresponding to the channels of the `masks`
         class_map: dict, optional,
             custom class map,
             if not set, `self.class_map` will be used
         freq: real number, optional,
             sampling frequency of the signal corresponding to the `masks`,
+            used to compute the duration of each waveform
             if is None, `self.freq` will be used, to compute `duration` of the ecg waveforms
 
         Returns:
         --------
         waves: dict,
-            each item value is a list containing the `ECGWaveForm`s corr. to the lead (item key)
+            each item value is a list containing the `ECGWaveForm`s corr. to the lead;
+            each item key is from `leads` if `leads` is set,
+            otherwise would be 'lead_1', 'lead_2', ..., 'lead_n'
         """
-        if masks.ndim == 1:
-            _masks = masks[np.newaxis,...]
-        elif masks.ndim == 2:
-            if mask_format.lower() not in ['channel_first', 'lead_first',]:
-                _masks = masks.T
-            else:
-                _masks = masks.copy()
-        else:
-            raise ValueError(f"masks should be of dim 1 or 2, but got a {masks.ndim}d array")
-
         if leads is not None:
             _leads = self._normalize_leads(leads, standard_ordering=False, lower_cases=False)
         else:
@@ -507,35 +495,18 @@ class LUDBReader(object):
         assert len(_leads) == _masks.shape[0]
 
         _class_map = ED(class_map) if class_map is not None else self.class_map
+        _class_map = ED({self._symbol_to_wavename[k]:v for k,v in _class_map.items()})
 
         _freq = freq if freq is not None else self.freq
 
-        waves = ED({lead_name:[] for lead_name in _leads})
-        for channel_idx, lead_name in enumerate(_leads):
-            current_mask = _masks[channel_idx,...]
-            for wave_symbol, wave_number in _class_map.items():
-                if wave_symbol not in ['p', 'N', 't',]:
-                    continue
-                wave_name = self._symbol_to_wavename[wave_symbol]
-                current_wave_inds = np.where(current_mask==wave_number)[0]
-                if len(current_wave_inds) == 0:
-                    continue
-                np.where(np.diff(current_wave_inds)>1)
-                split_inds = np.where(np.diff(current_wave_inds)>1)[0].tolist()
-                split_inds = sorted(split_inds+[i+1 for i in split_inds])
-                split_inds = [0] + split_inds + [len(current_wave_inds)-1]
-                for i in range(len(split_inds)//2):
-                    itv_start = current_wave_inds[split_inds[2*i]]
-                    itv_end = current_wave_inds[split_inds[2*i+1]]+1
-                    w = ECGWaveForm(
-                        name=wave_name,
-                        onset=itv_start,
-                        offset=itv_end,
-                        peak=np.nan,
-                        duration=1000*(itv_end-itv_start)/_freq,  # ms
-                    )
-                    waves[lead_name].append(w)
-            waves[lead_name].sort(key=lambda w: w.onset)
+        waves = masks_to_waveforms(
+            masks=masks,
+            class_map=_class_map,
+            freq=_freq,
+            mask_format=mask_format,
+            leads=_leads,
+        )
+
         return waves
 
     def _load_header(self, rec:str) -> dict:

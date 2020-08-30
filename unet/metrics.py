@@ -18,11 +18,15 @@ from typing import Union, Optional, Sequence, Dict, Tuple
 import numpy as np
 from easydict import EasyDict as ED
 
-from .data_reader import ECGWaveForm
+from utils.misc import (
+    ECGWaveForm,
+    masks_to_waveforms,
+)
 
 
 __all__ = [
     "compute_metrics",
+    "compute_metrics_waveform",
 ]
 
 
@@ -30,23 +34,156 @@ __TOLERANCE = 150  # ms
 __WaveNames = ["pwave", "qrs", "twave"]
 
 
-def compute_metrics(truths:Sequence[ECGWaveForm], preds:Sequence[ECGWaveForm], freq:Real) -> Dict[str, Dict[str, float]]:
+def compute_metrics(truth_masks:Sequence[np.ndarray], pred_masks:Sequence[np.ndarray], class_map:Dict[str, int], freq:Real, mask_format:str="channel_first") -> Dict[str, Dict[str, float]]:
     """ finished, checked,
 
-    compute the mean error and standard deviation of the mean errors
+    compute metrics
+    (sensitivity, precision, f1_score, mean error and standard deviation of the mean errors)
+    for multiple evaluations
 
     Parameters:
     -----------
-    truths: sequence of `ECGWaveForm`s,
-        the ground truth
-    preds: sequence of `ECGWaveForm`s,
-        the predictions
+    truth_masks: sequence of ndarray,
+        a sequence of ground truth masks,
+        each of which can also hold multiple masks from different samples (differ by record or by lead)
+    pred_masks: sequence of ndarray,
+        predictions corresponding to `truth_masks`
+    class_map: dict,
+        class map, mapping names to waves to numbers from 0 to n_classes-1,
+        the keys should contain 'pwave', 'qrs', 'twave'
+    freq: real number,
+        sampling frequency of the signal corresponding to the masks,
+        used to compute the duration of each waveform,
+        hence the error and standard deviations of errors
+    mask_format: str, default "channel_first",
+        format of the mask, one of the following:
+        'channel_last' (alias 'lead_last'), or
+        'channel_first' (alias 'lead_first')
 
     Returns:
     --------
     scorings: dict,
         with scorings of onsets and offsets of pwaves, qrs complexes, twaves,
         each scoring is a dict consisting of the following metrics:
+        sensitivity, precision, f1_score, mean_error, standard_deviation
+    """
+    assert len(truth_masks) == len(pred_masks)
+    truth_waveforms, pred_waveforms = [], []
+    # compute for each element
+    for tm, pm in zip(truth_masks, pred_masks):
+        n_masks = tm.shape[0] if mask_format.lower() in ['channel_first', 'lead_first'] \
+            else tm.shape[1]
+
+        new_t = masks_to_waveforms(tm, class_map, freq, mask_format)
+        new_t = [new_t[f"leads_{idx}"] for idx in range(n_masks)]  # list of list of `ECGWaveForm`s
+        truth_waveforms += new_t
+
+        new_p = masks_to_waveforms(pm, class_map, freq, mask_format)
+        new_p = [new_p[f"leads_{idx}"] for idx in range(n_masks)]  # list of list of `ECGWaveForm`s
+        pred_waveforms += new_p
+
+    scorings = compute_metrics_waveform(truth_waveforms, pred_waveforms, freq)
+
+    return scorings
+
+
+def compute_metrics_waveform(truth_waveforms:Sequence[Sequence[ECGWaveForm]], pred_waveforms:Sequence[Sequence[ECGWaveForm]], freq:Real) -> Dict[str, Dict[str, float]]:
+    """ finished, checked,
+
+    compute the sensitivity, precision, f1_score, mean error and standard deviation of the mean errors,
+    of evaluations on a multiple samples (differ by records, or leads)
+
+    Parameters:
+    -----------
+    truth_waveforms: sequence of sequence of `ECGWaveForm`s,
+        the ground truth,
+        each element is a sequence of `ECGWaveForm`s from the same sample
+    pred_waveforms: sequence of sequence of `ECGWaveForm`s,
+        the predictions corresponding to `truth_waveforms`,
+        each element is a sequence of `ECGWaveForm`s from the same sample
+    freq: real number,
+        sampling frequency of the signal corresponding to the waveforms,
+        used to compute the duration of each waveform,
+        hence the error and standard deviations of errors
+
+    Returns:
+    --------
+    scorings: dict,
+        with scorings of onsets and offsets of pwaves, qrs complexes, twaves,
+        each scoring is a dict consisting of the following metrics:
+        sensitivity, precision, f1_score, mean_error, standard_deviation
+    """
+    truth_positive = ED({
+        f"{wave}_{term}": 0 \
+            for wave in ["pwave", "qrs", "twave",] for term in ["onset", "offset"]
+    })
+    false_positive = ED({
+        f"{wave}_{term}": 0 \
+            for wave in ["pwave", "qrs", "twave",] for term in ["onset", "offset"]
+    })
+    false_negative = ED({
+        f"{wave}_{term}": 0 \
+            for wave in ["pwave", "qrs", "twave",] for term in ["onset", "offset"]
+    })
+    errors = ED({
+        f"{wave}_{term}": [] \
+            for wave in ["pwave", "qrs", "twave",] for term in ["onset", "offset"]
+    })
+    # accumulating results
+    for tw, pw in zip(truth_waveforms, pred_waveforms):
+        s = compute_metrics_waveform(tw, pw, freq)
+        for wave in ["pwave", "qrs", "twave",]:
+            for term in ["onset", "offset"]:
+                truth_positive[f"{wave}_{term}"] += s[f"{wave}_{term}"]["truth_positive"]
+                false_positive[f"{wave}_{term}"] += s[f"{wave}_{term}"]["false_positive"]
+                false_negative[f"{wave}_{term}"] += s[f"{wave}_{term}"]["false_negative"]
+                errors[f"{wave}_{term}"] += s[f"{wave}_{term}"]["errors"]
+    scoring = ED()
+    for wave in ["pwave", "qrs", "twave",]:
+        for term in ["onset", "offset"]:
+            tp = truth_positive[f"{wave}_{term}"]
+            fp = false_positive[f"{wave}_{term}"]
+            fn = false_negative[f"{wave}_{term}"]
+            err = errors[f"{wave}_{term}"]
+            sensitivity = tp / (tp + fn)
+            precision = tp / (tp + fp)
+            f1_score = 2 * sensitivity * precision / (sensitivity + precision)
+            mean_error = np.mean(err) * 1000 / freq
+            standard_deviation = np.std(err) * 1000 / freq
+            scoring[f"{wave}_{term}"] = ED(
+                sensitivity=sensitivity,
+                precision=precision,
+                f1_score=f1_score,
+                mean_error=mean_error,
+                standard_deviation=standard_deviation,
+            )
+
+    return scorings
+
+
+def _compute_metrics_waveform(truths:Sequence[ECGWaveForm], preds:Sequence[ECGWaveForm], freq:Real) -> Dict[str, Dict[str, float]]:
+    """ finished, checked,
+
+    compute the sensitivity, precision, f1_score, mean error and standard deviation of the mean errors,
+    of evaluations on a single sample (the same record, the same lead)
+
+    Parameters:
+    -----------
+    truths: sequence of `ECGWaveForm`s,
+        the ground truth
+    preds: sequence of `ECGWaveForm`s,
+        the predictions corresponding to `truths`,
+    freq: real number,
+        sampling frequency of the signal corresponding to the waveforms,
+        used to compute the duration of each waveform,
+        hence the error and standard deviations of errors
+
+    Returns:
+    --------
+    scorings: dict,
+        with scorings of onsets and offsets of pwaves, qrs complexes, twaves,
+        each scoring is a dict consisting of the following metrics:
+        truth_positive, false_negative, false_positive, errors,
         sensitivity, precision, f1_score, mean_error, standard_deviation
     """
     pwave_onset_truths, pwave_offset_truths, pwave_onset_preds, pwave_offset_preds = \
@@ -64,13 +201,18 @@ def compute_metrics(truths:Sequence[ECGWaveForm], preds:Sequence[ECGWaveForm], f
     scorings = ED()
     for wave in ["pwave", "qrs", "twave",]:
         for term in ["onset", "offset"]:
+            truth_positive, false_negative, false_positive, errors, \
             sensitivity, precision, f1_score, mean_error, standard_deviation = \
-                _compute_metrics(
+                _compute_metrics_base(
                     eval(f"{wave}_{term}_truths"),
                     eval(f"{wave}_{term}_preds"),
                     freq
                 )
             scorings[f"{wave}_{term}"] = ED(
+                truth_positive=truth_positive,
+                false_negative=false_negative,
+                false_positive=false_positive,
+                errors=errors,
                 sensitivity=sensitivity,
                 precision=precision,
                 f1_score=f1_score,
@@ -80,7 +222,7 @@ def compute_metrics(truths:Sequence[ECGWaveForm], preds:Sequence[ECGWaveForm], f
     return scorings
 
 
-def _compute_metrics(truths:Sequence[Real], preds:Sequence[Real], freq:Real) -> Tuple[float, ...]:
+def _compute_metrics_base(truths:Sequence[Real], preds:Sequence[Real], freq:Real) -> Tuple[float, ...]:
     """ finished, checked,
 
     Parameters:
@@ -89,10 +231,15 @@ def _compute_metrics(truths:Sequence[Real], preds:Sequence[Real], freq:Real) -> 
         ground truth of indices of corresponding significant points
     preds: sequence of real numbers,
         predicted indices of corresponding significant points
+    freq: real number,
+        sampling frequency of the signal corresponding to the significant points,
+        used to compute the duration of each waveform,
+        hence the error and standard deviations of errors
 
     Returns:
     --------
     tuple of metrics:
+        truth_positive, false_negative, false_positive, errors,
         sensitivity, precision, f1_score, mean_error, standard_deviation
         see ref. [1]
     """
@@ -129,4 +276,4 @@ def _compute_metrics(truths:Sequence[Real], preds:Sequence[Real], freq:Real) -> 
     mean_error = np.mean(errors) * 1000 / freq
     standard_deviation = np.std(errors) * 1000 / freq
 
-    return sensitivity, precision, f1_score, mean_error, standard_deviation
+    return truth_positive, false_negative, false_positive, errors, sensitivity, precision, f1_score, mean_error, standard_deviation
