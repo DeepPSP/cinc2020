@@ -5,7 +5,7 @@ import os
 import json
 from collections import namedtuple
 from datetime import datetime
-from typing import Union, Optional, Any, List, Tuple, Sequence, NoReturn
+from typing import Union, Optional, Any, List, Tuple, Dict, Sequence, NoReturn
 from numbers import Real
 
 import numpy as np
@@ -425,7 +425,7 @@ class LUDBReader(object):
         return diagnoses
 
 
-    def load_masks(self, rec:str, leads:Optional[Sequence[str]]=None, data_format='channel_first') -> np.ndarray:
+    def load_masks(self, rec:str, leads:Optional[Sequence[str]]=None, data_format='channel_first', class_map:Optional[Dict[str, int]]) -> np.ndarray:
         """ finished, checked,
 
         load the wave delineation in the form of masks
@@ -436,18 +436,22 @@ class LUDBReader(object):
             name of the record
         leads: str or list of str, optional,
             the leads to load
+        class_map: dict, optional,
+            custom class map,
+            if not set, `self.class_map` will be used
 
         Returns:
         --------
         masks: ndarray
         """
+        _class_map = ED(class_map) if class_map is not None else self.class_map
         _leads = self._normalize_leads(leads, standard_ordering=True, lower_cases=True)
         data = self.load_data(rec, leads=_leads, data_format='channel_first')
-        masks = np.full_like(data, fill_value=self.class_map.i, dtype=int)
+        masks = np.full_like(data, fill_value=_class_map.i, dtype=int)
         waves = self.load_ann(rec, leads=_leads, metadata=False)['waves']
         for idx, (l, l_w) in enumerate(waves.items()):
             for w in l_w:
-                masks[idx, w.onset: w.offset] = self.class_map[self._wavename_to_symbol[w.name]]
+                masks[idx, w.onset: w.offset] = _class_map[self._wavename_to_symbol[w.name]]
         if data_format not in ['channel_first', 'lead_first',]:
             masks = masks.T
         return masks
