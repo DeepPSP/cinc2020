@@ -14,6 +14,7 @@ import numpy as np
 from scipy import interpolate
 from wfdb.io import _header
 from wfdb import Record, MultiRecord
+from easydict import EasyDict as ED
 
 np.set_printoptions(precision=5, suppress=True)
 
@@ -633,7 +634,7 @@ ECGWaveForm = namedtuple(
 )
 
 
-def masks_to_waveforms(self, masks:np.ndarray, class_map:Dict[str, int], freq:Real, mask_format:str="channel_first", leads:Optional[Sequence[str]]=None) -> Dict[str, List[ECGWaveForm]]:
+def masks_to_waveforms(masks:np.ndarray, class_map:Dict[str, int], freq:Real, mask_format:str="channel_first", leads:Optional[Sequence[str]]=None) -> Dict[str, List[ECGWaveForm]]:
     """
 
     convert masks into lists of waveforms
@@ -699,7 +700,7 @@ def masks_to_waveforms(self, masks:np.ndarray, class_map:Dict[str, int], freq:Re
                     onset=itv_start,
                     offset=itv_end,
                     peak=np.nan,
-                    duration=1000*(itv_end-itv_start)/_freq,  # ms
+                    duration=1000*(itv_end-itv_start)/freq,  # ms
                 )
                 waves[lead_name].append(w)
         waves[lead_name].sort(key=lambda w: w.onset)

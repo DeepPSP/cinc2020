@@ -75,11 +75,11 @@ def compute_metrics(truth_masks:Sequence[np.ndarray], pred_masks:Sequence[np.nda
             else tm.shape[1]
 
         new_t = masks_to_waveforms(tm, class_map, freq, mask_format)
-        new_t = [new_t[f"leads_{idx}"] for idx in range(n_masks)]  # list of list of `ECGWaveForm`s
+        new_t = [new_t[f"lead_{idx+1}"] for idx in range(n_masks)]  # list of list of `ECGWaveForm`s
         truth_waveforms += new_t
 
         new_p = masks_to_waveforms(pm, class_map, freq, mask_format)
-        new_p = [new_p[f"leads_{idx}"] for idx in range(n_masks)]  # list of list of `ECGWaveForm`s
+        new_p = [new_p[f"lead_{idx+1}"] for idx in range(n_masks)]  # list of list of `ECGWaveForm`s
         pred_waveforms += new_p
 
     scorings = compute_metrics_waveform(truth_waveforms, pred_waveforms, freq)
@@ -131,14 +131,14 @@ def compute_metrics_waveform(truth_waveforms:Sequence[Sequence[ECGWaveForm]], pr
     })
     # accumulating results
     for tw, pw in zip(truth_waveforms, pred_waveforms):
-        s = compute_metrics_waveform(tw, pw, freq)
+        s = _compute_metrics_waveform(tw, pw, freq)
         for wave in ["pwave", "qrs", "twave",]:
             for term in ["onset", "offset"]:
                 truth_positive[f"{wave}_{term}"] += s[f"{wave}_{term}"]["truth_positive"]
                 false_positive[f"{wave}_{term}"] += s[f"{wave}_{term}"]["false_positive"]
                 false_negative[f"{wave}_{term}"] += s[f"{wave}_{term}"]["false_negative"]
                 errors[f"{wave}_{term}"] += s[f"{wave}_{term}"]["errors"]
-    scoring = ED()
+    scorings = ED()
     for wave in ["pwave", "qrs", "twave",]:
         for term in ["onset", "offset"]:
             tp = truth_positive[f"{wave}_{term}"]
@@ -150,7 +150,7 @@ def compute_metrics_waveform(truth_waveforms:Sequence[Sequence[ECGWaveForm]], pr
             f1_score = 2 * sensitivity * precision / (sensitivity + precision)
             mean_error = np.mean(err) * 1000 / freq
             standard_deviation = np.std(err) * 1000 / freq
-            scoring[f"{wave}_{term}"] = ED(
+            scorings[f"{wave}_{term}"] = ED(
                 sensitivity=sensitivity,
                 precision=precision,
                 f1_score=f1_score,
