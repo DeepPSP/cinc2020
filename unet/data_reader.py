@@ -491,7 +491,7 @@ class LUDBReader(object):
         if leads is not None:
             _leads = self._normalize_leads(leads, standard_ordering=False, lower_cases=False)
         else:
-            _leads = [f"lead_{idx}" for idx in range(_masks.shape[0])]
+            _leads = [f"lead_{idx+1}" for idx in range(_masks.shape[0])]
         assert len(_leads) == _masks.shape[0]
 
         _class_map = ED(class_map) if class_map is not None else self.class_map

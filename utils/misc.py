@@ -4,6 +4,7 @@ import os, sys
 import re
 import logging
 import datetime
+from collections import namedtuple
 from glob import glob
 from copy import deepcopy
 from typing import Union, Optional, List, Dict, Sequence, NoReturn, Any
@@ -672,7 +673,7 @@ def masks_to_waveforms(self, masks:np.ndarray, class_map:Dict[str, int], freq:Re
     else:
         raise ValueError(f"masks should be of dim 1 or 2, but got a {masks.ndim}d array")
 
-    _leads = [f"lead_{idx}" for idx in range(_masks.shape[0])] if leads is None else leads
+    _leads = [f"lead_{idx+1}" for idx in range(_masks.shape[0])] if leads is None else leads
     assert len(_leads) == _masks.shape[0]
 
     _class_map = ED(deepcopy(class_map))
