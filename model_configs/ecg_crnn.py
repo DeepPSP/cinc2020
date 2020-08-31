@@ -12,6 +12,10 @@ from .cnn import (
     resnet_block_basic, resnet_bottle_neck,
     resnet, resnet_leadwise,
 )
+from .rnn import (
+    lstm,
+    attention,
+)
 
 
 __all__ = [
@@ -52,13 +56,5 @@ ECG_CRNN_CONFIG.cnn.resnet_stanford.block = deepcopy(resnet_block_stanford)
 ECG_CRNN_CONFIG.rnn = ED()
 ECG_CRNN_CONFIG.rnn.name = 'lstm'
 
-if ECG_CRNN_CONFIG.rnn.name == 'lstm':
-    ECG_CRNN_CONFIG.rnn.bias = True
-    ECG_CRNN_CONFIG.rnn.dropout = 0.2
-    ECG_CRNN_CONFIG.rnn.bidirectional = False
-    ECG_CRNN_CONFIG.rnn.retseq = False
-    ECG_CRNN_CONFIG.rnn.hidden_sizes = [256, 64]
-elif ECG_CRNN_CONFIG.rnn.name == 'attention':
-    pass
-else:
-    pass
+ECG_CRNN_CONFIG.rnn.lstm = deepcopy(lstm)
+ECG_CRNN_CONFIG.rnn.attention = deepcopy(attention)
