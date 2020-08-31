@@ -25,6 +25,7 @@ __all__ = [
     "Bn_Activation", "Conv_Bn_Activation",
     "DownSample",
     "BidirectionalLSTM", "StackedLSTM",
+    "Attention",
     "AML_Attention", "AML_GatedAttention",
     "AttentionWithContext",
     "ZeroPadding",
@@ -776,10 +777,12 @@ class AttentionWithContext(nn.Module):
 
         if self.bias:
             self.b = Parameter(torch.Tensor(in_channels))
+            Initializers.zeros(self.b)
             if self.__DEBUG__:
                 print(f"AttentionWithContext b.shape = {self.b.shape}")
             # Initializers['zeros'](self.b)
             self.u = Parameter(torch.Tensor(in_channels))
+            Initializers.constant(self.u, 1/in_channels)
             if self.__DEBUG__:
                 print(f"AttentionWithContext u.shape = {self.u.shape}")
             # self.init(self.u)
@@ -830,10 +833,12 @@ class AttentionWithContext(nn.Module):
         # (batch_size, seq_len)
         a = torch.exp(ait)
         if mask is not None:
-            a = a * mask
-        a = _true_divide(a, torch.sum(a, dim=-1, keepdim=True) + torch.finfo(torch.float).eps)
+            a_masked = a * mask
+        else:
+            a_masked = a
+        a_masked = _true_divide(a_masked, torch.sum(a_masked, dim=-1, keepdim=True) + torch.finfo(torch.float64).eps)
         if self.__DEBUG__:
-            print(f"AttentionWithContext forward: a.shape = {a.shape}")
+            print(f"AttentionWithContext forward: a_masked.shape = {a_masked.shape}")
 
         # weighted -> sum
         # (batch_size, seq_len, n_channels) x (batch_size, seq_len, 1)
@@ -868,6 +873,11 @@ class AttentionWithContext(nn.Module):
 class Attention(nn.Module):
     """
     simplified version of `AttentionWithContext`
+
+    each vectors of features are multiplied by a scalar coefficient (weight),
+    where the coefficients are computed via a 'biased inner product'
+        (vW)^T v + b^T v
+    where W, b, v are learnable
     """
     __DEBUG__ = True
     __name__ = "Attention"
@@ -887,6 +897,7 @@ class Attention(nn.Module):
             nn.Tanh(),
         )
         self.att_v = Parameter(torch.Tensor(self.__in_channels))
+        Initializers.constant(self.att_v, 1/self.__in_channels)
         self.softmax = nn.Softmax(dim=-1)
 
     def forward(self, input:Tensor) -> Tensor:
@@ -894,14 +905,16 @@ class Attention(nn.Module):
         Parameters:
         -----------
         input: Tensor,
-            of shape (seq_len, batch_size, n_channels)
+            of shape (seq_len, batch_size, in_channels)
         """
-        # input: (seq_len, batch_size, n_channels) -> (batch_size, seq_len, n_channels)
+        # input: (seq_len, batch_size, in_channels) -> (batch_size, seq_len, in_channels)
         _input = input.permute(1,0,2)
-        proj = self.linear(_input)
-        # (batch_size, seq_len)
-        score = torch.tensordot(proj, self.att_v, dims=1)  # equiv. to torch.matmul
-        score = self.softmax(score)
+        lin_out = self.linear(_input)
+        # (batch_size, seq_len, in_channels) x (in_channels,)
+        # -> (batch_size, seq_len)
+        coeffs = torch.tensordot(lin_out, self.att_v, dims=1)  # equiv. to torch.matmul
+        coeffs = self.softmax(coeffs)  # normalize the coeffs
+        # multiply each feature vector by corresponding coefficients
         # (batch_size, seq_len, channels) -> (batch_size, channels)
         output = (_input * score[..., np.newaxis]).sum(dim=1)
         return output
