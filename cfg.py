@@ -5,6 +5,7 @@ along with some constants
 import os
 from copy import deepcopy
 
+import numpy as np
 from easydict import EasyDict as ED
 
 
@@ -149,7 +150,8 @@ TrainCfg.classes = sorted(list(TrainCfg.class_weights.keys()))
 
 # configs of signal preprocessing
 # frequency band of the filter to apply, should be chosen very carefully
-TrainCfg.bandpass = None  # [0.5, 30]
+# TrainCfg.bandpass = None  # [0.5, 30]
+TrainCfg.bandpass = [-np.inf, 30]
 
 # configs of data aumentation
 TrainCfg.label_smoothing = 0.1

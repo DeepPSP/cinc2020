@@ -18,6 +18,7 @@ torch.set_default_tensor_type(torch.DoubleTensor)
 
 from cfg import TrainCfg
 from data_reader import CINC2020Reader as CR
+from utils.utils_signal import butter_bandpass_filter
 from utils.misc import dict_to_str
 
 
@@ -81,6 +82,13 @@ class CINC2020(Dataset):
         #     data_format='channel_first', units='mV', backend='wfdb'
         # )
         values = self.reader.load_resampled_data(rec, siglen=self.siglen)
+        if self.config.bandpass is not None:
+            values = butter_bandpass_filter(
+                values,
+                lowcut=self.config.bandpass[0],
+                highcut=self.config.bandpass[1],
+                fs=self.config.fs,
+            )
         if self.config.normalize_data:
             values = (values - np.mean(values)) / np.std(values)
         labels = self.reader.get_labels(
@@ -224,7 +232,12 @@ class CINC2020(Dataset):
             ratio = int(self.config.train_ratio*100)
         else:
             ratio = 100 - int(self.config.train_ratio*100)
-        fn_suffix = f"tranches_{self.tranches}_ratio_{ratio}_siglen_{self.siglen}"
+        fn_suffix = f"tranches_{self.tranches}_ratio_{ratio}"
+        if self.conig.bandpass is not None:
+            bp_low = max(0, self.conig.bandpass[0])
+            bp_high = min(self.conig.bandpass[1], self.config.fs//2)
+            fn_suffix = fn_suffix + f"bp_{bp_low}_{bp_high}"
+        fn_suffix = fn_suffix + f"_siglen_{self.siglen}"
 
         X, y = [], []
         with tqdm(range(self.__len__()), total=self.__len__()) as bar:

@@ -9,7 +9,7 @@ from numbers import Real
 
 import numpy as np
 from scipy import interpolate
-from scipy.signal import peak_prominences
+from scipy.signal import peak_prominences, butter, filtfilt
 
 np.set_printoptions(precision=5, suppress=True)
 
