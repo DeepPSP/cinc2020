@@ -738,7 +738,8 @@ class ECG_CRNN(nn.Module):
             _, clf_input_size, _ = self.cnn.compute_output_shape(self.input_len, batch_size=None)
         elif rnn_choice == 'lstm':
             hidden_sizes = self.config.rnn.hidden_sizes + [self.n_classes]
-            print(f"lstm hidden sizes {self.config.rnn.hidden_sizes} ---> {hidden_sizes}")
+            if self.__DEBUG__:
+                print(f"lstm hidden sizes {self.config.rnn.hidden_sizes} ---> {hidden_sizes}")
             self.rnn = StackedLSTM(
                 input_size=rnn_input_size,
                 hidden_sizes=hidden_sizes,
@@ -771,7 +772,10 @@ class ECG_CRNN(nn.Module):
             print(f"clf_input_size = {clf_input_size}")
 
         if not self.rnn or self.config.rnn.retseq:
+            # input of `self.max_pool` has shape (or `view` to shape): batch_size, channels, seq_len
+            # output has shape: batch_size, channels, 1
             self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
+        # input of `self.clf` has shape: batch_size, channels
         self.clf = nn.Linear(clf_input_size, self.n_classes)
         self.sigmoid = nn.Sigmoid()  # for making inference
 
@@ -788,15 +792,17 @@ class ECG_CRNN(nn.Module):
                 # (seq_len, batch_size, channels) -> (batch_size, channels, seq_len)
                 x = x.permute(1,2,0)
                 x = self.max_pool(x)  # (batch_size, channels, 1)
-                x = torch.flatten(x, 1)  # (batch_size, channels)
+                # x = torch.flatten(x, start_dim=1)  # (batch_size, channels)
+                x = x.squeeze(dim=-1)
             else:
                 # x of shape (batch_size, channels)
                 pass
         else:
             # (batch_size, channels, seq_len) --> (batch_size, channels)
             x = self.max_pool(x)
-            x = torch.flatten(x, 1)
-        pred = self.clf(x)
+            # x = torch.flatten(x, start_dim=1)
+            x = x.squeeze(dim=-1)
+        pred = self.clf(x)  # batch_size, n_classes
         return pred
 
     @torch.no_grad()

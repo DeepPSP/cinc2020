@@ -32,7 +32,10 @@ TrainCfg.classes = [
     'i',  # isoelectric
 ]
 TrainCfg.class_map = ED(p=1, N=2, t=3, i=0)
-TrainCfg.use_single_lead = True  # use single lead as input or use all 12 leads
+
+TrainCfg.leads_ordering = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6',]
+TrainCfg.lead = 'II'  # the lead to tain model, None --> all leads
+TrainCfg.use_single_lead = True  # use single lead as input or use all 12 leads. used only when `TrainCfg.lead` = None
 
 # as for `start_from` and `end_at`, see ref. [1] section 3.1
 TrainCfg.start_from = int(2 * TrainCfg.fs)

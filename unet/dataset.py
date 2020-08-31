@@ -60,7 +60,10 @@ class LUDB(Dataset):
     def __getitem__(self, index:int) -> Tuple[np.ndarray, np.ndarray]:
         """ finished, checked,
         """
-        if self.config.use_single_lead:
+        if self.config.lead is not None:
+            rec_idx = index
+            lead_idx = self.config.leads_ordering.index(self.config.lead)
+        elif self.config.use_single_lead:
             rec_idx, lead_idx = divmod(index, 12)
         else:
             rec_idx, lead_idx = index, None
@@ -96,7 +99,7 @@ class LUDB(Dataset):
     def __len__(self) -> int:
         """
         """
-        if self.config.use_single_lead:
+        if self.config.lead is None and self.config.use_single_lead:
             return 12 * len(self.records)
         return len(self.records)
 

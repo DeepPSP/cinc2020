@@ -167,6 +167,11 @@ class Bn_Activation(nn.Sequential):
     def forward(self, input:Tensor) -> Tensor:
         """
         use the forward method of `nn.Sequential`
+        
+        Parameters:
+        -----------
+        input: Tensor,
+            of shape (batch_size, n_channels, seq_len)
         """
         output = super().forward(input)
         return output
@@ -288,6 +293,11 @@ class Conv_Bn_Activation(nn.Sequential):
     def forward(self, input:Tensor) -> Tensor:
         """
         use the forward method of `nn.Sequential`
+
+        Parameters:
+        -----------
+        input: Tensor,
+            of shape (batch_size, n_channels, seq_len)
         """
         out = super().forward(input)
         return out
@@ -412,6 +422,11 @@ class DownSample(nn.Sequential):
     def forward(self, input:Tensor) -> Tensor:
         """
         use the forward method of `nn.Sequential`
+
+        Parameters:
+        -----------
+        input: Tensor,
+            of shape (batch_size, n_channels, seq_len)
         """
         if self.__mode in ['max', 'avg', 'conv',]:
             output = super().forward(input)
@@ -504,8 +519,12 @@ class BidirectionalLSTM(nn.Module):
 
     def forward(self, input:Tensor) -> Tensor:
         """
+        Parameters:
+        -----------
+        input: Tensor,
+            of shape (seq_len, batch_size, n_channels)
         """
-        output, _ = self.lstm(input)  #  seq_len, batch_size, double_hidden_size
+        output, _ = self.lstm(input)  #  seq_len, batch_size, 2 * hidden_size
         if not self.return_sequence:
             output = output[-1,...]
         return output
@@ -596,6 +615,12 @@ class StackedLSTM(nn.Sequential):
     def forward(self, input:Union[Tensor, PackedSequence], hx:Optional[Tuple[Tensor, Tensor]]=None) -> Union[Tensor, Tuple[Union[Tensor, PackedSequence], Tuple[Tensor, Tensor]]]:
         """
         keep up with `nn.LSTM.forward`, parameters ref. `nn.LSTM.forward`
+
+        Parameters:
+        -----------
+        input: Tensor,
+            of shape (seq_len, batch_size, n_channels)
+        hx: 2-tuple of Tensor, optional,
         """
         n_layers = 0
         output, _hx = input, hx
@@ -720,22 +745,20 @@ class AML_GatedAttention(nn.Module):
 
 
 class AttentionWithContext(nn.Module):
-    """ finished, checked,
+    """ finished, checked (might have bugs),
 
     from 0236 of CPSC2018 challenge
     """
     __DEBUG__ = False
     __name__ = "AttentionWithContext"
 
-    def __init__(self, in_channels:int, out_channels:int, bias:bool=True, initializer:str='glorot_uniform'):
-        """ finished, checked
+    def __init__(self, in_channels:int, bias:bool=True, initializer:str='glorot_uniform'):
+        """ finished, checked (might have bugs),
 
         Parameters:
         -----------
         in_channels: int,
             number of channels in the input signal
-        out_channels: int,
-            number of channels produced by the convolution
         bias: bool, default True,
             if True, adds a learnable bias to the output
         initializer: str, default 'glorot_uniform',
@@ -746,17 +769,17 @@ class AttentionWithContext(nn.Module):
         self.init = Initializers[initializer.lower()]
         self.bias = bias
 
-        self.W = Parameter(torch.Tensor(out_channels, out_channels))
+        self.W = Parameter(torch.Tensor(in_channels, in_channels))
         if self.__DEBUG__:
             print(f"AttentionWithContext W.shape = {self.W.shape}")
         self.init(self.W)
 
         if self.bias:
-            self.b = Parameter(torch.Tensor(out_channels))
+            self.b = Parameter(torch.Tensor(in_channels))
             if self.__DEBUG__:
                 print(f"AttentionWithContext b.shape = {self.b.shape}")
             # Initializers['zeros'](self.b)
-            self.u = Parameter(torch.Tensor(out_channels))
+            self.u = Parameter(torch.Tensor(in_channels))
             if self.__DEBUG__:
                 print(f"AttentionWithContext u.shape = {self.u.shape}")
             # self.init(self.u)
@@ -775,32 +798,50 @@ class AttentionWithContext(nn.Module):
 
     def forward(self, input:Tensor, mask:Optional[Tensor]=None) -> Tensor:
         """
-
         Parameters:
         -----------
-        to write
+        input: Tensor,
+            of shape (seq_len, batch_size, n_channels)
+        mask: Tensor, optional,
         """
         if self.__DEBUG__:
             print(f"AttentionWithContext forward: input.shape = {input.shape}, W.shape = {self.W.shape}")
-        uit = torch.tensordot(input, self.W, dims=1)
+        # (seq_len, batch_size, n_channels) -> (batch_size, seq_len, n_channels)
+        _input = input.permute(1,0,2)
+
+        # linear + activation
+        # (batch_size, seq_len, n_channels) x (n_channels, n_channels)
+        # -> (batch_size, seq_len, n_channels)
+        uit = torch.tensordot(_input, self.W, dims=1)  # the same as torch.matmul
         if self.__DEBUG__:
             print(f"AttentionWithContext forward: uit.shape = {uit.shape}")
         if self.bias:
             uit += self.b
         uit = torch.tanh(uit)
-        ait = torch.tensordot(uit, self.u, dims=1)
+
+        # scores (weights)
+        # (batch_size, seq_len, n_channels) x (n_channels,)
+        # -> (batch_size, seq_len)
+        ait = torch.tensordot(uit, self.u, dims=1)  # the same as torch.matmul
         if self.__DEBUG__:
             print(f"AttentionWithContext forward: ait.shape = {ait.shape}")
+        
+        # softmax along seq_len
+        # (batch_size, seq_len)
         a = torch.exp(ait)
         if mask is not None:
             a = a * mask
-        a = _true_divide(a, torch.sum(a, dim=1, keepdim=True) + torch.finfo(torch.float).eps)
+        a = _true_divide(a, torch.sum(a, dim=-1, keepdim=True) + torch.finfo(torch.float).eps)
         if self.__DEBUG__:
             print(f"AttentionWithContext forward: a.shape = {a.shape}")
-        weighted_input = input * a[...,np.newaxis]
+
+        # weighted -> sum
+        # (batch_size, seq_len, n_channels) x (batch_size, seq_len, 1)
+        # -> (batch_size, seq_len, n_channels)
+        weighted_input = _input * a[..., np.newaxis]
         if self.__DEBUG__:
             print(f"AttentionWithContext forward: weighted_input.shape = {weighted_input.shape}")
-        output = torch.sum(weighted_input, dim=1)
+        output = torch.sum(weighted_input, dim=-1)
         if self.__DEBUG__:
             print(f"AttentionWithContext forward: output.shape = {output.shape}")
         return output
@@ -821,6 +862,66 @@ class AttentionWithContext(nn.Module):
             the output shape of this `ZeroPadding` layer, given `seq_len` and `batch_size`
         """
         output_shape = (batch_size, self.__out_channels, seq_len)
+        return output_shape
+
+
+class Attention(nn.Module):
+    """
+    simplified version of `AttentionWithContext`
+    """
+    __DEBUG__ = True
+    __name__ = "Attention"
+
+    def __init__(self, in_channels:int, bias:bool=True) -> NoReturn:
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        in_channels: int,
+        bias: bool, default True,
+        """
+        super().__init__()
+        self.__in_channels = in_channels
+        self.linear = nn.Sequential(
+            nn.Linear(self.__in_channels, self.__in_channels, bias=bias),
+            nn.Tanh(),
+        )
+        self.att_v = Parameter(torch.Tensor(self.__in_channels))
+        self.softmax = nn.Softmax(dim=-1)
+
+    def forward(self, input:Tensor) -> Tensor:
+        """
+        Parameters:
+        -----------
+        input: Tensor,
+            of shape (seq_len, batch_size, n_channels)
+        """
+        # input: (seq_len, batch_size, n_channels) -> (batch_size, seq_len, n_channels)
+        _input = input.permute(1,0,2)
+        proj = self.linear(_input)
+        # (batch_size, seq_len)
+        score = torch.tensordot(proj, self.att_v, dims=1)  # equiv. to torch.matmul
+        score = self.softmax(score)
+        # (batch_size, seq_len, channels) -> (batch_size, channels)
+        output = (_input * score[..., np.newaxis]).sum(dim=1)
+        return output
+
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        seq_len: int,
+            length of the 1d sequence
+        batch_size: int, optional,
+            the batch size, can be None
+
+        Returns:
+        --------
+        output_shape: sequence,
+            the output shape of this `ZeroPadding` layer, given `seq_len` and `batch_size`
+        """
+        output_shape = (batch_size, self.__in_channels)
         return output_shape
 
 
@@ -883,6 +984,7 @@ class ZeroPadding(nn.Module):
         """
         output_shape = (batch_size, self.__out_channels, seq_len)
         return output_shape
+
 
 
 # utils for computing output shape
