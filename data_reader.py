@@ -955,7 +955,7 @@ class CINC2020Reader(object):
         diag_scored = self.get_labels(rec, scored_only=True, fmt='a')
         diag_all = self.get_labels(rec, scored_only=False, fmt='a')
 
-        nb_leads = len(leads)
+        nb_leads = len(_leads)
 
         seg_len = self.freq[tranche] * 25  # 25 seconds
         nb_segs = _data.shape[1] // seg_len
@@ -968,7 +968,7 @@ class CINC2020Reader(object):
         if nb_leads == 1:
             axes = [axes]
         for idx in range(nb_leads):
-            axes[idx].plot(t, _data[idx], label=f'lead - {leads[idx]}')
+            axes[idx].plot(t, _data[idx], label=f'lead - {_leads[idx]}')
             axes[idx].axhline(y=0, linestyle='-', linewidth='1.0', color='red')
             # NOTE that `Locator` has default `MAXTICKS` equal to 1000
             if ticks_granularity >= 1:
