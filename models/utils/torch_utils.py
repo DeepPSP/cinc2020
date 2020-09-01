@@ -25,7 +25,7 @@ __all__ = [
     "Bn_Activation", "Conv_Bn_Activation",
     "DownSample",
     "BidirectionalLSTM", "StackedLSTM",
-    "NaiveAttention", "",
+    "NaiveAttention", "MultiHeadAttention",
     "AML_Attention", "AML_GatedAttention",
     "AttentionWithContext",
     "ZeroPadding",
@@ -948,16 +948,17 @@ class ScaledDotProductAttention(nn.Module):
         """
         all tensors of shape (batch_size, seq_len, features)
         """
-        if self.__DEBUG__:
-            print(f"query.shape = {query.shape}, key.shape = {key.shape}, value.shape = {value.shape}")
+        # if self.__DEBUG__:
+        #     print(f"query.shape = {query.shape}, key.shape = {key.shape}, value.shape = {value.shape}")
         dk = query.shape[-1]
-        scores = query.matmul(key.permute(0,2,1)) / sqrt(dk)
+        scores = query.matmul(key.transpose(-2, -1)) / sqrt(dk)  # -> (batch_size, seq_len, seq_len)
         if mask is not None:
             scores = scores.masked_fill(mask == 0, -1e9)
         attention = F.softmax(scores, dim=-1)
-        if self.__DEBUG__:
-            print(f"scores.shape = {scores.shape}, attention.shape = {attention.shape}")
-        return attention.matmul(value)
+        output = attention.matmul(value)
+        # if self.__DEBUG__:
+        #     print(f"scores.shape = {scores.shape}, attention.shape = {attention.shape}, output.shape = {output.shape}")
+        return output
 
 
 class MultiHeadAttention(nn.Module):
@@ -1054,6 +1055,24 @@ class MultiHeadAttention(nn.Module):
         return 'in_features={}, head_num={}, bias={}, activation={}'.format(
             self.in_features, self.head_num, self.bias, self.activation,
         )
+
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        seq_len: int,
+            length of the 1d sequence
+        batch_size: int, optional,
+            the batch size, can be None
+
+        Returns:
+        --------
+        output_shape: sequence,
+            the output shape of this MHA layer, given `seq_len` and `batch_size`
+        """
+        output_shape = (batch_size, seq_len, self.in_features)
+        return output_shape
 
 
 class ZeroPadding(nn.Module):

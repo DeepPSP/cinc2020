@@ -25,7 +25,7 @@ from models.utils.torch_utils import (
     ZeroPadding,
     StackedLSTM,
     # AML_Attention, AML_GatedAttention,
-    AttentionWithContext,
+    NaiveAttention, AttentionWithContext, MultiHeadAttention,
     compute_conv_output_shape,
 )
 from utils.misc import dict_to_str
