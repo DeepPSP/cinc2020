@@ -872,7 +872,8 @@ class AttentionWithContext(nn.Module):
 
 class Attention(nn.Module):
     """
-    simplified version of `AttentionWithContext`
+    simplified version of `AttentionWithContext` (the scaled dot-product attention),
+    without the optional mask
 
     each vectors of features are multiplied by a scalar coefficient (weight),
     where the coefficients are computed via a 'biased inner product'

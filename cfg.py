@@ -100,6 +100,7 @@ TrainCfg.keep_checkpoint_max = 20
 
 # configs of training data
 TrainCfg.fs = ModelCfg.fs
+TrainCfg.data_format = "channel_first"
 TrainCfg.normalize_data = True
 TrainCfg.train_ratio = 0.8
 TrainCfg.min_class_weight = 0.5
@@ -150,8 +151,8 @@ TrainCfg.classes = sorted(list(TrainCfg.class_weights.keys()))
 
 # configs of signal preprocessing
 # frequency band of the filter to apply, should be chosen very carefully
-# TrainCfg.bandpass = None  # [0.5, 30]
-TrainCfg.bandpass = [-np.inf, 30]
+# TrainCfg.bandpass = None  # [-np.inf, 45]
+TrainCfg.bandpass = [-np.inf, 45]
 
 # configs of data aumentation
 TrainCfg.label_smoothing = 0.1

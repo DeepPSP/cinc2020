@@ -81,7 +81,7 @@ class CINC2020(Dataset):
         #     rec,
         #     data_format='channel_first', units='mV', backend='wfdb'
         # )
-        values = self.reader.load_resampled_data(rec, siglen=self.siglen)
+        values = self.reader.load_resampled_data(rec, data_format="channel_first", siglen=self.siglen)
         if self.config.bandpass is not None:
             values = butter_bandpass_filter(
                 values,
@@ -107,6 +107,9 @@ class CINC2020(Dataset):
             # data augmentation for labels
             labels = (1 - self.config.label_smoothing) * labels \
                 + self.config.label_smoothing / self.n_classes
+
+        if self.config.data_format.lower() in ['channel_last', 'lead_last']:
+            values = values.T
 
         return values, labels
 

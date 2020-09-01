@@ -221,6 +221,9 @@ class CINC2020Reader(object):
             'ventricular premature beats': 'premature ventricular contractions',
         }
 
+        self.value_correction_factor = ED({tranche:1 for tranche in self.db_tranches})
+        self.value_correction_factor.F = 4.88  # ref. ISSUES 3
+
 
     def get_subject_id(self, rec:str) -> int:
         """ finished, checked,
@@ -394,7 +397,7 @@ class CINC2020Reader(object):
         return tranche
 
 
-    def load_data(self, rec:str, leads:Optional[Union[str, List[str]]]=None, data_format='channel_first', backend:str='wfdb', units:str='mV', freq:Optional[Real]=None) -> np.ndarray:
+    def load_data(self, rec:str, leads:Optional[Union[str, List[str]]]=None, data_format:str='channel_first', backend:str='wfdb', units:str='mV', freq:Optional[Real]=None) -> np.ndarray:
         """ finished, checked,
 
         load physical (converted from digital) ecg data,
@@ -409,7 +412,7 @@ class CINC2020Reader(object):
         data_format: str, default 'channel_first',
             format of the ecg data,
             'channel_last' (alias 'lead_last'), or
-            'channel_first' (alias 'lead_first', original)
+            'channel_first' (alias 'lead_first')
         backend: str, default 'wfdb',
             the backend data reader, can also be 'scipy'
         units: str, default 'mV',
@@ -451,6 +454,8 @@ class CINC2020Reader(object):
             # lead_units = np.vectorize(lambda s: s.lower())(header_info['df_leads']['adc_units'].values)
         else:
             raise ValueError(f"backend `{backend.lower()}` not supported for loading data")
+
+        data = data * self.value_correction_factor[tranche]
 
         if units.lower() in ['uv', 'μv']:
             data = data * 1000
@@ -1060,7 +1065,7 @@ class CINC2020Reader(object):
                 print("*"*110)
 
 
-    def load_resampled_data(self, rec:str, siglen:Optional[int]=None) -> np.ndarray:
+    def load_resampled_data(self, rec:str, data_format:str='channel_first', siglen:Optional[int]=None) -> np.ndarray:
         """ finished, checked,
 
         resample the data of `rec` to 500Hz,
@@ -1070,6 +1075,10 @@ class CINC2020Reader(object):
         -----------
         rec: str,
             name of the record
+        data_format: str, default 'channel_first',
+            format of the ecg data,
+            'channel_last' (alias 'lead_last'), or
+            'channel_first' (alias 'lead_first')
         siglen: int, optional,
             signal length, units in number of samples,
             if set, signal with length longer will be sliced to the length of `siglen`
@@ -1098,4 +1107,6 @@ class CINC2020Reader(object):
         else:
             # print(f"loading from local file...")
             data = np.load(rec_fp)
+        if data_format.lower() in ['channel_last', 'lead_last']:
+            data = data.T
         return data
