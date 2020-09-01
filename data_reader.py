@@ -901,7 +901,7 @@ class CINC2020Reader(object):
             else:
                 _data = data
             assert _data.shape[0] == len(_leads), \
-                f"number of leads from data of shape ({}) does not match the length ({len(_leads)}) of `leads`"
+                f"number of leads from data of shape ({_data.shape[0]}) does not match the length ({len(_leads)}) of `leads`"
         
         if same_range:
             y_ranges = np.ones((_data.shape[0],)) * np.max(np.abs(_data)) + 100
