@@ -998,7 +998,7 @@ class CINC2020Reader(object):
 
 
     def _auto_infer_units(self, data:np.ndarray) -> str:
-        """ finished, checked
+        """ finished, checked,
 
         automatically infer the units of `data`,
         under the assumption that `data` not raw data, with baseline removed
@@ -1023,7 +1023,7 @@ class CINC2020Reader(object):
 
 
     def get_tranche_class_distribution(self, tranches:Sequence[str], scored_only:bool=True) -> Dict[str, int]:
-        """
+        """ finished, checked,
 
         Parameters:
         -----------
@@ -1110,9 +1110,11 @@ class CINC2020Reader(object):
                 data = resample_poly(data, 500, self.freq[tranche], axis=1)
             if siglen is not None and data.shape[1] >= siglen:
                 slice_start = (data.shape[1] - siglen)//2
-                slice_end = (data.shape[1] - siglen)//2
+                slice_end = slice_start + 4000
                 data = data[..., slice_start:slice_end]
-            np.save(rec_fp, data)
+                np.save(rec_fp, data)
+            elif siglen is None:
+                np.save(rec_fp, data)
         else:
             # print(f"loading from local file...")
             data = np.load(rec_fp)

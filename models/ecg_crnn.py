@@ -28,7 +28,7 @@ from models.utils.torch_utils import (
     ZeroPadding,
     StackedLSTM, BidirectionalLSTM,
     # AML_Attention, AML_GatedAttention,
-    AttentionWithContext,
+    Attention, AttentionWithContext,
     compute_conv_output_shape,
 )
 from utils.misc import dict_to_str
@@ -736,45 +736,50 @@ class ECG_CRNN(nn.Module):
         if rnn_choice == 'none':
             self.rnn = None
             _, clf_input_size, _ = self.cnn.compute_output_shape(self.input_len, batch_size=None)
+            self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
         elif rnn_choice == 'lstm':
-            hidden_sizes = self.config.rnn.hidden_sizes + [self.n_classes]
+            hidden_sizes = self.config.rnn.lstm.hidden_sizes + [self.n_classes]
             if self.__DEBUG__:
-                print(f"lstm hidden sizes {self.config.rnn.hidden_sizes} ---> {hidden_sizes}")
+                print(f"lstm hidden sizes {self.config.rnn.lstm.hidden_sizes} ---> {hidden_sizes}")
             self.rnn = StackedLSTM(
                 input_size=rnn_input_size,
                 hidden_sizes=hidden_sizes,
-                bias=self.config.rnn.bias,
-                dropout=self.config.rnn.dropout,
-                bidirectional=self.config.rnn.bidirectional,
-                return_sequences=self.config.rnn.retseq,
+                bias=self.config.rnn.lstm.bias,
+                dropout=self.config.rnn.lstm.dropout,
+                bidirectional=self.config.rnn.lstm.bidirectional,
+                return_sequences=self.config.rnn.lstm.retseq,
             )
-            # self.rnn = BidirectionalLSTM(
-            #     input_size=rnn_input_size,
-            #     hidden_size=self.config.rnn.hidden_sizes[-1],
-            #     num_layers=len(self.config.rnn.hidden_sizes),
-            #     bias=self.config.rnn.bias,
-            #     dropout=self.config.rnn.dropout,
-            #     return_sequences=self.config.rnn.retseq,
-            # )
+            if self.config.rnn.lstm.retseq:
+                self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
+            else:
+                self.max_pool = None
             clf_input_size = self.rnn.compute_output_shape(None,None)[-1]
-            # if self.config.rnn.bidirectional:
-            #     clf_input_size = 2*self.config.rnn.hidden_sizes[-1]
-            # else:
-            #     clf_input_size = self.config.rnn.hidden_sizes[-1]
-            # if self.config.rnn.retseq:
-            #     clf_input_size *= self.cnn_output_len
         elif rnn_choice == 'attention':
-            raise NotImplementedError
+            hidden_sizes = self.config.rnn.attention.hidden_sizes
+            attn_in_channels = hidden_sizes[-1]
+            if self.config.rnn.attention.bidirectional:
+                attn_in_channels *= 2
+            self.rnn = nn.Sequential(
+                StackedLSTM(
+                    input_size=rnn_input_size,
+                    hidden_sizes=hidden_sizes,
+                    bias=self.config.rnn.attention.bias,
+                    dropout=self.config.rnn.attention.dropout,
+                    bidirectional=self.config.rnn.attention.bidirectional,
+                    return_sequences=True,
+                ),
+                Attention(
+                    in_channels=attn_in_channels,
+                    bias=self.config.rnn.attention.bias,
+                ),
+            )
+            self.max_pool = None
         else:
             raise NotImplementedError
 
         if self.__DEBUG__:
             print(f"clf_input_size = {clf_input_size}")
 
-        if not self.rnn or self.config.rnn.retseq:
-            # input of `self.max_pool` has shape (or `view` to shape): batch_size, channels, seq_len
-            # output has shape: batch_size, channels, 1
-            self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
         # input of `self.clf` has shape: batch_size, channels
         self.clf = nn.Linear(clf_input_size, self.n_classes)
         self.sigmoid = nn.Sigmoid()  # for making inference
@@ -785,10 +790,10 @@ class ECG_CRNN(nn.Module):
         x = self.cnn(input)  # batch_size, channels, seq_len
         # print(f"cnn out shape = {x.shape}")
         if self.rnn:
-            # input shape of lstm: (seq_len, batch_size, input_size)
-            x = x.permute(2,0,1)  # seq_len, batch_size, channels
+            # (batch_size, channels, seq_len) -> (seq_len, batch_size, input_size)
+            x = x.permute(2,0,1)
             x = self.rnn(x)
-            if self.config.rnn.retseq:
+            if self.max_pool:
                 # (seq_len, batch_size, channels) -> (batch_size, channels, seq_len)
                 x = x.permute(1,2,0)
                 x = self.max_pool(x)  # (batch_size, channels, 1)

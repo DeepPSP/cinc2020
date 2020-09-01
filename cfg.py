@@ -185,7 +185,7 @@ TrainCfg.eval_every = 20
 
 # configs of model selection
 TrainCfg.cnn_name = "resnet"  # 'vgg16', 'resnet_leadwise', 'vgg16_leadwise', 'cpsc', 'cpsc_leadwise'
-TrainCfg.rnn_name = 'lstm'  # 'none'
+TrainCfg.rnn_name = 'attention'  # 'none', 'lstm'
 
 # configs of inputs and outputs
 TrainCfg.input_len = int(500 * 8.0)  # almost all records has duration >= 8s
