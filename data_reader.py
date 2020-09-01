@@ -838,7 +838,8 @@ class CINC2020Reader(object):
         rec: str,
             name of the record
         data: ndarray, optional,
-            12-lead ecg signal to plot,
+            (12-lead) ecg signal to plot,
+            should be of the format "channel_first", and compatible with `leads`
             if given, data of `rec` will not be used,
             this is useful when plotting filtered data
         ticks_granularity: int, default 0,
@@ -880,12 +881,16 @@ class CINC2020Reader(object):
             import matplotlib.pyplot as plt
             plt.MultipleLocator.MAXTICKS = 3000
         if leads is None or leads == 'all':
-            leads = self.all_leads
-        assert all([l in self.all_leads for l in leads])
+            _leads = self.all_leads
+        elif isinstance(leads, str):
+            _leads = [leads]
+        else:
+            _leads = leads
+        assert all([l in self.all_leads for l in _leads])
 
         # lead_list = self.load_ann(rec)['df_leads']['lead_name'].tolist()
-        # lead_indices = [lead_list.index(l) for l in leads]
-        lead_indices = [self.all_leads.index(l) for l in leads]
+        # lead_indices = [lead_list.index(l) for l in _leads]
+        lead_indices = [self.all_leads.index(l) for l in _leads]
         if data is None:
             _data = self.load_data(rec, data_format='channel_first', units='μV')[lead_indices]
         else:
@@ -895,6 +900,8 @@ class CINC2020Reader(object):
                 _data = 1000 * data
             else:
                 _data = data
+            assert _data.shape[0] == len(_leads), \
+                f"number of leads from data of shape ({}) does not match the length ({len(_leads)}) of `leads`"
         
         if same_range:
             y_ranges = np.ones((_data.shape[0],)) * np.max(np.abs(_data)) + 100
@@ -958,6 +965,8 @@ class CINC2020Reader(object):
         fig_sz_w = int(round(4.8 * duration))
         fig_sz_h = 6 * y_ranges / 1500
         fig, axes = plt.subplots(nb_leads, 1, sharex=True, figsize=(fig_sz_w, np.sum(fig_sz_h)))
+        if nb_leads == 1:
+            axes = [axes]
         for idx in range(nb_leads):
             axes[idx].plot(t, _data[idx], label=f'lead - {leads[idx]}')
             axes[idx].axhline(y=0, linestyle='-', linewidth='1.0', color='red')
