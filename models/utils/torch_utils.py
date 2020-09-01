@@ -2,7 +2,7 @@
 basic building blocks, for 1d signal (time series)
 """
 import sys
-from math import floor
+from math import floor, sqrt
 from itertools import repeat
 from typing import Union, Sequence, Tuple, Optional, NoReturn
 
@@ -25,7 +25,7 @@ __all__ = [
     "Bn_Activation", "Conv_Bn_Activation",
     "DownSample",
     "BidirectionalLSTM", "StackedLSTM",
-    "Attention",
+    "NaiveAttention", "",
     "AML_Attention", "AML_GatedAttention",
     "AttentionWithContext",
     "ZeroPadding",
@@ -804,18 +804,16 @@ class AttentionWithContext(nn.Module):
         Parameters:
         -----------
         input: Tensor,
-            of shape (seq_len, batch_size, n_channels)
+            of shape (batch_size, seq_len, n_channels)
         mask: Tensor, optional,
         """
         if self.__DEBUG__:
             print(f"AttentionWithContext forward: input.shape = {input.shape}, W.shape = {self.W.shape}")
-        # (seq_len, batch_size, n_channels) -> (batch_size, seq_len, n_channels)
-        _input = input.permute(1,0,2)
 
         # linear + activation
         # (batch_size, seq_len, n_channels) x (n_channels, n_channels)
         # -> (batch_size, seq_len, n_channels)
-        uit = torch.tensordot(_input, self.W, dims=1)  # the same as torch.matmul
+        uit = torch.tensordot(input, self.W, dims=1)  # the same as torch.matmul
         if self.__DEBUG__:
             print(f"AttentionWithContext forward: uit.shape = {uit.shape}")
         if self.bias:
@@ -843,7 +841,7 @@ class AttentionWithContext(nn.Module):
         # weighted -> sum
         # (batch_size, seq_len, n_channels) x (batch_size, seq_len, 1)
         # -> (batch_size, seq_len, n_channels)
-        weighted_input = _input * a[..., np.newaxis]
+        weighted_input = input * a[..., np.newaxis]
         if self.__DEBUG__:
             print(f"AttentionWithContext forward: weighted_input.shape = {weighted_input.shape}")
         output = torch.sum(weighted_input, dim=-1)
@@ -870,7 +868,7 @@ class AttentionWithContext(nn.Module):
         return output_shape
 
 
-class Attention(nn.Module):
+class NaiveAttention(nn.Module):
     """
     simplified version of `AttentionWithContext` (the scaled dot-product attention),
     without the optional mask
@@ -906,18 +904,16 @@ class Attention(nn.Module):
         Parameters:
         -----------
         input: Tensor,
-            of shape (seq_len, batch_size, in_channels)
+            of shape (batch_size, seq_len, in_channels)
         """
-        # input: (seq_len, batch_size, in_channels) -> (batch_size, seq_len, in_channels)
-        _input = input.permute(1,0,2)
-        lin_out = self.linear(_input)
+        lin_out = self.linear(input)
         # (batch_size, seq_len, in_channels) x (in_channels,)
         # -> (batch_size, seq_len)
         coeffs = torch.tensordot(lin_out, self.att_v, dims=1)  # equiv. to torch.matmul
         coeffs = self.softmax(coeffs)  # normalize the coeffs
         # multiply each feature vector by corresponding coefficients
         # (batch_size, seq_len, channels) -> (batch_size, channels)
-        output = (_input * score[..., np.newaxis]).sum(dim=1)
+        output = (input * score[..., np.newaxis]).sum(dim=1)
         return output
 
     def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
@@ -937,6 +933,127 @@ class Attention(nn.Module):
         """
         output_shape = (batch_size, self.__in_channels)
         return output_shape
+
+
+class ScaledDotProductAttention(nn.Module):
+    """
+    References:
+    -----------
+    [1] https://github.com/CyberZHG/torch-multi-head-attention
+    """
+    __DEBUG__ = False
+    __name__ = "ScaledDotProductAttention"
+
+    def forward(self, query:Tensor, key:Tensor, value:Tensor, mask:Optional[Tensor]=None) -> Tensor:
+        """
+        all tensors of shape (batch_size, seq_len, features)
+        """
+        if self.__DEBUG__:
+            print(f"query.shape = {query.shape}, key.shape = {key.shape}, value.shape = {value.shape}")
+        dk = query.shape[-1]
+        scores = query.matmul(key.permute(0,2,1)) / sqrt(dk)
+        if mask is not None:
+            scores = scores.masked_fill(mask == 0, -1e9)
+        attention = F.softmax(scores, dim=-1)
+        if self.__DEBUG__:
+            print(f"scores.shape = {scores.shape}, attention.shape = {attention.shape}")
+        return attention.matmul(value)
+
+
+class MultiHeadAttention(nn.Module):
+    """
+
+    Multi-head attention.
+
+    References:
+    -----------
+    [1] https://github.com/CyberZHG/torch-multi-head-attention
+    """
+    __DEBUG__ = False
+    __name__ = "MultiHeadAttention"
+
+    def __init__(self,
+                 in_features:int,
+                 head_num:int,
+                 bias:bool=True,
+                 activation:Optional[Union[str,nn.Module]]="relu"):
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        in_features: int,
+            Size of each input sample
+        head_num: int,
+            Number of heads.
+        bias: bool, default True,
+            Whether to use the bias term.
+        activation: str or Module,
+            The activation after each linear transformation.
+        """
+        super().__init__()
+        if in_features % head_num != 0:
+            raise ValueError(f'`in_features`({in_features}) should be divisible by `head_num`({head_num})')
+        self.in_features = in_features
+        self.head_num = head_num
+        self.activation = Activations[activation.lower()]() if isinstance(activation, str) else activation
+        self.bias = bias
+        self.linear_q = nn.Linear(in_features, in_features, bias)
+        self.linear_k = nn.Linear(in_features, in_features, bias)
+        self.linear_v = nn.Linear(in_features, in_features, bias)
+        self.linear_o = nn.Linear(in_features, in_features, bias)
+
+    def forward(self, q:Tensor, k:Tensor, v:Tensor, mask:Optional[Tensor]=None) -> Tensor:
+        """
+        q, k, v are of shape (batch_size, seq_len, features)
+        """
+        q, k, v = self.linear_q(q), self.linear_k(k), self.linear_v(v)
+        if self.activation is not None:
+            q = self.activation(q)
+            k = self.activation(k)
+            v = self.activation(v)
+
+        q = self._reshape_to_batches(q)
+        k = self._reshape_to_batches(k)
+        v = self._reshape_to_batches(v)
+        if mask is not None:
+            mask = mask.repeat(self.head_num, 1, 1)
+        y = ScaledDotProductAttention()(q, k, v, mask)
+        y = self._reshape_from_batches(y)
+
+        y = self.linear_o(y)
+        if self.activation is not None:
+            y = self.activation(y)
+        return y
+
+    def _reshape_to_batches(self, x:Tensor) -> Tensor:
+        """
+        """
+        batch_size, seq_len, in_features = x.shape
+        sub_dim = in_features // self.head_num
+        # if self.__DEBUG__:
+        #     print(f"batch_size = {batch_size}, seq_len = {seq_len}, in_features = {in_features}, sub_dim = {sub_dim}")
+        reshaped = x.reshape(batch_size, seq_len, self.head_num, sub_dim)\
+                    .permute(0, 2, 1, 3)\
+                    .reshape(batch_size * self.head_num, seq_len, sub_dim)
+        return reshaped
+
+    def _reshape_from_batches(self, x:Tensor) -> Tensor:
+        """
+        """
+        batch_size, seq_len, in_features = x.shape
+        batch_size //= self.head_num
+        out_dim = in_features * self.head_num
+        # if self.__DEBUG__:
+        #     print(f"batch_size = {batch_size}, seq_len = {seq_len}, in_features = {in_features}, out_dim = {out_dim}")
+        reshaped = x.reshape(batch_size, self.head_num, seq_len, in_features)\
+                    .permute(0, 2, 1, 3)\
+                    .reshape(batch_size, seq_len, out_dim)
+        return reshaped
+
+    def extra_repr(self):
+        return 'in_features={}, head_num={}, bias={}, activation={}'.format(
+            self.in_features, self.head_num, self.bias, self.activation,
+        )
 
 
 class ZeroPadding(nn.Module):
