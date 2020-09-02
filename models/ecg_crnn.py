@@ -781,6 +781,7 @@ class ECG_CRNN(nn.Module):
                 )
             )
             self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
+            clf_input_size = self.rnn.compute_output_shape(None,None)[-1]
         else:
             raise NotImplementedError
 

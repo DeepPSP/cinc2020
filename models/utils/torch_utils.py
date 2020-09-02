@@ -1120,7 +1120,8 @@ class SelfAttention(nn.Module):
         """
         input of (batch_size, seq_len, features)
         """
-        output = self.mha(input, input, input)
+        output, _ = self.mha(input, input, input)
+        # output = self.mha(input, input, input)
         return output
 
     def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
