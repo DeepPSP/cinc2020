@@ -998,14 +998,14 @@ class NaiveAttention(nn.Module):
         return n_params
 
 
-class ScaledDotProductAttention(nn.Module):
+class _ScaledDotProductAttention(nn.Module):
     """
     References:
     -----------
     [1] https://github.com/CyberZHG/torch-multi-head-attention
     """
     __DEBUG__ = False
-    __name__ = "ScaledDotProductAttention"
+    __name__ = "_ScaledDotProductAttention"
 
     def forward(self, query:Tensor, key:Tensor, value:Tensor, mask:Optional[Tensor]=None) -> Tensor:
         """
@@ -1069,9 +1069,13 @@ class MultiHeadAttention(nn.Module):
 
     def forward(self, q:Tensor, k:Tensor, v:Tensor, mask:Optional[Tensor]=None) -> Tensor:
         """
-        q, k, v are of shape (batch_size, seq_len, features)
+        q, k, v are of shape (seq_len, batch_size, features)
+        in order to keep accordance with `nn.MultiheadAttention`
         """
-        q, k, v = self.linear_q(q), self.linear_k(k), self.linear_v(v)
+        # all (seq_len, batch_size, features) -> (batch_size, seq_len, features)
+        q = self.linear_q(q.permute(1,0,2))
+        k = self.linear_k(k.permute(1,0,2))
+        v = self.linear_v(v.permute(1,0,2))
         if self.activation is not None:
             q = self.activation(q)
             k = self.activation(k)
@@ -1082,12 +1086,14 @@ class MultiHeadAttention(nn.Module):
         v = self._reshape_to_batches(v)
         if mask is not None:
             mask = mask.repeat(self.head_num, 1, 1)
-        y = ScaledDotProductAttention()(q, k, v, mask)
+        y = _ScaledDotProductAttention()(q, k, v, mask)
         y = self._reshape_from_batches(y)
 
         y = self.linear_o(y)
         if self.activation is not None:
             y = self.activation(y)
+        # shape back from (batch_size, seq_len, features) -> (seq_len, batch_size, features)
+        y = y.permute(1,0,2)
         return y
 
     def _reshape_to_batches(self, x:Tensor) -> Tensor:
@@ -1115,11 +1121,6 @@ class MultiHeadAttention(nn.Module):
                     .reshape(batch_size, seq_len, out_dim)
         return reshaped
 
-    def extra_repr(self):
-        return 'in_features={}, head_num={}, bias={}, activation={}'.format(
-            self.in_features, self.head_num, self.bias, self.activation,
-        )
-
     def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
         """ finished, checked,
 
@@ -1135,7 +1136,7 @@ class MultiHeadAttention(nn.Module):
         output_shape: sequence,
             the output shape of this MHA layer, given `seq_len` and `batch_size`
         """
-        output_shape = (batch_size, seq_len, self.in_features*self.head_num)
+        output_shape = (seq_len, batch_size, self.in_features*self.head_num)
         return output_shape
 
     @property
@@ -1145,6 +1146,11 @@ class MultiHeadAttention(nn.Module):
         module_parameters = filter(lambda p: p.requires_grad, self.parameters())
         n_params = sum([np.prod(p.size()) for p in module_parameters])
         return n_params
+
+    def extra_repr(self):
+        return 'in_features={}, head_num={}, bias={}, activation={}'.format(
+            self.in_features, self.head_num, self.bias, self.activation,
+        )
 
 
 class SelfAttention(nn.Module):
@@ -1189,7 +1195,8 @@ class SelfAttention(nn.Module):
 
     def forward(self, input:Tensor) -> Tensor:
         """
-        input of (batch_size, seq_len, features)
+        input of shape (seq_len, batch_size, features)
+        output of shape (seq_len, batch_size, features)
         """
         output, _ = self.mha(input, input, input)
         # output = self.mha(input, input, input)
@@ -1210,7 +1217,7 @@ class SelfAttention(nn.Module):
         output_shape: sequence,
             the output shape of this MHA layer, given `seq_len` and `batch_size`
         """
-        output_shape = (batch_size, seq_len, self.in_features*self.head_num)
+        output_shape = (seq_len, batch_size, self.in_features)
         return output_shape
 
     @property

@@ -859,7 +859,7 @@ class ECG_CRNN(nn.Module):
         """
         """
         x = self.cnn(input)  # batch_size, channels, seq_len
-        # print(f"cnn out shape = {x.shape}")
+        print(f"cnn out shape = {x.shape}")
         if self.rnn:
             # (batch_size, channels, seq_len) -> (seq_len, batch_size, input_size)
             x = x.permute(2,0,1)
@@ -873,11 +873,14 @@ class ECG_CRNN(nn.Module):
             else:
                 # x of shape (batch_size, channels)
                 pass
+            print(f"rnn out shape = {x.shape}")
         else:
             # (batch_size, channels, seq_len) --> (batch_size, channels)
             x = self.max_pool(x)
+            print(f"max_pool out shape = {x.shape}")
             # x = torch.flatten(x, start_dim=1)
             x = x.squeeze(dim=-1)
+        print(f"clf in shape = {x.shape}")
         pred = self.clf(x)  # batch_size, n_classes
         return pred
 

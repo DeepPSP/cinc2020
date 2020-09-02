@@ -81,12 +81,12 @@ resnet.subsample_lengths = 2
 #     [5, 5, 25],
 # ]
 resnet.num_blocks = [
-    3, 3, 3, 3,
+    3, 4, 6, 3,
 ]
 resnet.filter_lengths = [
     [5, 5, 25],
-    [5, 5, 25],
-    [5, 5, 25],
+    [5, 5, 5, 25],
+    [5, 5, 5, 5, 5, 25],
     [5, 5, 49],
 ]
 resnet.groups = 1
