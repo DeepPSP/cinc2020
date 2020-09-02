@@ -439,19 +439,29 @@ class ResNet(nn.Sequential):
         # number of channels are doubled at the first block of each macro-block
         for macro_idx, nb in enumerate(self.config.num_blocks):
             macro_in_channels = (2**macro_idx) * self.config.init_num_filters
-            macro_filter_length = self.__filter_lengths[macro_idx]
-            macro_subsample_length = self.__subsample_lengths[macro_idx]
+            macro_filter_lengths = self.__filter_lengths[macro_idx]
+            macro_subsample_lengths = self.__subsample_lengths[macro_idx]
             block_in_channels = macro_in_channels
             block_num_filters = 2 * block_in_channels
+            if isinstance(macro_filter_lengths, int):
+                block_filter_lengths = list(repeat(macro_filter_lengths, nb))
+            else:
+                block_filter_lengths = macro_filter_lengths
+            assert len(block_filter_lengths) == nb
+            if isinstance(macro_subsample_lengths, int):
+                block_subsample_lengths = list(repeat(1, nb))
+                block_subsample_lengths[-1] = macro_subsample_lengths
+            else:
+                block_subsample_lengths = macro_subsample_lengths
+            assert len(block_subsample_lengths) == nb
             for block_idx in range(nb):
-                block_subsample_length = macro_subsample_length if block_idx == 0 else 1
                 self.add_module(
                     f"block_{macro_idx}_{block_idx}",
                     self.building_block(
                         in_channels=block_in_channels,
                         num_filters=block_num_filters,
-                        filter_length=macro_filter_length,
-                        subsample_length=block_subsample_length,
+                        filter_length=block_filter_lengths[idx],
+                        subsample_length=block_subsample_lengths[idx],
                         groups=self.config.groups,
                         dilation=1,
                         **(self.config.block)

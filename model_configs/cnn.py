@@ -1,6 +1,7 @@
 """
 configs for the basic cnn layers and blocks
 """
+from itertools import repeat
 from copy import deepcopy
 
 from easydict import EasyDict as ED
@@ -23,7 +24,14 @@ __all__ = [
 # VGG
 vgg16 = ED()
 vgg16.num_convs = [2, 2, 3, 3, 3]
-vgg16.num_filters = [12*4, 12*8, 12*16, 12*32, 12*32]
+_base_num_filters = 36
+vgg16.num_filters = [
+    _base_num_filters*4,
+    _base_num_filters*8,
+    _base_num_filters*16,
+    _base_num_filters*32,
+    _base_num_filters*32,
+]
 vgg16.groups = 1
 vgg16.kernel_initializer = "he_normal"
 vgg16.kw_initializer = {}
@@ -32,6 +40,8 @@ vgg16.kw_activation = {}
 
 vgg16_leadwise = deepcopy(vgg16)
 vgg16_leadwise.groups = 12
+
+
 vgg_block_basic = ED()
 vgg_block_basic.filter_length = 3
 vgg_block_basic.subsample_length = 1
@@ -56,13 +66,24 @@ del vgg_block_swish.kw_activation
 
 # ResNet
 resnet = ED()
-resnet.num_blocks = [
-    2, 2, 2, 2, 2,
-]
 resnet.subsample_lengths = 2
-resnet.filter_lengths = 3
+# resnet.num_blocks = [
+#     2, 2, 2, 2, 2,
+# ]
+# resnet.filter_lengths = 3
+resnet.num_blocks = [
+    2, 3, 4, 6, 3,
+]
+resnet.filter_lengths = [
+    [5, 5],
+    [5, 5, 25],
+    [5, 5, 5, 25],
+    [5, 5, 5, 5, 5, 25],
+    [5, 5, 49],
+]
 resnet.groups = 1
-resnet.init_num_filters = 12*2
+_base_num_filters = 36
+resnet.init_num_filters = _base_num_filters*2
 resnet.init_filter_length = 15  # corr. to 30 ms
 resnet.init_conv_stride = 2
 resnet.init_pool_size = 3
@@ -102,7 +123,8 @@ resnet_stanford.subsample_lengths = [
     1, 2, 1, 2,
 ]
 resnet_stanford.filter_lengths = 17
-resnet_stanford.num_filters_start = 12*2
+_base_num_filters = 36
+resnet_stanford.num_filters_start = _base_num_filters*2
 resnet_stanford.kernel_initializer = "he_normal"
 resnet_stanford.kw_initializer = {}
 resnet_stanford.activation = "relu"
@@ -131,12 +153,13 @@ cpsc_2018 = ED()
 #     [12, 12, 12],
 #     [12, 12, 12],
 # ]
+_base_num_filters = 36
 cpsc_2018.num_filters = [
-    [12*2, 12*2, 12*2],
-    [12*4, 12*4, 12*4],
-    [12*8, 12*8, 12*8],
-    [12*16, 12*16, 12*16],
-    [12*32, 12*32, 12*32],
+    list(repeat(_base_num_filters*2, 3)),
+    list(repeat(_base_num_filters*4, 3)),
+    list(repeat(_base_num_filters*8, 3)),
+    list(repeat(_base_num_filters*16, 3)),
+    list(repeat(_base_num_filters*32, 3)),
 ]
 cpsc_2018.filter_lengths = [
     [3, 3, 24],
