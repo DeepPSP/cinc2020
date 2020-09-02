@@ -93,6 +93,7 @@ class CINC2020(Dataset):
                 values,
                 lowcut=self.config.bandpass[0],
                 highcut=self.config.bandpass[1],
+                order=5,
                 fs=self.config.fs,
             )
         if self.config.normalize_data:

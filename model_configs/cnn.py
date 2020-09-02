@@ -81,18 +81,17 @@ resnet.subsample_lengths = 2
 #     [5, 5, 25],
 # ]
 resnet.num_blocks = [
-    2, 2, 2, 2, 2,
+    3, 3, 3, 3,
 ]
 resnet.filter_lengths = [
-    [5, 25],
-    [5, 25],
-    [5, 25],
-    [5, 25],
-    [5, 49],
+    [5, 5, 25],
+    [5, 5, 25],
+    [5, 5, 25],
+    [5, 5, 49],
 ]
 resnet.groups = 1
 _base_num_filters = 36
-resnet.init_num_filters = _base_num_filters*2
+resnet.init_num_filters = _base_num_filters
 resnet.init_filter_length = 15  # corr. to 30 ms
 resnet.init_conv_stride = 2
 resnet.init_pool_size = 3

@@ -153,7 +153,8 @@ TrainCfg.classes = sorted(list(TrainCfg.class_weights.keys()))
 # configs of signal preprocessing
 # frequency band of the filter to apply, should be chosen very carefully
 # TrainCfg.bandpass = None  # [-np.inf, 45]
-TrainCfg.bandpass = [-np.inf, 45]
+# TrainCfg.bandpass = [-np.inf, 45]
+TrainCfg.bandpass = [0.5, 60]
 
 # configs of data aumentation
 TrainCfg.label_smoothing = 0.1
