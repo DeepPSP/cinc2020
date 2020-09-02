@@ -18,7 +18,7 @@ lstm.bias = True
 lstm.dropout = 0.2
 lstm.bidirectional = True
 lstm.retseq = False
-lstm.hidden_sizes = [256, 64]
+lstm.hidden_sizes = [12*24, 12*6]
 
 
 attention = ED()
@@ -27,4 +27,4 @@ attention.head_num = 12
 attention.bias = True
 attention.dropout = 0.2
 attention.bidirectional = True
-attention.hidden_sizes = [256, 64]
+attention.hidden_sizes = [12*24, 12*6]
