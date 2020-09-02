@@ -23,7 +23,7 @@ lstm.hidden_sizes = [256, 64]
 
 attention = ED()
 # almost the same with lstm, but the last layer is an attention layer
-attention.head_num = 1
+attention.head_num = 12
 attention.bias = True
 attention.dropout = 0.2
 attention.bidirectional = True
