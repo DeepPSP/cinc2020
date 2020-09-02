@@ -427,13 +427,15 @@ class ResNet(nn.Sequential):
                 list(repeat(self.config.filter_lengths, len(self.config.num_blocks)))
         else:
             self.__filter_lengths = self.config.filter_lengths
-            assert len(self.__filter_lengths) == self.config.num_blocks
+            assert len(self.__filter_lengths) == len(self.config.num_blocks), \
+                f"`config.filter_lengths` indicates {len(self.__filter_lengths)} macro blocks, while `config.num_blocks` indicates {len(self.config.num_blocks)}"
         if isinstance(self.config.subsample_lengths, int):
             self.__subsample_lengths = \
                 list(repeat(self.config.subsample_lengths, len(self.config.num_blocks)))
         else:
             self.__subsample_lengths = self.config.subsample_lengths
-            assert len(self.__subsample_lengths) == self.config.num_blocks
+            assert len(self.__subsample_lengths) == len(self.config.num_blocks), \
+                f"`config.subsample_lengths` indicates {len(self.__subsample_lengths)} macro blocks, while `config.num_blocks` indicates {len(self.config.num_blocks)}"
 
         # grouped resnet (basic) blocks,
         # number of channels are doubled at the first block of each macro-block
@@ -447,13 +449,15 @@ class ResNet(nn.Sequential):
                 block_filter_lengths = list(repeat(macro_filter_lengths, nb))
             else:
                 block_filter_lengths = macro_filter_lengths
-            assert len(block_filter_lengths) == nb
+            assert len(block_filter_lengths) == nb, \
+                f"at the {macro_idx}-th macro block, `macro_subsample_lengths` indicates {len(macro_subsample_lengths)} building blocks, while `config.num_blocks[{macro_idx}]` indicates {nb}"
             if isinstance(macro_subsample_lengths, int):
                 block_subsample_lengths = list(repeat(1, nb))
                 block_subsample_lengths[-1] = macro_subsample_lengths
             else:
                 block_subsample_lengths = macro_subsample_lengths
-            assert len(block_subsample_lengths) == nb
+            assert len(block_subsample_lengths) == nb, \
+                f"at the {macro_idx}-th macro block, `macro_subsample_lengths` indicates {len(macro_subsample_lengths)} building blocks, while `config.num_blocks[{macro_idx}]` indicates {nb}"
             for block_idx in range(nb):
                 self.add_module(
                     f"block_{macro_idx}_{block_idx}",
