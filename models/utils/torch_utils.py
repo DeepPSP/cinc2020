@@ -25,7 +25,7 @@ __all__ = [
     "Bn_Activation", "Conv_Bn_Activation",
     "DownSample",
     "BidirectionalLSTM", "StackedLSTM",
-    "NaiveAttention", "MultiHeadAttention",
+    "NaiveAttention", "MultiHeadAttention", "SelfAttention",
     "AML_Attention", "AML_GatedAttention",
     "AttentionWithContext",
     "ZeroPadding",
@@ -977,7 +977,8 @@ class MultiHeadAttention(nn.Module):
                  in_features:int,
                  head_num:int,
                  bias:bool=True,
-                 activation:Optional[Union[str,nn.Module]]="relu"):
+                 activation:Optional[Union[str,nn.Module]]="relu",
+                 **kwargs):
         """ finished, checked,
 
         Parameters:
@@ -1071,7 +1072,73 @@ class MultiHeadAttention(nn.Module):
         output_shape: sequence,
             the output shape of this MHA layer, given `seq_len` and `batch_size`
         """
-        output_shape = (batch_size, seq_len, self.in_features)
+        output_shape = (batch_size, seq_len, self.in_features*self.head_num)
+        return output_shape
+
+
+class SelfAttention(nn.Module):
+    """
+    """
+    __DEBUG__ = False
+    __name__ = "MultiHeadAttention"
+
+    def __init__(self,
+                 in_features:int,
+                 head_num:int,
+                 dropout:float=0.0,
+                 bias:bool=True,
+                 activation:Optional[Union[str,nn.Module]]="relu",
+                 **kwargs):
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        in_features: int,
+            size of each input sample
+        head_num: int,
+            number of heads.
+        dropout: float, default 0,
+            dropout factor for out projection weight of MHA
+        bias: bool, default True,
+            whether to use the bias term.
+        """
+        super().__init__()
+        if in_features % head_num != 0:
+            raise ValueError(f'`in_features`({in_features}) should be divisible by `head_num`({head_num})')
+        self.in_features = in_features
+        self.head_num = head_num
+        self.dropout = dropout
+        self.bias = bias
+        self.mha = nn.MultiheadAttention(
+            in_features, head_num, dropout=dropout, bias=bias,
+        )
+        # self.mha = MultiHeadAttention(
+        #     in_features, head_num, bias=bias,
+        # )
+
+    def forward(self, input:Tensor) -> Tensor:
+        """
+        input of (batch_size, seq_len, features)
+        """
+        output = self.mha(input, input, input)
+        return output
+
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        seq_len: int,
+            length of the 1d sequence
+        batch_size: int, optional,
+            the batch size, can be None
+
+        Returns:
+        --------
+        output_shape: sequence,
+            the output shape of this MHA layer, given `seq_len` and `batch_size`
+        """
+        output_shape = (batch_size, seq_len, self.in_features*self.head_num)
         return output_shape
 
 

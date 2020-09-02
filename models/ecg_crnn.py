@@ -28,7 +28,8 @@ from models.utils.torch_utils import (
     ZeroPadding,
     StackedLSTM, BidirectionalLSTM,
     # AML_Attention, AML_GatedAttention,
-    NaiveAttention, AttentionWithContext, MultiHeadAttention,
+    NaiveAttention, AttentionWithContext,
+    SelfAttention, MultiHeadAttention,
     compute_conv_output_shape,
 )
 from utils.misc import dict_to_str
@@ -768,12 +769,18 @@ class ECG_CRNN(nn.Module):
                     bidirectional=self.config.rnn.attention.bidirectional,
                     return_sequences=True,
                 ),
-                Attention(
-                    in_channels=attn_in_channels,
+                # NaiveAttention(
+                #     in_channels=attn_in_channels,
+                #     bias=self.config.rnn.attention.bias,
+                # ),
+                SelfAttention(
+                    in_features=attn_in_channels,
+                    head_num=self.config.rnn.attention.head_num,
+                    dropout=self.config.rnn.attention.dropout,
                     bias=self.config.rnn.attention.bias,
-                ),
+                )
             )
-            self.max_pool = None
+            self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
         else:
             raise NotImplementedError
 
