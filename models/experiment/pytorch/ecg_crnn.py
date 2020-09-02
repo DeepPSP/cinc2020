@@ -15,7 +15,7 @@ from easydict import EasyDict as ED
 
 torch.set_default_tensor_type(torch.DoubleTensor)
 
-# from cfg import ModelCfg
+from cfg import ModelCfg
 from model_configs.ati_cnn import ATI_CNN_CONFIG
 from model_configs.cpsc import CPSC_CONFIG
 from models.utils.torch_utils import (
@@ -29,6 +29,10 @@ from models.utils.torch_utils import (
     compute_conv_output_shape,
 )
 from utils.misc import dict_to_str
+
+
+if ModelCfg.torch_dtype.lower() == 'double':
+    torch.set_default_tensor_type(torch.DoubleTensor)
 
 
 __all__ = [

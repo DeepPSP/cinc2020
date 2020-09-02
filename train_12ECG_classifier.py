@@ -7,6 +7,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.ensemble import RandomForestClassifier
 
 from get_12ECG_features import get_12ECG_features
+from cfg import ModelCfg
 from utils import misc
 
 
@@ -46,11 +47,15 @@ def train_12ECG_classifier(input_directory, output_directory):
 
 # Load challenge data.
 def load_challenge_data(header_file):
+    if ModelCfg.torch_dtype.lower() == 'double':
+        dtype = np.float64
+    else:
+        dtype = np.float32
     with open(header_file, 'r') as f:
         header = f.readlines()
     mat_file = header_file.replace('.hea', '.mat')
     x = loadmat(mat_file)
-    recording = np.asarray(x['val'], dtype=np.float64)
+    recording = np.asarray(x['val'], dtype=np.float32)
     return recording, header
 
 # Find unique classes.

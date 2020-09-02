@@ -53,8 +53,6 @@ import torch.nn.functional as F
 from tensorboardX import SummaryWriter
 from easydict import EasyDict as ED
 
-torch.set_default_tensor_type(torch.DoubleTensor)
-
 from models.ecg_crnn import ECG_CRNN
 from models.utils.torch_utils import (
     BCEWithLogitsWithClassWeightLoss,
@@ -70,6 +68,13 @@ from utils.scoring_metrics import evaluate_12ECG_score
 __all__ = [
     "train",
 ]
+
+
+if ModelCfg.torch_dtype.lower() == 'double':
+    torch.set_default_tensor_type(torch.DoubleTensor)
+    _DTYPE = torch.float64
+else:
+    _DTYPE = torch.float32
 
 
 def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, logger:Optional[logging.Logger]=None, debug:bool=False):
@@ -194,7 +199,7 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
         criterion = nn.BCEWithLogitsLoss()
     elif config.loss == "BCEWithLogitsWithClassWeightLoss":
         criterion = BCEWithLogitsWithClassWeightLoss(
-            class_weight=train_dataset.class_weights.to(device=device, dtype=torch.float64)
+            class_weight=train_dataset.class_weights.to(device=device, dtype=_DTYPE)
         )
     else:
         raise NotImplementedError(f"loss `{config.loss}` not implemented!")
@@ -213,8 +218,8 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
         with tqdm(total=n_train, desc=f'Epoch {epoch + 1}/{n_epochs}', ncols=100) as pbar:
             for epoch_step, (signals, labels) in enumerate(train_loader):
                 global_step += 1
-                signals = signals.to(device=device, dtype=torch.float64)
-                labels = labels.to(device=device, dtype=torch.float64)
+                signals = signals.to(device=device, dtype=_DTYPE)
+                labels = labels.to(device=device, dtype=_DTYPE)
                 
                 optimizer.zero_grad()
 
@@ -355,7 +360,7 @@ def evaluate(model:nn.Module, data_loader:DataLoader, config:dict, device:torch.
     all_labels = []
 
     for signals, labels in data_loader:
-        signals = signals.to(device=device, dtype=torch.float64)
+        signals = signals.to(device=device, dtype=_DTYPE)
         labels = labels.numpy()
         all_labels.append(labels)
 

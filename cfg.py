@@ -87,6 +87,7 @@ ModelCfg = ED()
 ModelCfg.fs = 500
 ModelCfg.spacing = 1000 / ModelCfg.fs
 ModelCfg.bin_pred_thr = 0.5
+ModelCfg.torch_dtype = 'float'
 
 
 # training configurations for machine learning and deep learning

@@ -305,7 +305,7 @@ class LUDBReader(object):
         wfdb_rec = wfdb.rdrecord(rec_fp, physical=True, channel_names=_leads)
         # p_signal of 'lead_last' format
         # ref. ISSUES 1.
-        data = np.asarray(wfdb_rec.p_signal.T / 1000, dtype=np.float64)
+        data = np.asarray(wfdb_rec.p_signal.T / 1000)
 
         if units.lower() in ['uv', 'μv']:
             data = data * 1000

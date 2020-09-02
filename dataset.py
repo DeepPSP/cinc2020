@@ -14,12 +14,14 @@ import torch
 from torch.utils.data.dataset import Dataset
 from sklearn.preprocessing import StandardScaler
 
-torch.set_default_tensor_type(torch.DoubleTensor)
-
-from cfg import TrainCfg
+from cfg import TrainCfg, ModelCfg
 from data_reader import CINC2020Reader as CR
 from utils.utils_signal import butter_bandpass_filter
 from utils.misc import dict_to_str
+
+
+if ModelCfg.torch_dtype.lower() == 'double':
+    torch.set_default_tensor_type(torch.DoubleTensor)
 
 
 __all__ = [
@@ -48,6 +50,10 @@ class CINC2020(Dataset):
         self.reader = CR(db_dir=config.db_dir)
         self.tranches = config.tranches_for_training
         self.training = training
+        if ModelCfg.torch_dtype.lower() == 'double':
+            self.dtype = np.float64
+        else:
+            self.dtype = np.float32
         assert not self.tranches or self.tranches in self._TRANCHES
         if self.tranches:
             self.all_classes = self.config.tranche_classes[self.tranches]
@@ -58,10 +64,10 @@ class CINC2020(Dataset):
         self.n_classes = len(self.all_classes)
         # print(f"tranches = {self.tranches}, all_classes = {self.all_classes}")
         # print(f"class_weights = {dict_to_str(self.class_weights)}")
-        cw = np.zeros((len(self.class_weights),), dtype=np.float64)
+        cw = np.zeros((len(self.class_weights),), dtype=self.dtype)
         for idx, c in enumerate(self.all_classes):
             cw[idx] = self.class_weights[c]
-        self.class_weights = torch.from_numpy(cw.astype(np.float64)).view(1, self.n_classes)
+        self.class_weights = torch.from_numpy(cw.astype(self.dtype)).view(1, self.n_classes)
         # if self.training:
         #     self.siglen = self.config.siglen
         # else:

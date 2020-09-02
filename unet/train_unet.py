@@ -25,8 +25,7 @@ from torch.nn import CrossEntropyLoss
 from tensorboardX import SummaryWriter
 from easydict import EasyDict as ED
 
-torch.set_default_tensor_type(torch.DoubleTensor)
-
+from cfg import ModelCfg
 from models.ecg_unet import ECG_UNET
 # from models.utils.torch_utils import BCEWithLogitsWithClassWeightLoss
 from models.utils.torch_utils import default_collate_fn as collate_fn
@@ -35,6 +34,10 @@ from .cfg_unet import TrainCfg
 from .dataset import LUDB
 from .metrics import compute_metrics
 from utils.misc import init_logger, get_date_str, dict_to_str, str2bool
+
+
+if ModelCfg.torch_dtype.lower() == 'double':
+    torch.set_default_tensor_type(torch.DoubleTensor)
 
 
 __all__ = [

@@ -439,7 +439,7 @@ class CINC2020Reader(object):
             rec_fp = os.path.join(self.db_dirs[tranche], rec)
             # p_signal of 'lead_last' format
             wfdb_rec = wfdb.rdrecord(rec_fp, physical=True, channel_names=_leads)
-            data = np.asarray(wfdb_rec.p_signal.T, dtype=np.float64)
+            data = np.asarray(wfdb_rec.p_signal.T)
             # lead_units = np.vectorize(lambda s: s.lower())(wfdb_rec.units)
         elif backend.lower() == 'scipy':
             # loadmat of 'lead_first' format
@@ -448,7 +448,7 @@ class CINC2020Reader(object):
             header_info = self.load_ann(rec, raw=False)['df_leads']
             baselines = header_info['baseline'].values.reshape(data.shape[0], -1)
             adc_gain = header_info['adc_gain'].values.reshape(data.shape[0], -1)
-            data = np.asarray(data-baselines, dtype=np.float64) / adc_gain
+            data = np.asarray(data-baselines) / adc_gain
             leads_ind = [self.all_leads.index(item) for item in _leads]
             data = data[leads_ind,:]
             # lead_units = np.vectorize(lambda s: s.lower())(header_info['df_leads']['adc_units'].values)

@@ -2,12 +2,18 @@
 
 import numpy as np, os, sys
 from scipy.io import loadmat
+
 from run_12ECG_classifier import load_12ECG_model, run_12ECG_classifier
+from cfg import ModelCfg
 
 def load_challenge_data(filename):
 
+    if ModelCfg.torch_dtype.lower() == 'double':
+        dtype = np.float64
+    else:
+        dtype = np.float32
     x = loadmat(filename)
-    data = np.asarray(x['val'], dtype=np.float64)
+    data = np.asarray(x['val'], dtype=dtype)
 
     new_file = filename.replace('.mat','.hea')
     input_header_file = os.path.join(new_file)

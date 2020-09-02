@@ -15,11 +15,9 @@ from torch import Tensor
 import torch.nn.functional as F
 from easydict import EasyDict as ED
 
-torch.set_default_tensor_type(torch.DoubleTensor)
-
 # from cfg import ModelCfg
 from model_configs import ECG_CRNN_CONFIG
-from cfg import TrainCfg
+from cfg import TrainCfg, ModelCfg
 # from model_configs.cpsc import CPSC_CONFIG
 from models.utils.torch_utils import (
     Mish, Swish, Activations,
@@ -38,6 +36,10 @@ from utils.misc import dict_to_str
 __all__ = [
     "ECG_CRNN",
 ]
+
+
+if ModelCfg.torch_dtype.lower() == 'double':
+    torch.set_default_tensor_type(torch.DoubleTensor)
 
 
 class VGGBlock(nn.Sequential):

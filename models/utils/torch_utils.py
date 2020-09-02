@@ -16,7 +16,14 @@ import torch.nn.functional as F
 from torch.nn.utils.rnn import PackedSequence
 from easydict import EasyDict as ED
 
-torch.set_default_tensor_type(torch.DoubleTensor)
+from cfg import ModelCfg
+
+
+if ModelCfg.torch_dtype.lower() == 'double':
+    torch.set_default_tensor_type(torch.DoubleTensor)
+    _DTYPE = np.float64
+else:
+    _DTYPE = np.float32
 
 
 __all__ = [
@@ -834,7 +841,7 @@ class AttentionWithContext(nn.Module):
             a_masked = a * mask
         else:
             a_masked = a
-        a_masked = _true_divide(a_masked, torch.sum(a_masked, dim=-1, keepdim=True) + torch.finfo(torch.float64).eps)
+        a_masked = _true_divide(a_masked, torch.sum(a_masked, dim=-1, keepdim=True) + torch.finfo(torch.float32).eps)
         if self.__DEBUG__:
             print(f"AttentionWithContext forward: a_masked.shape = {a_masked.shape}")
 
@@ -1603,8 +1610,8 @@ def default_collate_fn(batch:Sequence[Tuple[np.ndarray, np.ndarray]]) -> Tuple[T
     """
     values = [[item[0]] for item in batch]
     labels = [[item[1]] for item in batch]
-    values = np.concatenate(values, axis=0).astype(np.float64)
+    values = np.concatenate(values, axis=0).astype(_DTYPE)
     values = torch.from_numpy(values)
-    labels = np.concatenate(labels, axis=0).astype(np.float64)
+    labels = np.concatenate(labels, axis=0).astype(_DTYPE)
     labels = torch.from_numpy(labels)
     return values, labels
