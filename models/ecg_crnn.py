@@ -733,12 +733,11 @@ class ECG_CRNN(nn.Module):
             cnn_output_shape = self.cnn.compute_output_shape(self.input_len, batch_size=None)
             print(f"cnn output shape (batch_size, features, seq_len) = {cnn_output_shape}")
 
-        rnn_choice = self.config.rnn.name.lower()
-        if rnn_choice == 'none':
+        if self.config.rnn.name.lower() == 'none':
             self.rnn = None
             _, clf_input_size, _ = self.cnn.compute_output_shape(self.input_len, batch_size=None)
             self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
-        elif rnn_choice == 'lstm':
+        elif self.config.rnn.name.lower() == 'lstm':
             hidden_sizes = self.config.rnn.lstm.hidden_sizes + [self.n_classes]
             if self.__DEBUG__:
                 print(f"lstm hidden sizes {self.config.rnn.lstm.hidden_sizes} ---> {hidden_sizes}")
@@ -755,7 +754,7 @@ class ECG_CRNN(nn.Module):
             else:
                 self.max_pool = None
             clf_input_size = self.rnn.compute_output_shape(None,None)[-1]
-        elif rnn_choice == 'attention':
+        elif self.config.rnn.name.lower() == 'attention':
             hidden_sizes = self.config.rnn.attention.hidden_sizes
             attn_in_channels = hidden_sizes[-1]
             if self.config.rnn.attention.bidirectional:
@@ -781,7 +780,7 @@ class ECG_CRNN(nn.Module):
                 )
             )
             self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
-            clf_input_size = self.rnn.compute_output_shape(None,None)[-1]
+            clf_input_size = self.rnn[-1].compute_output_shape(None,None)[-1]
         else:
             raise NotImplementedError
 

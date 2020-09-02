@@ -1080,7 +1080,7 @@ class SelfAttention(nn.Module):
     """
     """
     __DEBUG__ = False
-    __name__ = "MultiHeadAttention"
+    __name__ = "SelfAttention"
 
     def __init__(self,
                  in_features:int,
