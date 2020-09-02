@@ -464,8 +464,8 @@ class ResNet(nn.Sequential):
                     self.building_block(
                         in_channels=block_in_channels,
                         num_filters=block_num_filters,
-                        filter_length=block_filter_lengths[idx],
-                        subsample_length=block_subsample_lengths[idx],
+                        filter_length=block_filter_lengths[block_idx],
+                        subsample_length=block_subsample_lengths[block_idx],
                         groups=self.config.groups,
                         dilation=1,
                         **(self.config.block)
