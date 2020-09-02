@@ -202,6 +202,14 @@ class Bn_Activation(nn.Sequential):
         output_shape = (batch_size, self.__num_features, seq_len)
         return output_shape
 
+    @property
+    def module_size(self):
+        """
+        """
+        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        n_params = sum([np.prod(p.size()) for p in module_parameters])
+        return n_params
+
 
 class Conv_Bn_Activation(nn.Sequential):
     """ finished, checked,
@@ -336,6 +344,14 @@ class Conv_Bn_Activation(nn.Sequential):
             channel_last=False,
         )
         return output_shape
+
+    @property
+    def module_size(self):
+        """
+        """
+        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        n_params = sum([np.prod(p.size()) for p in module_parameters])
+        return n_params
 
 
 class DownSample(nn.Sequential):
@@ -484,6 +500,14 @@ class DownSample(nn.Sequential):
         output_shape = (batch_size, self.__out_channels, out_seq_len)
         return output_shape
 
+    @property
+    def module_size(self):
+        """
+        """
+        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        n_params = sum([np.prod(p.size()) for p in module_parameters])
+        return n_params
+
 
 class BidirectionalLSTM(nn.Module):
     """
@@ -554,6 +578,14 @@ class BidirectionalLSTM(nn.Module):
         """
         output_shape = (seq_len, batch_size, self.__output_size)
         return output_shape
+
+    @property
+    def module_size(self):
+        """
+        """
+        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        n_params = sum([np.prod(p.size()) for p in module_parameters])
+        return n_params
 
 
 class StackedLSTM(nn.Sequential):
@@ -675,6 +707,14 @@ class StackedLSTM(nn.Sequential):
         else:
             output_shape = (batch_size, output_size)
         return output_shape
+
+    @property
+    def module_size(self):
+        """
+        """
+        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        n_params = sum([np.prod(p.size()) for p in module_parameters])
+        return n_params
 
 
 # ---------------------------------------------
@@ -874,6 +914,14 @@ class AttentionWithContext(nn.Module):
         output_shape = (batch_size, self.__out_channels, seq_len)
         return output_shape
 
+    @property
+    def module_size(self):
+        """
+        """
+        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        n_params = sum([np.prod(p.size()) for p in module_parameters])
+        return n_params
+
 
 class NaiveAttention(nn.Module):
     """
@@ -940,6 +988,14 @@ class NaiveAttention(nn.Module):
         """
         output_shape = (batch_size, self.__in_channels)
         return output_shape
+
+    @property
+    def module_size(self):
+        """
+        """
+        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        n_params = sum([np.prod(p.size()) for p in module_parameters])
+        return n_params
 
 
 class ScaledDotProductAttention(nn.Module):
@@ -1082,6 +1138,14 @@ class MultiHeadAttention(nn.Module):
         output_shape = (batch_size, seq_len, self.in_features*self.head_num)
         return output_shape
 
+    @property
+    def module_size(self):
+        """
+        """
+        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        n_params = sum([np.prod(p.size()) for p in module_parameters])
+        return n_params
+
 
 class SelfAttention(nn.Module):
     """
@@ -1149,6 +1213,14 @@ class SelfAttention(nn.Module):
         output_shape = (batch_size, seq_len, self.in_features*self.head_num)
         return output_shape
 
+    @property
+    def module_size(self):
+        """
+        """
+        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        n_params = sum([np.prod(p.size()) for p in module_parameters])
+        return n_params
+
 
 class ZeroPadding(nn.Module):
     """
@@ -1209,6 +1281,14 @@ class ZeroPadding(nn.Module):
         """
         output_shape = (batch_size, self.__out_channels, seq_len)
         return output_shape
+
+    @property
+    def module_size(self):
+        """
+        """
+        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        n_params = sum([np.prod(p.size()) for p in module_parameters])
+        return n_params
 
 
 

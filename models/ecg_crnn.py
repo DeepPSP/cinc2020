@@ -142,6 +142,14 @@ class VGGBlock(nn.Sequential):
             num_layers += 1
         return output_shape
 
+    @property
+    def module_size(self):
+        """
+        """
+        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        n_params = sum([np.prod(p.size()) for p in module_parameters])
+        return n_params
+
 
 class VGG16(nn.Sequential):
     """
@@ -211,6 +219,14 @@ class VGG16(nn.Sequential):
             output_shape = module.compute_output_shape(seq_len, batch_size)
             _, _, seq_len = output_shape
         return output_shape
+
+    @property
+    def module_size(self):
+        """
+        """
+        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        n_params = sum([np.prod(p.size()) for p in module_parameters])
+        return n_params
 
 
 class ResNetBasicBlock(nn.Module):
@@ -362,6 +378,14 @@ class ResNetBasicBlock(nn.Module):
             _, _, _seq_len = output_shape
         return output_shape
 
+    @property
+    def module_size(self):
+        """
+        """
+        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        n_params = sum([np.prod(p.size()) for p in module_parameters])
+        return n_params
+
 
 class ResNet(nn.Sequential):
     """
@@ -511,6 +535,14 @@ class ResNet(nn.Sequential):
             _, _, _seq_len = output_shape
         return output_shape
 
+    @property
+    def module_size(self):
+        """
+        """
+        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        n_params = sum([np.prod(p.size()) for p in module_parameters])
+        return n_params
+
 
 class CPSCBlock(nn.Sequential):
     """
@@ -610,6 +642,14 @@ class CPSCBlock(nn.Sequential):
             n_layers += 1
         return output_shape
 
+    @property
+    def module_size(self):
+        """
+        """
+        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        n_params = sum([np.prod(p.size()) for p in module_parameters])
+        return n_params
+
 
 class CPSCCNN(nn.Sequential):
     """
@@ -693,6 +733,14 @@ class CPSCCNN(nn.Sequential):
             output_shape = module.compute_output_shape(_seq_len, batch_size)
             _, _, _seq_len = output_shape
         return output_shape
+
+    @property
+    def module_size(self):
+        """
+        """
+        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        n_params = sum([np.prod(p.size()) for p in module_parameters])
+        return n_params
 
 
 class ECG_CRNN(nn.Module):
@@ -851,3 +899,11 @@ class ECG_CRNN(nn.Module):
             return pred
         pred = pred.cpu().detach().numpy()
         return pred, bin_pred
+
+    @property
+    def module_size(self):
+        """
+        """
+        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        n_params = sum([np.prod(p.size()) for p in module_parameters])
+        return n_params

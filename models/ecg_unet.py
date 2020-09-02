@@ -152,6 +152,14 @@ class DoubleConv(nn.Sequential):
             _, _, _seq_len = output_shape
         return output_shape
 
+    @property
+    def module_size(self):
+        """
+        """
+        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        n_params = sum([np.prod(p.size()) for p in module_parameters])
+        return n_params
+
 
 class DownDoubleConv(nn.Sequential):
     """
@@ -251,6 +259,14 @@ class DownDoubleConv(nn.Sequential):
             output_shape = module.compute_output_shape(seq_len=_seq_len)
             _, _, _seq_len = output_shape
         return output_shape
+
+    @property
+    def module_size(self):
+        """
+        """
+        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        n_params = sum([np.prod(p.size()) for p in module_parameters])
+        return n_params
 
 
 class UpDoubleConv(nn.Module):
@@ -390,6 +406,14 @@ class UpDoubleConv(nn.Module):
         output_shape = self.conv.compute_output_shape(_seq_len, batch_size)
         return output_shape
 
+    @property
+    def module_size(self):
+        """
+        """
+        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        n_params = sum([np.prod(p.size()) for p in module_parameters])
+        return n_params
+
 
 class ECG_UNET(nn.Module):
     """
@@ -520,3 +544,11 @@ class ECG_UNET(nn.Module):
         """
         output_shape = (batch_size, self.n_classes, seq_len)
         return output_shape
+
+    @property
+    def module_size(self):
+        """
+        """
+        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        n_params = sum([np.prod(p.size()) for p in module_parameters])
+        return n_params
