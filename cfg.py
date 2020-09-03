@@ -174,6 +174,8 @@ TrainCfg.lr = TrainCfg.learning_rate
 TrainCfg.lr_step_size = 50
 TrainCfg.lr_gamma = 0.1
 
+TrainCfg.lr_scheduler = None  # 'plateau', 'burn_in', 'step', None
+
 TrainCfg.burn_in = 400
 TrainCfg.steps = [5000, 10000]
 

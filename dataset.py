@@ -247,7 +247,7 @@ class CINC2020(Dataset):
         if self.config.bandpass is not None:
             bp_low = max(0, self.config.bandpass[0])
             bp_high = min(self.config.bandpass[1], self.config.fs//2)
-            fn_suffix = fn_suffix + f"bp_{bp_low:.1f}_{bp_high:.1f}"
+            fn_suffix = fn_suffix + f"_bp_{bp_low:.1f}_{bp_high:.1f}"
         fn_suffix = fn_suffix + f"_siglen_{self.siglen}"
 
         X, y = [], []

@@ -182,7 +182,6 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
             betas=(0.9, 0.999),  # default
             eps=1e-08,  # default
         )
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=2)
     elif config.train_optimizer.lower() == 'sgd':
         optimizer = optim.SGD(
             params=model.parameters(),
@@ -190,10 +189,18 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
             momentum=config.momentum,
             weight_decay=config.decay,
         )
-        scheduler = optim.lr_scheduler.StepLR(optimizer, config.lr_step_size, config.lr_gamma)
     else:
         raise NotImplementedError(f"optimizer `{config.train_optimizer}` not implemented!")
     # scheduler = optim.lr_scheduler.LambdaLR(optimizer, burnin_schedule)
+
+    if config.lr_scheduler is None:
+        scheduler = None
+    elif config.lr_scheduler.lower() == 'plateau':
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=2)
+    elif config.lr_scheduler.lower() == 'step':
+        scheduler = optim.lr_scheduler.StepLR(optimizer, config.lr_step_size, config.lr_gamma)
+    else:
+        raise NotImplementedError("lr scheduler `{config.lr_scheduler.lower()}` not implemented for training")
 
     if config.loss == "BCEWithLogitsLoss":
         criterion = nn.BCEWithLogitsLoss()
@@ -220,16 +227,14 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
                 global_step += 1
                 signals = signals.to(device=device, dtype=_DTYPE)
                 labels = labels.to(device=device, dtype=_DTYPE)
-                
-                optimizer.zero_grad()
 
                 preds = model(signals)
                 loss = criterion(preds, labels)
+                epoch_loss += loss.item()
+                
+                optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-                if scheduler:
-                    scheduler.step()
-                epoch_loss += loss.item()
 
                 if global_step % log_step == 0:
                     writer.add_scalar('train/loss', loss.item(), global_step)
@@ -272,6 +277,11 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
             writer.add_scalar('test/f_beta_measure', eval_res[4], global_step)
             writer.add_scalar('test/g_beta_measure', eval_res[5], global_step)
             writer.add_scalar('test/challenge_metric', eval_res[6], global_step)
+
+            if config.lr_scheduler.lower() == 'plateau':
+                scheduler.step(metrics=eval_res[6])
+            elif config.lr_scheduler.lower() == 'step':
+                scheduler.step()
 
             if debug:
                 eval_train_msg = f"""
