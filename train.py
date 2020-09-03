@@ -278,7 +278,9 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
             writer.add_scalar('test/g_beta_measure', eval_res[5], global_step)
             writer.add_scalar('test/challenge_metric', eval_res[6], global_step)
 
-            if config.lr_scheduler.lower() == 'plateau':
+            if config.lr_scheduler is None:
+                pass
+            elif config.lr_scheduler.lower() == 'plateau':
                 scheduler.step(metrics=eval_res[6])
             elif config.lr_scheduler.lower() == 'step':
                 scheduler.step()
