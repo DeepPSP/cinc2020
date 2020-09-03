@@ -76,6 +76,7 @@ class CINC2020(Dataset):
         self.siglen = self.config.input_len
 
         self.records = self._train_test_split(config.train_ratio, force_recompute=False)
+        self.records = [r for r in self.records if r not in self.reader.exceptional_records]
 
         self.__data_aug = self.training
 

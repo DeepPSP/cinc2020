@@ -128,6 +128,7 @@ class CINC2020Reader(object):
     1. reading the .hea files, baselines of all records are 0, however it is not the case if one plot the signal
     2. about half of the LAD records satisfy the '2-lead' criteria, but fail for the '3-lead' criteria, which means that their axis is (-30°, 0°) which is not truely LAD
     3. (Aug. 15th) tranche F, the Georgia subset, has ADC gain 4880 which might be too high. Thus obtained voltages are too low. 1000 might be a suitable (correct) value of ADC gain for this tranche just as the other tranches.
+    4. "E04603", "E06072" has exceptionally large values at rpeaks, reading (`load_data`) these two records using `wfdb` would bring in `nan` values
 
     Usage:
     ------
@@ -223,6 +224,8 @@ class CINC2020Reader(object):
 
         self.value_correction_factor = ED({tranche:1 for tranche in self.db_tranches})
         self.value_correction_factor.F = 4.88  # ref. ISSUES 3
+
+        self.exceptional_records = ["E04603", "E06072"]  # ref. ISSUES 4
 
 
     def get_subject_id(self, rec:str) -> int:

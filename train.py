@@ -399,14 +399,13 @@ def evaluate(model:nn.Module, data_loader:DataLoader, config:dict, device:torch.
         for n in range(head_num):
             print(f"""
             ----------------------------------------------
-            scalar prediction:    {head_scalar_preds[n].tolist()}
+            scalar prediction:    {[round(n, 3) for n in head_scalar_preds[n].tolist()]}
             binary prediction:    {head_bin_preds[n].tolist()}
-            labels:               {head_labels[n].tolist()}
+            labels:               {head_labels[n].astype(int).tolist()}
             predicted classes:    {head_preds_classes[n].tolist()}
             label classes:        {head_labels_classes[n].tolist()}
             ----------------------------------------------
             """)
-            print(f"scalar prediction:")
 
     auroc, auprc, accuracy, f_measure, f_beta_measure, g_beta_measure, challenge_metric = \
         evaluate_12ECG_score(
