@@ -377,7 +377,7 @@ def evaluate(model:nn.Module, data_loader:DataLoader, config:dict, device:torch.
         if torch.cuda.is_available():
             torch.cuda.synchronize()
         preds, _ = model.inference(signals)
-        all_preds.append(preds.cpu().detach().numpy())
+        all_preds.append(preds)
     
     all_preds = np.concatenate(all_preds, axis=0)
     bin_preds = (all_preds >= config.bin_pred_thr).astype(int)
