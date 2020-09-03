@@ -40,6 +40,14 @@ vgg16.kw_activation = {}
 
 vgg16_leadwise = deepcopy(vgg16)
 vgg16_leadwise.groups = 12
+_base_num_filters = 96
+vgg16.num_filters = [
+    _base_num_filters*4,
+    _base_num_filters*8,
+    _base_num_filters*16,
+    _base_num_filters*32,
+    _base_num_filters*32,
+]
 
 
 vgg_block_basic = ED()
@@ -104,6 +112,8 @@ resnet.bias = False
 
 resnet_leadwise = deepcopy(resnet)
 resnet_leadwise.groups = 12
+resnet_leadwise.init_num_filters=96
+
 
 resnet_block_basic = ED()
 resnet_block_basic.increase_channels_method = 'conv'  # or 'zero_padding'
@@ -120,6 +130,7 @@ resnet_bottle_neck.kw_initializer = deepcopy(resnet.kw_initializer)
 resnet_bottle_neck.activation = resnet.activation
 resnet_bottle_neck.kw_activation = deepcopy(resnet.kw_activation)
 resnet_bottle_neck.bias = False
+
 
 
 # ResNet Stanford

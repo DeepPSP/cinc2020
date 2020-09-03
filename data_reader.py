@@ -337,7 +337,7 @@ class CINC2020Reader(object):
         """ finished, checked,
 
         config the logger,
-        currently not used,
+        currently NOT used,
 
         Parameters:
         -----------
@@ -454,7 +454,8 @@ class CINC2020Reader(object):
             # lead_units = np.vectorize(lambda s: s.lower())(header_info['df_leads']['adc_units'].values)
         else:
             raise ValueError(f"backend `{backend.lower()}` not supported for loading data")
-
+        
+        # ref. ISSUES 3, for multiplying `value_correction_factor`
         data = data * self.value_correction_factor[tranche]
 
         if units.lower() in ['uv', 'μv']:

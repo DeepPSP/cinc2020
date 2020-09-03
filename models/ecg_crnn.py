@@ -891,16 +891,25 @@ class ECG_CRNN(nn.Module):
         pred = self.forward(input)
         pred = self.sigmoid(pred)
         bin_pred = (pred>=bin_pred_thr).int()
+        pred = pred.cpu().detach().numpy()
+        bin_pred = bin_pred.cpu().detach().numpy()
+        for row_idx, row in enumerate(bin_pred):
+            if row.sum() == 0:
+                row_max_val = pred[row_idx,...].max()
+                bin_pred[row_idx,...] = \
+                    ((pred[row_idx,...]+ModelCfg.bin_pred_look_again_tol) >= row_max_val).astype(int)
         if class_names:
-            pred = pred.cpu().detach().numpy()
             pred = pd.DataFrame(pred)
             pred.columns = self.classes
-            pred['bin_pred'] = pred.apply(
-                lambda row: np.array(self.classes)[np.where(row.values>=bin_pred_thr)[0]],
-                axis=1
-            )
+            # pred['bin_pred'] = pred.apply(
+            #     lambda row: np.array(self.classes)[np.where(row.values>=bin_pred_thr)[0]],
+            #     axis=1
+            # )
+            pred['bin_pred'] = ''
+            for row_idx in range(len(pred)):
+                pred.at[row_idx, 'bin_pred'] = \
+                    np.array(self.classes)[np.where(bin_pred==1)[0]].tolist()
             return pred
-        pred = pred.cpu().detach().numpy()
         return pred, bin_pred
 
     @property

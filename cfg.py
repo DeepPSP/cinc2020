@@ -87,6 +87,10 @@ ModelCfg = ED()
 ModelCfg.fs = 500
 ModelCfg.spacing = 1000 / ModelCfg.fs
 ModelCfg.bin_pred_thr = 0.5
+# `bin_pred_look_again_tol` is used when no prob is greater than `bin_pred_thr`,
+# then the prediction would be the one with the highest prob.,
+# along with those with prob. no less than the highest prob. minus `bin_pred_look_again_tol`
+ModelCfg.bin_pred_look_again_tol = 0.03
 ModelCfg.torch_dtype = 'float'
 
 
@@ -188,9 +192,10 @@ TrainCfg.loss = 'BCEWithLogitsWithClassWeightLoss'
 TrainCfg.eval_every = 20
 
 # configs of model selection
-TrainCfg.cnn_name = "resnet"  # 'vgg16', 'resnet_leadwise', 'vgg16_leadwise', 'cpsc', 'cpsc_leadwise'
-TrainCfg.rnn_name = 'attention'  # 'none', 'lstm'
+TrainCfg.cnn_name = "resnet_leadwise"  # 'vgg16', 'resnet', 'vgg16_leadwise', 'cpsc', 'cpsc_leadwise'
+TrainCfg.rnn_name = 'none'  # 'none', 'lstm', 'attention'
 
 # configs of inputs and outputs
 TrainCfg.input_len = int(500 * 8.0)  # almost all records has duration >= 8s
 TrainCfg.bin_pred_thr = ModelCfg.bin_pred_thr
+TrainCfg.bin_pred_look_again_tol = ModelCfg.bin_pred_look_again_tol
