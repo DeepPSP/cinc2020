@@ -412,8 +412,8 @@ def evaluate(model:nn.Module, data_loader:DataLoader, config:dict, device:torch.
         evaluate_12ECG_score(
             classes=classes,
             truth=all_labels,
-            scalar_pred=all_preds,
-            binary_pred=bin_preds,
+            scalar_pred=all_scalar_preds,
+            binary_pred=all_bin_preds,
         )
     eval_res = auroc, auprc, accuracy, f_measure, f_beta_measure, g_beta_measure, challenge_metric
 
