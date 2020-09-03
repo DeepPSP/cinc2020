@@ -236,16 +236,17 @@ class CINC2020(Dataset):
 
         make the dataset persistent w.r.t. the tranches and the ratios in `self.config`
         """
+        _TRANCHES = "ABEF"
         prev_state = self.__data_aug
         self.disable_data_augmentation()
         if self.training:
             ratio = int(self.config.train_ratio*100)
         else:
             ratio = 100 - int(self.config.train_ratio*100)
-        fn_suffix = f"tranches_{self.tranches}_ratio_{ratio}"
-        if self.conig.bandpass is not None:
-            bp_low = max(0, self.conig.bandpass[0])
-            bp_high = min(self.conig.bandpass[1], self.config.fs//2)
+        fn_suffix = f"tranches_{self.tranches or _TRANCHES}_ratio_{ratio}"
+        if self.config.bandpass is not None:
+            bp_low = max(0, self.config.bandpass[0])
+            bp_high = min(self.config.bandpass[1], self.config.fs//2)
             fn_suffix = fn_suffix + f"bp_{bp_low:.1f}_{bp_high:.1f}"
         fn_suffix = fn_suffix + f"_siglen_{self.siglen}"
 
