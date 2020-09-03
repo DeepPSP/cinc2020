@@ -486,11 +486,11 @@ if __name__ == "__main__":
     logger.info(f"\n{'*'*20}   Start Training   {'*'*20}\n")
     logger.info(f'Using device {device}')
     logger.info(f"Using torch of version {torch.__version__}")
-    logger.info(f'with configuration {config}')
+    logger.info(f'with configuration\n{dict_to_str(config)}')
     print(f"\n{'*'*20}   Start Training   {'*'*20}\n")
     print(f'Using device {device}')
     print(f"Using torch of version {torch.__version__}")
-    print(f'with configuration {config}')
+    print(f'with configuration\n{dict_to_str(config)}')
 
     tranches = config.tranches_for_training
     if tranches:
