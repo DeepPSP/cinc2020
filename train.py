@@ -368,7 +368,8 @@ def evaluate(model:nn.Module, data_loader:DataLoader, config:dict, device:torch.
     model.eval()
     data_loader.dataset.disable_data_augmentation()
 
-    all_preds = []
+    all_scalar_preds = []
+    all_bin_preds = []
     all_labels = []
 
     for signals, labels in data_loader:
@@ -378,19 +379,20 @@ def evaluate(model:nn.Module, data_loader:DataLoader, config:dict, device:torch.
 
         if torch.cuda.is_available():
             torch.cuda.synchronize()
-        preds, _ = model.inference(signals)
-        all_preds.append(preds)
+        preds, bin_preds = model.inference(signals)
+        all_scalar_preds.append(preds)
+        all_bin_preds.append(bin_preds)
     
-    all_preds = np.concatenate(all_preds, axis=0)
-    bin_preds = (all_preds >= config.bin_pred_thr).astype(int)
+    all_scalar_preds = np.concatenate(all_scalar_preds, axis=0)
+    all_bin_preds = np.concatenate(all_bin_preds, axis=0)
     all_labels = np.concatenate(all_labels, axis=0)
     classes = data_loader.dataset.all_classes
 
     if debug:
-        print(f"all_preds.shape = {all_preds.shape}, all_labels.shape = {all_labels.shape}")
+        print(f"all_scalar_preds.shape = {all_scalar_preds.shape}, all_labels.shape = {all_labels.shape}")
         head_num = 5
-        head_preds = all_preds[:head_num,...]
-        head_bin_preds = bin_preds[:head_num,...]
+        head_scalar_preds = all_scalar_preds[:head_num,...]
+        head_bin_preds = all_bin_preds[:head_num,...]
         head_preds_classes = [np.array(classes)[np.where(row)] for row in head_bin_preds]
         head_labels = all_labels[:head_num,...]
         head_labels_classes = [np.array(classes)[np.where(row)] for row in head_labels]

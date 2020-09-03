@@ -41,7 +41,7 @@ vgg16.kw_activation = {}
 vgg16_leadwise = deepcopy(vgg16)
 vgg16_leadwise.groups = 12
 _base_num_filters = 96
-vgg16.num_filters = [
+vgg16_leadwise.num_filters = [
     _base_num_filters*4,
     _base_num_filters*8,
     _base_num_filters*16,
