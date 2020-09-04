@@ -91,7 +91,15 @@ ModelCfg.bin_pred_thr = 0.5
 # then the prediction would be the one with the highest prob.,
 # along with those with prob. no less than the highest prob. minus `bin_pred_look_again_tol`
 ModelCfg.bin_pred_look_again_tol = 0.03
-ModelCfg.torch_dtype = 'float'
+ModelCfg.bin_pred_nsr_thr = 0.1
+ModelCfg.torch_dtype = "float"
+
+# configs of path of final models
+ModelCfg.tranche_AB_model = os.path.join(_BASE_DIR, "saved_models", "tranche_AB.pth")
+ModelCfg.tranche_E_model = os.path.join(_BASE_DIR, "saved_models", "tranche_E.pth")
+ModelCfg.tranche_F_model = os.path.join(_BASE_DIR, "saved_models", "tranche_F.pth")
+# 'all' refers to tranches A, B, E, F
+ModelCfg.tranche_all_model = os.path.join(_BASE_DIR, "saved_models", "tranche_all.pth")
 
 
 # training configurations for machine learning and deep learning
@@ -199,3 +207,9 @@ TrainCfg.rnn_name = 'none'  # 'none', 'lstm', 'attention'
 TrainCfg.input_len = int(500 * 8.0)  # almost all records has duration >= 8s
 TrainCfg.bin_pred_thr = ModelCfg.bin_pred_thr
 TrainCfg.bin_pred_look_again_tol = ModelCfg.bin_pred_look_again_tol
+TrainCfg.bin_pred_nsr_thr = ModelCfg.bin_pred_nsr_thr
+
+
+ModelCfg.dl_classes = TrainCfg.classes
+ModelCfg.special_classes = ['Brady', 'LAD', 'RAD', 'PR', 'LQRSV']
+ModelCfg.full_classes = ModelCfg.dl_classes + ModelCfg.special_classes

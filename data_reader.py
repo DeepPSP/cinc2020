@@ -799,7 +799,7 @@ class CINC2020Reader(object):
 
 
     def save_challenge_predictions(self, rec:str, output_dir:str, scores:List[Real], labels:List[int], classes:List[str]) -> NoReturn:
-        """ finished, checked, 
+        """ NOT finished, NOT checked, need updating, 
         
         TODO: update for the official phase
 

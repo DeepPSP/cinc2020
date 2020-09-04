@@ -6,6 +6,7 @@ from scipy.io import loadmat
 from run_12ECG_classifier import load_12ECG_model, run_12ECG_classifier
 from cfg import ModelCfg
 
+
 def load_challenge_data(filename):
 
     if ModelCfg.torch_dtype.lower() == 'double':
