@@ -3,13 +3,14 @@
 import os, sys
 import joblib
 from copy import deepcopy
-from typing import Dict, Tuple, List
+from typing import Optional, Dict, Tuple, List
 
 import numpy as np
 import wfdb
 import torch
 from torch import nn
 from scipy.signal import resample, resample_poly
+from easydict import EasyDict as ED
 
 from get_12ECG_features import get_12ECG_features
 from models.special_detectors import special_detectors
@@ -144,10 +145,15 @@ def run_12ECG_classifier(data:np.ndarray, header_data:List[str], loaded_model:Di
     return current_label, current_score, classes
 
 
-def load_12ECG_model(input_directory):
+def load_12ECG_model(input_directory:Optional[str]=None):
     """
     """
     loaded_model = ED()
+
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
     
     for k in ["AB", "E", "F"]:
         model_config = deepcopy(ECG_CRNN_CONFIG)
@@ -157,7 +163,7 @@ def load_12ECG_model(input_directory):
             config=model_config,
         )
         model_weight_path = ModelCfg.tranche_model[k]
-        loaded_model[k].load_state_dict(torch.load(model_weight_path))
+        loaded_model[k].load_state_dict(torch.load(model_weight_path, map_location=device))
 
     loaded_model["all"] = ECG_CRNN(
         classes=ModelCfg.dl_classes,

@@ -101,7 +101,7 @@ ModelCfg.tranche_model = ED({
     "F": os.path.join(_BASE_DIR, "saved_models", "tranche_F.pth"),
     # 'all' refers to tranches A, B, E, F
     "all": os.path.join(_BASE_DIR, "saved_models", "tranche_all.pth"),
-}
+})
 
 
 # training configurations for machine learning and deep learning
