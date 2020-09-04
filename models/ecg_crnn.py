@@ -156,7 +156,7 @@ class VGG16(nn.Sequential):
     """
     CNN feature extractor of the CRNN models proposed in refs of `ATI_CNN`
     """
-    __DEBUG__ = True
+    __DEBUG__ = False
     __name__ = "VGG16"
 
     def __init__(self, in_channels:int, **config) -> NoReturn:
@@ -235,7 +235,7 @@ class ResNetBasicBlock(nn.Module):
 
     building blocks for `ResNet`, as implemented in ref. [2] of `ResNet`
     """
-    __DEBUG__ = True
+    __DEBUG__ = False
     __name__ = "ResNetBasicBlock"
     expansion = 1
 
