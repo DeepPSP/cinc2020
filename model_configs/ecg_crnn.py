@@ -58,3 +58,8 @@ ECG_CRNN_CONFIG.rnn.name = 'attention'
 
 ECG_CRNN_CONFIG.rnn.lstm = deepcopy(lstm)
 ECG_CRNN_CONFIG.rnn.attention = deepcopy(attention)
+
+
+# global pooling
+# currently is fixed using `AdaptiveMaxPool1d`
+ECG_CRNN_CONFIG.global_pool = 'max'  # 'avg', 'attentive'
