@@ -16,6 +16,7 @@ TODO:
 currently all are binary detectors, --> detectors producing a probability?
 """
 import multiprocessing as mp
+from itertools import repeat
 from numbers import Real
 from typing import Union, Optional, Any, List, Dict, Callable, Sequence
 
@@ -52,45 +53,8 @@ __all__ = [
 ]
 
 
-def special_detectors(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", verbose:int=0) -> np.ndarray:
+def special_detectors(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", verbose:int=0) -> dict:
     """ finished, checked,
-
-    Parameters:
-    -----------
-    raw_sig: ndarray,
-        the raw 12-lead ecg signal, with units in mV
-    fs: real number,
-        sampling frequency of `sig`
-    sig_fmt: str, default "channel_first",
-        format of the 12 lead ecg signal,
-        'channel_last' (alias 'lead_last'), or
-        'channel_first' (alias 'lead_first', original)
-    verbose: int, default 0,
-        print verbosity
-    """
-    preprocess = preprocess_multi_lead_signal(
-        raw_sig, fs, sig_fmt, rpeak_fn='xqrs', verbose=verbose
-    )
-    filtered_sig = preprocess["filtered_ecg"]
-    rpeaks = preprocess["rpeaks"]
-    is_PR = pacing_rhythm_detector(raw_sig, fs, sig_fmt, verbose)
-    axis = electrical_axis_detector(filtered_sig, rpeaks, fs, sig_fmt, method='2-lead', verbose=verbose)
-    brady_tachy = brady_tachy_detector(rpeaks, fs, verbose=verbose)
-    is_LQRSV = LQRSV_detector(filtered_sig, rpeaks, fs, sig_fmt, verbose)
-    is_LAD = (axis=='LAD')
-    is_RAD = (axis=='RAD')
-    is_brady = (brady_tachy=='B')
-    is_tachy = (brady_tachy=='T')
-    conclusion = ED(
-        is_brady=is_brady, is_tachy=is_tachy,
-        is_LAD=is_LAD, is_RAD=is_RAD,
-        is_PR=is_PR, is_LQRSV=is_LQRSV,
-    )
-    return conclusion
-
-
-def pacing_rhythm_detector(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", verbose:int=0) -> bool:
-    """ finished, checked, to be improved (fine-tuning hyper-parameters in cfg.py),
 
     Parameters:
     -----------
@@ -107,8 +71,54 @@ def pacing_rhythm_detector(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_fir
 
     Returns:
     --------
-    is_PR: bool,
-        the ecg signal is of pacing rhythm or not
+    conclusion: dict,
+        probability or binary conclusion for each arrhythm
+    """
+    preprocess = preprocess_multi_lead_signal(
+        raw_sig, fs, sig_fmt, rpeak_fn='xqrs', verbose=verbose
+    )
+    filtered_sig = preprocess["filtered_ecg"]
+    rpeaks = preprocess["rpeaks"]
+    is_PR = pacing_rhythm_detector(raw_sig, fs, sig_fmt, ret_prob=False, verbose=verbose)
+    axis = electrical_axis_detector(filtered_sig, rpeaks, fs, sig_fmt, method='2-lead', verbose=verbose)
+    brady_tachy = brady_tachy_detector(rpeaks, fs, verbose=verbose)
+    is_LQRSV = LQRSV_detector(filtered_sig, rpeaks, fs, sig_fmt, verbose=verbose)
+    is_LAD = (axis=='LAD')
+    is_RAD = (axis=='RAD')
+    is_brady = (brady_tachy=='B')
+    is_tachy = (brady_tachy=='T')
+    conclusion = ED(
+        is_brady=is_brady, is_tachy=is_tachy,
+        is_LAD=is_LAD, is_RAD=is_RAD,
+        is_PR=is_PR, is_LQRSV=is_LQRSV,
+    )
+    return conclusion
+
+
+def pacing_rhythm_detector(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_first", ret_prob:bool=True, verbose:int=0) -> Real:
+    """ finished, checked, to be improved (fine-tuning hyper-parameters in cfg.py),
+
+    Parameters:
+    -----------
+    raw_sig: ndarray,
+        the raw 12-lead ecg signal, with units in mV
+    fs: real number,
+        sampling frequency of `sig`
+    sig_fmt: str, default "channel_first",
+        format of the 12 lead ecg signal,
+        'channel_last' (alias 'lead_last'), or
+        'channel_first' (alias 'lead_first', original)
+    ret_prob: bool, default True,
+        if True, a probability will be returned,
+        otherwise, a binary prediction will be returned
+    verbose: int, default 0,
+        print verbosity
+
+    Returns:
+    --------
+    is_PR: real number,
+        probability for the ecg signal to be of pacing rhythm,
+        or a binary disicion
     """
     if sig_fmt.lower() in ['channel_first', 'lead_first']:
         s = raw_sig.copy()
@@ -166,11 +176,24 @@ def pacing_rhythm_detector(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_fir
     
     # make decision using `potential_spikes`
     sig_duration_ms = samples2ms(sig_len, fs)
-    lead_has_enough_spikes = [False if len(potential_spikes[l]) ==0 else sig_duration_ms / len(potential_spikes[l]) < FeatureCfg.pr_spike_inv_density_threshold for l in range(data_hp.shape[0])]
+    # lead_has_enough_spikes = [False if len(potential_spikes[l]) ==0 else sig_duration_ms / len(potential_spikes[l]) < FeatureCfg.pr_spike_inv_density_threshold for l in range(data_hp.shape[0])]
+    lead_has_enough_spikes = list(repeat(0, data_hp.shape[0]))
+    for l in range(data_hp.shape[0]):
+        if len(potential_spikes) > 0:
+            relative_inv_density = FeatureCfg.pr_spike_inv_density_threshold - sig_duration_ms / len(potential_spikes[l])
+            # sigmoid
+            lead_has_enough_spikes[l] = 1 / (1+np.exp(-relative_inv_density/100))
+            if not ret_prob:
+                lead_has_enough_spikes[l] = int(lead_has_enough_spikes[l]>=0.5)
     if verbose >= 1:
         print(f"lead_has_enough_spikes = {lead_has_enough_spikes}")
         print(f"leads spikes density (units in ms) = {[len(potential_spikes[l]) / sig_duration_ms for l in range(data_hp.shape[0])]}")
-    is_PR = sum(lead_has_enough_spikes) >= FeatureCfg.pr_spike_leads_threshold
+    if ret_prob:
+        # pooling (max, or avg)
+        is_PR = sorted(lead_has_enough_spikes, reverse=True)[:FeatureCfg.pr_spike_leads_threshold]
+        is_PR = np.mean(is_PR)
+    else:
+        is_PR = (sum(lead_has_enough_spikes) >= FeatureCfg.pr_spike_leads_threshold)
     return is_PR
 
 
