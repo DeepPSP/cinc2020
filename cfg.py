@@ -54,7 +54,7 @@ FeatureCfg.pr_spike_mph_ratio = 15  # ratio to the average amplitude of the sign
 FeatureCfg.pr_spike_mpd = 300  # ms
 FeatureCfg.pr_spike_prominence = 0.3
 FeatureCfg.pr_spike_prominence_wlen = 120  # ms
-FeatureCfg.pr_spike_inv_density_threshold = 2000  # inverse density (1/density), one spike per 2000 ms
+FeatureCfg.pr_spike_inv_density_threshold = 2500  # inverse density (1/density), one spike per 2000 ms
 FeatureCfg.pr_spike_leads_threshold = 7
 FeatureCfg.axis_qrs_mask_radius = 70  # ms
 FeatureCfg.axis_method = '2-lead'  # can also be '3-lead'
@@ -95,11 +95,13 @@ ModelCfg.bin_pred_nsr_thr = 0.1
 ModelCfg.torch_dtype = "float"
 
 # configs of path of final models
-ModelCfg.tranche_AB_model = os.path.join(_BASE_DIR, "saved_models", "tranche_AB.pth")
-ModelCfg.tranche_E_model = os.path.join(_BASE_DIR, "saved_models", "tranche_E.pth")
-ModelCfg.tranche_F_model = os.path.join(_BASE_DIR, "saved_models", "tranche_F.pth")
-# 'all' refers to tranches A, B, E, F
-ModelCfg.tranche_all_model = os.path.join(_BASE_DIR, "saved_models", "tranche_all.pth")
+ModelCfg.tranche_model = ED({
+    "AB": os.path.join(_BASE_DIR, "saved_models", "tranche_AB.pth"),
+    "E": os.path.join(_BASE_DIR, "saved_models", "tranche_E.pth"),
+    "F": os.path.join(_BASE_DIR, "saved_models", "tranche_F.pth"),
+    # 'all' refers to tranches A, B, E, F
+    "all": os.path.join(_BASE_DIR, "saved_models", "tranche_all.pth"),
+}
 
 
 # training configurations for machine learning and deep learning
@@ -210,6 +212,7 @@ TrainCfg.bin_pred_look_again_tol = ModelCfg.bin_pred_look_again_tol
 TrainCfg.bin_pred_nsr_thr = ModelCfg.bin_pred_nsr_thr
 
 
-ModelCfg.dl_classes = TrainCfg.classes
+ModelCfg.dl_classes = deepcopy(TrainCfg.classes)
+ModelCfg.tranche_classes = deepcopy(TrainCfg.tranche_classes)
 ModelCfg.special_classes = ['Brady', 'LAD', 'RAD', 'PR', 'LQRSV']
 ModelCfg.full_classes = ModelCfg.dl_classes + ModelCfg.special_classes

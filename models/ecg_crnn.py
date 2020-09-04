@@ -26,8 +26,9 @@ from models.utils.torch_utils import (
     ZeroPadding,
     StackedLSTM, BidirectionalLSTM,
     # AML_Attention, AML_GatedAttention,
-    NaiveAttention, AttentionWithContext,
+    AttentionWithContext,
     SelfAttention, MultiHeadAttention,
+    AttentivePooling,
     compute_conv_output_shape,
 )
 from utils.misc import dict_to_str
@@ -746,12 +747,16 @@ class CPSCCNN(nn.Sequential):
 class ECG_CRNN(nn.Module):
     """
 
-    CRNN models proposed in the following refs.
+    C(R)NN models modified from the following refs.
 
     References:
     -----------
     [1] Yao, Qihang, et al. "Time-Incremental Convolutional Neural Network for Arrhythmia Detection in Varied-Length Electrocardiogram." 2018 IEEE 16th Intl Conf on Dependable, Autonomic and Secure Computing, 16th Intl Conf on Pervasive Intelligence and Computing, 4th Intl Conf on Big Data Intelligence and Computing and Cyber Science and Technology Congress (DASC/PiCom/DataCom/CyberSciTech). IEEE, 2018.
     [2] Yao, Qihang, et al. "Multi-class Arrhythmia detection from 12-lead varied-length ECG using Attention-based Time-Incremental Convolutional Neural Network." Information Fusion 53 (2020): 174-182.
+    [3] Hannun, Awni Y., et al. "Cardiologist-level arrhythmia detection and classification in ambulatory electrocardiograms using a deep neural network." Nature medicine 25.1 (2019): 65.
+    [4] https://stanfordmlgroup.github.io/projects/ecg2/
+    [5] https://github.com/awni/ecg
+    [6] CPSC2018 entry 0236
     """
     __DEBUG__ = True
     __name__ = 'ECG_CRNN'
@@ -888,16 +893,24 @@ class ECG_CRNN(nn.Module):
     def inference(self, input:Tensor, class_names:bool=False, bin_pred_thr:float=0.5) -> Union[np.ndarray, pd.DataFrame]:
         """
         """
+        if "NSR" in self.classes:
+            nsr_cid = self.classes.index("NSR")
+        elif "426783006" in self.classes:
+            nsr_cid = self.classes.index("426783006")
+        else:
+            nsr_cid = None
         pred = self.forward(input)
         pred = self.sigmoid(pred)
         bin_pred = (pred>=bin_pred_thr).int()
         pred = pred.cpu().detach().numpy()
         bin_pred = bin_pred.cpu().detach().numpy()
         for row_idx, row in enumerate(bin_pred):
-            if row.sum() == 0:
+            if row.min() < ModelCfg.bin_pred_nsr_thr and nsr_cid is not None:
+                bin_pred[row_idx, nsr_cid] = 1
+            elif row.sum() == 0:
                 row_max_val = pred[row_idx,...].max()
                 bin_pred[row_idx,...] = \
-                    ((pred[row_idx,...]+ModelCfg.bin_pred_look_again_tol) >= row_max_val).astype(int)
+                    (((pred[row_idx,...]+ModelCfg.bin_pred_look_again_tol) >= row_max_val) & (pred[row_idx,...] >= ModelCfg.bin_pred_nsr_thr)).astype(int)
         if class_names:
             pred = pd.DataFrame(pred)
             pred.columns = self.classes
