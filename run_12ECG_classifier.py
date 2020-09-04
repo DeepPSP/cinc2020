@@ -19,8 +19,14 @@ from utils.misc import rdheader, ensure_lead_fmt, extend_predictions
 from utils.utils_signal import butter_bandpass_filter
 from cfg import ModelCfg, TrainCfg
 
-if ModelCfg.torch_dtype.lower() == "double"
+if ModelCfg.torch_dtype.lower() == "double":
     torch.set_default_tensor_type(torch.DoubleTensor)
+
+
+__all__ = [
+    "load_12ECG_model",
+    "run_12ECG_classifier",
+]
 
 
 def run_12ECG_classifier(data:np.ndarray, header_data:List[str], loaded_model:Dict[str, nn.Module], verbose:int=0) -> Tuple[List[int], List[float], List[str]]:
