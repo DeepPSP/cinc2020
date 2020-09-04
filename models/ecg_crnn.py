@@ -905,12 +905,12 @@ class ECG_CRNN(nn.Module):
         pred = pred.cpu().detach().numpy()
         bin_pred = bin_pred.cpu().detach().numpy()
         for row_idx, row in enumerate(bin_pred):
-            if row.min() < ModelCfg.bin_pred_nsr_thr and nsr_cid is not None:
+            row_max_prob = pred[row_idx,...].max()
+            if row_max_prob < ModelCfg.bin_pred_nsr_thr and nsr_cid is not None:
                 bin_pred[row_idx, nsr_cid] = 1
             elif row.sum() == 0:
-                row_max_val = pred[row_idx,...].max()
                 bin_pred[row_idx,...] = \
-                    (((pred[row_idx,...]+ModelCfg.bin_pred_look_again_tol) >= row_max_val) & (pred[row_idx,...] >= ModelCfg.bin_pred_nsr_thr)).astype(int)
+                    (((pred[row_idx,...]+ModelCfg.bin_pred_look_again_tol) >= row_max_prob) & (pred[row_idx,...] >= ModelCfg.bin_pred_nsr_thr)).astype(int)
         if class_names:
             pred = pd.DataFrame(pred)
             pred.columns = self.classes

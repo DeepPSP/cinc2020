@@ -110,15 +110,17 @@ def run_12ECG_classifier(data:np.ndarray, header_data:List[str], loaded_model:Di
         dl_nsr_cid = ModelCfg.dl_classes.index("426783006")
     else:
         dl_nsr_cid = None
+
     # TODO: make a classifier using the scores from the 4 different dl models
     dl_scores = np.max(np.array(dl_scores), axis=0)
-
     dl_conclusions = (dl_scores >= ModelCfg.bin_pred_thr).astype(int)
-    if dl_scores.min() < ModelCfg.bin_pred_nsr_thr and dl_nsr_cid is not None:
+
+    # treat exceptional cases
+    max_prob = dl_scores.max()
+    if max_prob < ModelCfg.bin_pred_nsr_thr and dl_nsr_cid is not None:
         dl_conclusions[row_idx, dl_nsr_cid] = 1
     elif dl_conclusions.sum() == 0:
-        max_val = dl_scores.max()
-        dl_conclusions = ((dl_scores+ModelCfg.bin_pred_look_again_tol) >= max_val)
+        dl_conclusions = ((dl_scores+ModelCfg.bin_pred_look_again_tol) >= max_prob)
         dl_conclusions = dl_conclusions & (dl_scores >= ModelCfg.bin_pred_nsr_thr)
         dl_conclusions = dl_conclusions.astype(int)
 
