@@ -7,7 +7,7 @@ import datetime
 from collections import namedtuple
 from glob import glob
 from copy import deepcopy
-from typing import Union, Optional, List, Dict, Sequence, NoReturn, Any
+from typing import Union, Optional, List, Dict, Tuple, Sequence, NoReturn, Any
 from numbers import Real, Number
 
 import numpy as np
@@ -36,6 +36,7 @@ __all__ = [
     "rdheader",
     "ensure_lead_fmt",
     "ECGWaveForm", "masks_to_waveforms",
+    "extend_predictions",
 ]
 
 
@@ -705,3 +706,43 @@ def masks_to_waveforms(masks:np.ndarray, class_map:Dict[str, int], freq:Real, ma
                 waves[lead_name].append(w)
         waves[lead_name].sort(key=lambda w: w.onset)
     return waves
+
+
+def extend_predictions(preds:Sequence, classes:List[str], extended_classes:List[str]) -> np.ndarray:
+    """ finished, checked,
+
+    extend the prediction arrays to prediction arrays in larger range of classes
+
+    Parameters:
+    -----------
+    preds: sequence,
+        sequence of predictions (scalar or binary),
+        of shape (n_records, n_classes), or (n_classes,),
+        where n_classes = `len(classes)`
+    classes: list of str,
+        classes of the predictions of `preds`
+    extended_classes: list of str,
+        a superset of `classes`
+
+    Returns:
+    --------
+    extended_preds: ndarray,
+        the extended array of predictions, with indices in `extended_classes`,
+        of shape (n_records, n_classes), or (n_classes,)
+    """
+    _preds = np.atleast_2d(preds)
+    assert _preds.shape[1] == len(classes), \
+        f"`pred` indicates {_preds.shape[1]} classes, while `classes` has {len(classes)}"
+    assert len(set(classes) - set(extended_classes)) == 0, \
+        f"`extended_classes` is not a superset of `classes`, with {set(classes)-set(extended_classes)} in `classes` but not in `extended_classes`"
+
+    extended_preds = np.zeros((_preds.shape[0], len(extended_classes)))
+
+    for idx, c in enumerate(classes):
+        new_idx = extended_classes.index(c)
+        extended_preds[..., new_idx] = _preds[..., idx]
+
+    if np.array(preds).ndim == 1:
+        extended_preds = extended_preds[0]
+
+    return extended_preds
