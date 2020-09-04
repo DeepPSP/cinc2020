@@ -32,9 +32,10 @@ __all__ = [
     "Bn_Activation", "Conv_Bn_Activation",
     "DownSample",
     "BidirectionalLSTM", "StackedLSTM",
-    "NaiveAttention", "MultiHeadAttention", "SelfAttention",
     "AML_Attention", "AML_GatedAttention",
     "AttentionWithContext",
+    "MultiHeadAttention", "SelfAttention",
+    "AttentivePooling",
     "ZeroPadding",
     "WeightedBCELoss", "BCEWithLogitsWithClassWeightLoss",
     "compute_output_shape",
@@ -121,6 +122,9 @@ Activations.swish = Swish
 Activations.relu = nn.ReLU
 Activations.leaky = nn.LeakyReLU
 Activations.leaky_relu = Activations.leaky
+Activations.tanh = nn.Tanh
+Activations.sigmoid = nn.Sigmoid
+Activations.softmax = nn.Softmax
 # Activations.linear = None
 
 
@@ -923,81 +927,6 @@ class AttentionWithContext(nn.Module):
         return n_params
 
 
-class NaiveAttention(nn.Module):
-    """
-    simplified version of `AttentionWithContext` (the scaled dot-product attention),
-    without the optional mask
-
-    each vectors of features are multiplied by a scalar coefficient (weight),
-    where the coefficients are computed via a 'biased inner product'
-        (vW)^T v + b^T v
-    where W, b, v are learnable
-    """
-    __DEBUG__ = True
-    __name__ = "Attention"
-
-    def __init__(self, in_channels:int, bias:bool=True) -> NoReturn:
-        """ finished, checked,
-
-        Parameters:
-        -----------
-        in_channels: int,
-        bias: bool, default True,
-        """
-        super().__init__()
-        self.__in_channels = in_channels
-        self.linear = nn.Sequential(
-            nn.Linear(self.__in_channels, self.__in_channels, bias=bias),
-            nn.Tanh(),
-        )
-        self.att_v = Parameter(torch.Tensor(self.__in_channels))
-        Initializers.constant(self.att_v, 1/self.__in_channels)
-        self.softmax = nn.Softmax(dim=-1)
-
-    def forward(self, input:Tensor) -> Tensor:
-        """
-        Parameters:
-        -----------
-        input: Tensor,
-            of shape (batch_size, seq_len, in_channels)
-        """
-        lin_out = self.linear(input)
-        # (batch_size, seq_len, in_channels) x (in_channels,)
-        # -> (batch_size, seq_len)
-        coeffs = torch.tensordot(lin_out, self.att_v, dims=1)  # equiv. to torch.matmul
-        coeffs = self.softmax(coeffs)  # normalize the coeffs
-        # multiply each feature vector by corresponding coefficients
-        # (batch_size, seq_len, channels) -> (batch_size, channels)
-        output = (input * score[..., np.newaxis]).sum(dim=1)
-        return output
-
-    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
-        """ finished, checked,
-
-        Parameters:
-        -----------
-        seq_len: int,
-            length of the 1d sequence
-        batch_size: int, optional,
-            the batch size, can be None
-
-        Returns:
-        --------
-        output_shape: sequence,
-            the output shape of this `ZeroPadding` layer, given `seq_len` and `batch_size`
-        """
-        output_shape = (batch_size, self.__in_channels)
-        return output_shape
-
-    @property
-    def module_size(self):
-        """
-        """
-        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
-        n_params = sum([np.prod(p.size()) for p in module_parameters])
-        return n_params
-
-
 class _ScaledDotProductAttention(nn.Module):
     """
     References:
@@ -1229,6 +1158,82 @@ class SelfAttention(nn.Module):
         return n_params
 
 
+class AttentivePooling(nn.Module):
+    """
+    """
+    __DEBUG__ = False
+    __name__ = "AttentivePooling"
+
+    def __init__(self, in_channels:int, mid_channels:Optional[int]=None, activation:Optional[Union[str,nn.Module]]='tanh', dropout:float=0.2, **kwargs) -> NoReturn:
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        in_channels: int,
+            number of channels of input Tensor
+        mid_channels: int, optional,
+            output channels of a intermediate linear layer
+        activation: str or Module,
+            name of the activation or an activation `Module`
+        dropout: float, default 0.2,
+        """
+        super().__init__()
+        self.__in_channels = in_channels
+        self.__mid_channels = mid_channels or self.__in_channels//2
+        self.__dropout = dropout
+        self.__kw_activation = kwargs.get("kw_activation", {})
+        if callable(activation):
+            self.activation = activation
+        elif isinstance(activation, str) and activation.lower() in Activations.keys():
+            self.activation = Activations[activation.lower()](**self.__kw_activation)
+
+        self.dropout = nn.Dropout(self.__dropout, inplace=False)
+        self.mid_linear = nn.Linear(self.__in_channels, self.__mid_channels)
+        self.contraction = nn.Linear(self.__mid_channels, 1)
+        self.softmax = nn.Softmax(-1)
+
+    def forward(self, input:Tensor) -> Tensor:
+        """
+        input of shape (batch_size, seq_len, n_channels)
+        """
+        scores = self.dropout(input)
+        scores = self.mid_linear(scores)  # -> (batch_size, seq_len, n_channels)
+        scores = self.activation(scores)  # -> (batch_size, seq_len, n_channels)
+        scores = self.contraction(scores)  # -> (batch_size, seq_len, 1)
+        scores = scores.squeeze(-1)  # -> (batch_size, seq_len)
+        scores = self.softmax(scores)  # -> (batch_size, seq_len)
+        weighted_input = \
+            input * (scores[..., np.newaxis]) # -> (batch_size, seq_len, n_channels)
+        output = weighted_input.sum(1)  # -> (batch_size, n_channels)
+        return output
+
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        seq_len: int,
+            length of the 1d sequence
+        batch_size: int, optional,
+            the batch size, can be None
+
+        Returns:
+        --------
+        output_shape: sequence,
+            the output shape of this AttentivePooling layer, given `seq_len` and `batch_size`
+        """
+        output_shape = (batch_size, self.__in_channels)
+        return output_shape
+
+    @property
+    def module_size(self):
+        """
+        """
+        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        n_params = sum([np.prod(p.size()) for p in module_parameters])
+        return n_params
+
+
 class ZeroPadding(nn.Module):
     """
     zero padding for increasing channels,
@@ -1259,6 +1264,10 @@ class ZeroPadding(nn.Module):
 
     def forward(self, input:Tensor) -> Tensor:
         """
+        Parameters:
+        -----------
+        input: Tensor,
+            of shape (batch_size, n_channels, seq_len)
         """
         batch_size, _, seq_len = input.shape
         if self.__increase_channels > 0:
