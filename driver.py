@@ -9,7 +9,8 @@ from cfg import ModelCfg
 
 
 def load_challenge_data(filename):
-
+    """
+    """
     if ModelCfg.torch_dtype.lower() == 'double':
         dtype = np.float64
     else:
@@ -28,7 +29,8 @@ def load_challenge_data(filename):
 
 
 def save_challenge_predictions(output_directory,filename,scores,labels,classes):
-
+    """
+    """
     recording = os.path.splitext(filename)[0]
     new_file = filename.replace('.mat','.csv')
     output_file = os.path.join(output_directory,new_file)

@@ -43,9 +43,9 @@ def run_12ECG_classifier(data:np.ndarray, header_data:List[str], loaded_model:Di
     raw_data = (raw_data - baseline) / adc_gain
 
     freq = header.fs
-    if freq != ModelCfg.freq:
-        raw_data = resample_poly(raw_data, ModelCfg.freq, freq, axis=1)
-        freq = ModelCfg.freq
+    if freq != ModelCfg.fs:
+        raw_data = resample_poly(raw_data, ModelCfg.fs, freq, axis=1)
+        freq = ModelCfg.fs
 
     dl_data = raw_data.copy()
     if TrainCfg.bandpass is not None:
