@@ -27,7 +27,7 @@ ECG_CRNN_CONFIG = ED()
 
 # cnn part
 ECG_CRNN_CONFIG.cnn = ED()
-ECG_CRNN_CONFIG.cnn.name = 'resnet'
+ECG_CRNN_CONFIG.cnn.name = 'resnet_leadwise'
 
 
 ECG_CRNN_CONFIG.cnn.vgg16 = deepcopy(vgg16)
@@ -54,7 +54,7 @@ ECG_CRNN_CONFIG.cnn.resnet_stanford.block = deepcopy(resnet_block_stanford)
 
 # rnn part
 ECG_CRNN_CONFIG.rnn = ED()
-ECG_CRNN_CONFIG.rnn.name = 'attention'
+ECG_CRNN_CONFIG.rnn.name = 'none'
 
 ECG_CRNN_CONFIG.rnn.lstm = deepcopy(lstm)
 ECG_CRNN_CONFIG.rnn.attention = deepcopy(attention)

@@ -160,6 +160,8 @@ def load_12ECG_model(input_directory:Optional[str]=None):
     
     for k in ["AB", "E", "F"]:
         model_config = deepcopy(ECG_CRNN_CONFIG)
+        model_config.cnn.name = ModelCfg.cnn_name
+        model_config.rnn.name = ModelCfg.rnn_name
         classes = ModelCfg.tranche_classes[k]
         loaded_model[k] = ECG_CRNN(
             classes=classes,
