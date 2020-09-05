@@ -26,6 +26,7 @@ from utils.misc import (
     get_record_list_recursive3,
     dict_to_str,
     ms2samples,
+    ensure_siglen,
 )
 from utils.scoring_aux_data import (
     dx_mapping_all, dx_mapping_scored, dx_mapping_unscored,
@@ -1175,9 +1176,10 @@ class CINC2020Reader(object):
             if self.freq[tranche] != 500:
                 data = resample_poly(data, 500, self.freq[tranche], axis=1)
             if siglen is not None and data.shape[1] >= siglen:
-                slice_start = (data.shape[1] - siglen)//2
-                slice_end = slice_start + 4000
-                data = data[..., slice_start:slice_end]
+                # slice_start = (data.shape[1] - siglen)//2
+                # slice_end = slice_start + siglen
+                # data = data[..., slice_start:slice_end]
+                data = ensure_siglen(data, siglen=siglen, fmt='channel_first')
                 np.save(rec_fp, data)
             elif siglen is None:
                 np.save(rec_fp, data)
