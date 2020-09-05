@@ -178,7 +178,7 @@ def pacing_rhythm_detector(raw_sig:np.ndarray, fs:Real, sig_fmt:str="channel_fir
     # lead_has_enough_spikes = [False if len(potential_spikes[l]) ==0 else sig_duration_ms / len(potential_spikes[l]) < FeatureCfg.pr_spike_inv_density_threshold for l in range(data_hp.shape[0])]
     lead_has_enough_spikes = list(repeat(0, data_hp.shape[0]))
     for l in range(data_hp.shape[0]):
-        if len(potential_spikes) > 0:
+        if len(potential_spikes[l]) > 0:
             relative_inv_density = FeatureCfg.pr_spike_inv_density_threshold - sig_duration_ms / len(potential_spikes[l])
             # sigmoid
             lead_has_enough_spikes[l] = 1 / (1+np.exp(-relative_inv_density/100))
