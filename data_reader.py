@@ -401,6 +401,66 @@ class CINC2020Reader(object):
         return tranche
 
 
+    def get_data_filepath(self, rec:str, with_ext:bool=True) -> str:
+        """ finished, checked,
+
+        get the absolute file path of the data file of `rec`
+
+        Parameters:
+        -----------
+        rec: str,
+            name of the record
+        with_ext: bool, default True,
+            if True, the returned file path comes with file extension,
+            otherwise without file extension,
+            which is useful for `wfdb` functions
+
+        Returns:
+        --------
+        fp: str,
+            absolute file path of the data file of the record
+        """
+        tranche = self._get_tranche(rec)
+        fp = os.path.join(self.db_dirs[tranche], f'{rec}.{self.rec_ext}')
+        if not with_ext:
+            fp = os.path.splitext(fp)[0]
+        return fp
+
+    
+    def get_header_filepath(self, rec:str, with_ext:bool=True) -> str:
+        """ finished, checked,
+
+        get the absolute file path of the header file of `rec`
+
+        Parameters:
+        -----------
+        rec: str,
+            name of the record
+        with_ext: bool, default True,
+            if True, the returned file path comes with file extension,
+            otherwise without file extension,
+            which is useful for `wfdb` functions
+
+        Returns:
+        --------
+        fp: str,
+            absolute file path of the header file of the record
+        """
+        tranche = self._get_tranche(rec)
+        fp = os.path.join(self.db_dirs[tranche], f'{rec}.{self.ann_ext}')
+        if not with_ext:
+            fp = os.path.splitext(fp)[0]
+        return fp
+
+    
+    def get_ann_filepath(self, rec:str, with_ext:bool=True) -> str:
+        """ finished, checked,
+        alias for `get_header_filepath`
+        """
+        fp = self.get_header_filepath(rec, with_ext=with_ext)
+        return fp
+
+
     def load_data(self, rec:str, leads:Optional[Union[str, List[str]]]=None, data_format:str='channel_first', backend:str='wfdb', units:str='mV', freq:Optional[Real]=None) -> np.ndarray:
         """ finished, checked,
 
@@ -440,14 +500,14 @@ class CINC2020Reader(object):
         # if tranche in "CD" and freq == 500:  # resample will be done at the end of the function
         #     data = self.load_resampled_data(rec)
         if backend.lower() == 'wfdb':
-            rec_fp = os.path.join(self.db_dirs[tranche], rec)
+            rec_fp = self.get_data_filepath(rec, with_ext=False)
             # p_signal of 'lead_last' format
             wfdb_rec = wfdb.rdrecord(rec_fp, physical=True, channel_names=_leads)
             data = np.asarray(wfdb_rec.p_signal.T)
             # lead_units = np.vectorize(lambda s: s.lower())(wfdb_rec.units)
         elif backend.lower() == 'scipy':
             # loadmat of 'lead_first' format
-            rec_fp = os.path.join(self.db_dirs[tranche], f'{rec}.{self.rec_ext}')
+            rec_fp = self.get_data_filepath(rec, with_ext=True)
             data = loadmat(rec_fp)['val']
             header_info = self.load_ann(rec, raw=False)['df_leads']
             baselines = header_info['baseline'].values.reshape(data.shape[0], -1)
@@ -495,7 +555,7 @@ class CINC2020Reader(object):
             the annotations with items: ref. `self.ann_items`
         """
         tranche = self._get_tranche(rec)
-        ann_fp = os.path.join(self.db_dirs[tranche], f'{rec}.{self.ann_ext}')
+        ann_fp = self.get_ann_filepath(rec, with_ext=True)
         with open(ann_fp, 'r') as f:
             header_data = f.read().splitlines()
         
@@ -504,7 +564,7 @@ class CINC2020Reader(object):
             return ann_dict
 
         if backend.lower() == 'wfdb':
-            ann_dict = self._load_ann_wfdb(ann_fp, header_data)
+            ann_dict = self._load_ann_wfdb(rec, header_data)
         elif backend.lower() == 'naive':
             ann_dict = self._load_ann_naive(header_data)
         else:
@@ -512,13 +572,13 @@ class CINC2020Reader(object):
         return ann_dict
 
 
-    def _load_ann_wfdb(self, ann_fp:str, header_data:List[str]) -> dict:
+    def _load_ann_wfdb(self, rec:str, header_data:List[str]) -> dict:
         """ finished, checked,
 
         Parameters:
         -----------
-        ann_fp: str,
-            path to the annotation (header) file, without file extension
+        rec: str,
+            name of the record
         header_data: list of str,
             list of lines read directly from a header file,
             complementary to data read using `wfdb.rdheader` if applicable,
@@ -529,7 +589,8 @@ class CINC2020Reader(object):
         ann_dict, dict,
             the annotations with items: ref. `self.ann_items`
         """
-        header_reader = wfdb.rdheader(os.path.splitext(ann_fp)[0], pb_dir=None, rd_segments=False)
+        header_fp = self.get_header_filepath(rec, with_ext=False)
+        header_reader = wfdb.rdheader(header_fp, pb_dir=None, rd_segments=False)
         ann_dict = {}
         ann_dict['rec_name'], ann_dict['nb_leads'], ann_dict['freq'], ann_dict['nb_samples'], ann_dict['datetime'], daytime = header_data[0].split(' ')
 
@@ -1142,13 +1203,17 @@ class CINC2020Reader(object):
             the backend data reader, can also be 'wfdb',
             note that 'scipy' provides data in the format of 'lead_first',
             while 'wfdb' provides data in the format of 'lead_last',
+
+        Returns:
+        --------
+
         """
         tranche = self._get_tranche(rec)
         if backend.lower() == 'wfdb':
-            rec_fp = os.path.join(self.db_dirs[tranche], rec)
+            rec_fp = self.get_data_filepath(rec, with_ext=False)
             wfdb_rec = wfdb.rdrecord(rec_fp, physical=False)
-            data = np.asarray(wfdb_rec.d_signal)
+            raw_data = np.asarray(wfdb_rec.d_signal)
         elif backend.lower() == 'scipy':
-            rec_fp = os.path.join(self.db_dirs[tranche], f'{rec}.{self.rec_ext}')
-            data = loadmat(rec_fp)['val']
-        return data
+            rec_fp = self.get_data_filepath(rec, with_ext=True)
+            raw_data = loadmat(rec_fp)['val']
+        return raw_data
