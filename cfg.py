@@ -216,3 +216,5 @@ ModelCfg.dl_classes = deepcopy(TrainCfg.classes)
 ModelCfg.tranche_classes = deepcopy(TrainCfg.tranche_classes)
 ModelCfg.special_classes = ['Brady', 'LAD', 'RAD', 'PR', 'LQRSV']
 ModelCfg.full_classes = ModelCfg.dl_classes + ModelCfg.special_classes
+ModelCfg.cnn_name = TrainCfg.cnn_name
+ModelCfg.rnn_name = TrainCfg.rnn_name

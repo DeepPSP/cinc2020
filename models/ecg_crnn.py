@@ -785,8 +785,8 @@ class ECG_CRNN(nn.Module):
         self.config = deepcopy(ECG_CRNN_CONFIG)
         self.config.update(config or {})
         if self.__DEBUG__:
-            print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
             print(f"classes (totally {self.n_classes}) for prediction:{self.classes}")
+            print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
         
         cnn_choice = self.config.cnn.name.lower()
         if "vgg16" in cnn_choice:
