@@ -19,7 +19,7 @@ from sklearn.preprocessing import StandardScaler
 from cfg import TrainCfg, ModelCfg
 from data_reader import CINC2020Reader as CR
 from utils.utils_signal import butter_bandpass_filter
-from utils.misc import dict_to_str
+from utils.misc import ensure_siglen, dict_to_str
 
 
 if ModelCfg.torch_dtype.lower() == 'double':
@@ -90,7 +90,8 @@ class CINC2020(Dataset):
         #     rec,
         #     data_format='channel_first', units='mV', backend='wfdb'
         # )
-        values = self.reader.load_resampled_data(rec, data_format="channel_first", siglen=self.siglen)
+        # values = self.reader.load_resampled_data(rec, data_format="channel_first", siglen=self.siglen)
+        values = self.reader.load_resampled_data(rec, data_format="channel_first", siglen=None)
         if self.config.bandpass is not None:
             values = butter_bandpass_filter(
                 values,
@@ -99,6 +100,7 @@ class CINC2020(Dataset):
                 order=5,
                 fs=self.config.fs,
             )
+        values = ensure_siglen(values, siglen=self.siglen, fmt="channel_first")
         if self.config.normalize_data:
             values = (values - np.mean(values)) / np.std(values)
         labels = self.reader.get_labels(
