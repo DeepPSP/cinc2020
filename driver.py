@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import numpy as np, os, sys
+np.set_printoptions(precision=5, suppress=True)
 from scipy.io import loadmat
 
 from run_12ECG_classifier import load_12ECG_model, run_12ECG_classifier

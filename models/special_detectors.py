@@ -21,11 +21,10 @@ from numbers import Real
 from typing import Union, Optional, Any, List, Dict, Callable, Sequence
 
 import numpy as np
+np.set_printoptions(precision=5, suppress=True)
 from scipy.signal import peak_prominences, peak_widths
 from biosppy.signals.tools import filter_signal
 from easydict import EasyDict as ED
-
-np.set_printoptions(precision=5, suppress=True)
 
 from cfg import (
     FeatureCfg,

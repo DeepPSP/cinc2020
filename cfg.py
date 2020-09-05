@@ -82,7 +82,7 @@ PlotCfg.t_offset = 60
 
 # configurations for building deep learning models
 # terminologies of stanford ecg repo. will be adopted
-# NOTE: has been moved to the folder `model_configs`
+# NOTE: configs of deep learning models have been moved to the folder `model_configs`
 ModelCfg = ED()
 ModelCfg.fs = 500
 ModelCfg.spacing = 1000 / ModelCfg.fs
@@ -155,7 +155,7 @@ TrainCfg.class_counts = ED({
     'IAVB': 2394, 'AF': 3473, 'AFL': 314, 'RBBB': 3083, 'IRBBB': 1611, 'LAnFB': 1806, 'LBBB': 1041, 'NSIVCB': 996, 'PAC': 1937, 'PVC': 553, 'LPR': 340, 'LQT': 1513, 'QAb': 1013, 'SA': 1238, 'SB': 2359, 'NSR': 20846, 'STach': 2391, 'TAb': 4673, 'TInv': 1111,
 })  # count
 TrainCfg.class_weights = ED({
-    k: sum(TrainCfg.class_counts.values())/v \
+    k: sum(TrainCfg.class_counts.values()) / v \
         for k, v in TrainCfg.class_counts.items()
 })
 TrainCfg.class_weights = ED({

@@ -6,7 +6,8 @@ source: https://pypi.org/project/wfdb/2.2.1/#files
 NOTE: there are still bugs in this file
 """
 import numpy as np
-import scipy.signal as scisig
+np.set_printoptions(precision=5, suppress=True)
+import scipy.signal as SS
 # import pdb
 # import matplotlib.pyplot as plt
 
@@ -184,7 +185,7 @@ class PanTompkins(object):
 
     def resample(self):
         if self.fs != 200:
-            self.sig = scisig.resample(self.sig, int(self.siglen*200/self.fs))
+            self.sig = SS.resample(self.sig, int(self.siglen*200/self.fs))
         return
 
     # Bandpass filter the signal from 5-15Hz
@@ -192,12 +193,12 @@ class PanTompkins(object):
         # 15Hz Low Pass Filter
         a_low = [1, -2, 1]
         b_low = np.concatenate(([1], np.zeros(4), [-2], np.zeros(5), [1]))
-        sig_low = scisig.lfilter(b_low, a_low, self.sig)
+        sig_low = SS.lfilter(b_low, a_low, self.sig)
 
         # 5Hz High Pass Filter - passband gain = 32, delay = 16 samples
         a_high = [1,-1]
         b_high = np.concatenate(([-1/32], np.zeros(15), [1, -1], np.zeros(14), [1/32]))
-        self.sig_F = scisig.lfilter(b_high, a_high, sig_low)
+        self.sig_F = SS.lfilter(b_high, a_high, sig_low)
 
         if plotsteps:
             if 'plt' not in dir():
@@ -213,7 +214,7 @@ class PanTompkins(object):
         # Compute 5 point derivative
         a_deriv = [1]
         b_deriv = [1/4, 1/8, 0, -1/8, -1/4]
-        sig_F_deriv = scisig.lfilter(b_deriv, a_deriv, self.sig_F)
+        sig_F_deriv = SS.lfilter(b_deriv, a_deriv, self.sig_F)
 
         # Square the derivative
         sig_F_deriv = np.square(sig_F_deriv)
@@ -222,7 +223,7 @@ class PanTompkins(object):
         a_mwi = [1]
         b_mwi = 30*[1/30]
 
-        self.sig_I = scisig.lfilter(b_mwi, a_mwi, sig_F_deriv)
+        self.sig_I = SS.lfilter(b_mwi, a_mwi, sig_F_deriv)
 
         if plotsteps:
             if 'plt' not in dir():
@@ -467,8 +468,8 @@ class PanTompkins(object):
 
         lastqrsind= self.qrs_inds[:-1]
 
-        qrs_sig_F_deriv = scisig.lfilter(b_deriv, a_deriv, self.sig_F[lastqrsind-qrscheckwidth:lastqrsind])
-        checksection_sig_F_deriv = scisig.lfilter(b_deriv, a_deriv, self.sig_F[i-qrscheckwidth:i])
+        qrs_sig_F_deriv = SS.lfilter(b_deriv, a_deriv, self.sig_F[lastqrsind-qrscheckwidth:lastqrsind])
+        checksection_sig_F_deriv = SS.lfilter(b_deriv, a_deriv, self.sig_F[i-qrscheckwidth:i])
 
         # Classified as a t-wave
         if max(checksection_sig_F_deriv) < 0.5*max(qrs_sig_F_deriv):

@@ -6,6 +6,7 @@ from copy import deepcopy
 from typing import Optional, Dict, Tuple, List
 
 import numpy as np
+np.set_printoptions(precision=5, suppress=True)
 import wfdb
 import torch
 from torch import nn

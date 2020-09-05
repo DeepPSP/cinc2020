@@ -8,6 +8,7 @@ import os
 import argparse
 
 import numpy as np
+np.set_printoptions(precision=5, suppress=True)
 from keras import backend as K
 from keras.optimizers import Adam, SGD
 from keras.callbacks import ModelCheckpoint

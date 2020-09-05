@@ -12,6 +12,7 @@ from typing import Union, Optional, Any, List, Dict, Tuple, Set, Sequence, NoRet
 from numbers import Real, Number
 
 import numpy as np
+np.set_printoptions(precision=5, suppress=True)
 import pandas as pd
 import wfdb
 from scipy.io import loadmat

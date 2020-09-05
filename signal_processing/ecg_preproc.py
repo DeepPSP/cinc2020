@@ -21,6 +21,7 @@ from numbers import Real
 from typing import Union, Optional, Any, List, Dict, Callable
 
 import numpy as np
+np.set_printoptions(precision=5, suppress=True)
 from easydict import EasyDict as ED
 from scipy.ndimage.filters import median_filter
 from scipy.signal.signaltools import resample
