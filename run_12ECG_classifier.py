@@ -17,7 +17,11 @@ from get_12ECG_features import get_12ECG_features
 from models.special_detectors import special_detectors
 from models.ecg_crnn import ECG_CRNN
 from model_configs.ecg_crnn import ECG_CRNN_CONFIG
-from utils.misc import rdheader, ensure_lead_fmt, extend_predictions
+from utils.misc import (
+    rdheader,
+    ensure_lead_fmt, ensure_siglen,
+    extend_predictions,
+)
 from utils.utils_signal import butter_bandpass_filter
 from cfg import ModelCfg, TrainCfg
 
@@ -36,7 +40,9 @@ def run_12ECG_classifier(data:np.ndarray, header_data:List[str], loaded_model:Di
     """
     dtype = np.float32 if ModelCfg.torch_dtype == "float" else np.float64
 
-    header = rdheader(header_data)
+    _header_data = [l if l.endswith("\n") else l+"\n" for l in header_data]
+    header = rdheader(_header_data)
+
     raw_data = ensure_lead_fmt(data.copy(), fmt="lead_first")
     baseline = np.array(header.baseline).reshape(raw_data.shape[0], -1)
     adc_gain = np.array(header.adc_gain).reshape(raw_data.shape[0], -1)
@@ -47,23 +53,9 @@ def run_12ECG_classifier(data:np.ndarray, header_data:List[str], loaded_model:Di
         raw_data = resample_poly(raw_data, ModelCfg.fs, freq, axis=1)
         freq = ModelCfg.fs
 
-    dl_data = raw_data.copy()
-    if TrainCfg.bandpass is not None:
-        # bandpass
-        dl_data = butter_bandpass_filter(
-            dl_data,
-            lowcut=TrainCfg.bandpass[0],
-            highcut=TrainCfg.bandpass[1],
-            order=5,
-            fs=TrainCfg.fs,
-        )
-    if TrainCfg.normalize_data:
-        # normalize
-        dl_data = ((data - np.mean(dl_data)) / np.std(dl_data)).astype(dtype)
-
     final_scores, final_conclusions = [], []
 
-    partial_conclusion = special_detectors(raw_data, freq, sig_fmt="lead_first")
+    partial_conclusion = special_detectors(raw_data.copy(), freq, sig_fmt="lead_first")
     is_brady = partial_conclusion.is_brady
     is_tachy = partial_conclusion.is_tachy
     is_LAD = partial_conclusion.is_LAD
@@ -82,10 +74,31 @@ def run_12ECG_classifier(data:np.ndarray, header_data:List[str], loaded_model:Di
     final_scores.append(partial_conclusion)
     final_conclusions.append(partial_conclusion)
     
-    # TODO: DL models to make decisions
+    # DL part
+    dl_data = raw_data.copy()
+    if TrainCfg.bandpass is not None:
+        # bandpass
+        dl_data = butter_bandpass_filter(
+            dl_data,
+            lowcut=TrainCfg.bandpass[0],
+            highcut=TrainCfg.bandpass[1],
+            order=5,
+            fs=TrainCfg.fs,
+        )
+    if dl_data.shape[1] >= TrainCfg.siglen:
+        dl_data = ensure_siglen(dl_data, siglen=TrainCfg.siglen, fmt="lead_first")
+        if TrainCfg.normalize_data:
+            # normalize
+            dl_data = ((dl_data - np.mean(dl_data)) / np.std(dl_data)).astype(dtype)
+    else:
+        if TrainCfg.normalize_data:
+            # normalize
+            dl_data = ((dl_data - np.mean(dl_data)) / np.std(dl_data)).astype(dtype)
+        dl_data = ensure_siglen(dl_data, siglen=TrainCfg.siglen, fmt="lead_first")
+
     dl_scores = []
     for subset, model in loaded_model.items():
-        subset_scores, subset_bin = model.inference(torch.from_numpy(normalized_data))
+        subset_scores, subset_bin = model.inference(torch.from_numpy(dl_data))
         # subset_scores = extend_predictions(
         #     subset_scores,
         #     TrainCfg.tranche_classes[subset],
