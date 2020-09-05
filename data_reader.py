@@ -1126,3 +1126,29 @@ class CINC2020Reader(object):
         if data_format.lower() in ['channel_last', 'lead_last']:
             data = data.T
         return data
+
+
+    def load_raw_data(self, rec:str, backend:str='scipy') -> np.ndarray:
+        """ finished, checked,
+
+        load raw data from corresponding files with no further processing,
+        in order to facilitate feeding data into the `run_12ECG_classifier` function
+
+        Parameters:
+        -----------
+        rec: str,
+            name of the record
+        backend: str, default 'scipy',
+            the backend data reader, can also be 'wfdb',
+            note that 'scipy' provides data in the format of 'lead_first',
+            while 'wfdb' provides data in the format of 'lead_last',
+        """
+        tranche = self._get_tranche(rec)
+        if backend.lower() == 'wfdb':
+            rec_fp = os.path.join(self.db_dirs[tranche], rec)
+            wfdb_rec = wfdb.rdrecord(rec_fp, physical=False)
+            data = np.asarray(wfdb_rec.d_signal)
+        elif backend.lower() == 'scipy':
+            rec_fp = os.path.join(self.db_dirs[tranche], f'{rec}.{self.rec_ext}')
+            data = loadmat(rec_fp)['val']
+        return data
