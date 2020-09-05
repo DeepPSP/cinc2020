@@ -96,11 +96,11 @@ ModelCfg.torch_dtype = "float"
 
 # configs of path of final models
 ModelCfg.tranche_model = ED({
-    "AB": os.path.join(_BASE_DIR, "saved_models", "tranche_AB.pth"),
-    "E": os.path.join(_BASE_DIR, "saved_models", "tranche_E.pth"),
-    "F": os.path.join(_BASE_DIR, "saved_models", "tranche_F.pth"),
+    "AB": os.path.join(_BASE_DIR, "saved_models", "ECG_CRNN_resnet_leadwise_none_tranche_AB.pth"),
+    "E": os.path.join(_BASE_DIR, "saved_models", "ECG_CRNN_resnet_leadwise_none_tranche_E.pth"),
+    "F": os.path.join(_BASE_DIR, "saved_models", "ECG_CRNN_resnet_leadwise_none_tranche_F.pth"),
     # 'all' refers to tranches A, B, E, F
-    "all": os.path.join(_BASE_DIR, "saved_models", "tranche_all.pth"),
+    "all": os.path.join(_BASE_DIR, "saved_models", "ECG_CRNN_resnet_leadwise_none_tranche_all.pth"),
 })
 
 
