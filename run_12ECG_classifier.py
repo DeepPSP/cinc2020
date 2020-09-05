@@ -174,6 +174,6 @@ def load_12ECG_model(input_directory:Optional[str]=None):
         classes=ModelCfg.dl_classes,
         config=deepcopy(ECG_CRNN_CONFIG),
     )
-    loaded_model["all"].load_state_dict(torch.load(ModelCfg.tranche_model["all"]))
+    loaded_model["all"].load_state_dict(torch.load(ModelCfg.tranche_model["all"], map_location=device))
 
     return loaded_model
