@@ -169,6 +169,7 @@ TrainCfg.classes = sorted(list(TrainCfg.class_weights.keys()))
 # TrainCfg.bandpass = None  # [-np.inf, 45]
 # TrainCfg.bandpass = [-np.inf, 45]
 TrainCfg.bandpass = [0.5, 60]
+TrainCfg.bandpass_order = 5
 
 # configs of data aumentation
 TrainCfg.label_smoothing = 0.1

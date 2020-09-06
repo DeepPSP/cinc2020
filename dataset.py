@@ -97,7 +97,7 @@ class CINC2020(Dataset):
                 values,
                 lowcut=self.config.bandpass[0],
                 highcut=self.config.bandpass[1],
-                order=5,
+                order=self.config.bandpass_order,
                 fs=self.config.fs,
             )
         values = ensure_siglen(values, siglen=self.siglen, fmt="channel_first")

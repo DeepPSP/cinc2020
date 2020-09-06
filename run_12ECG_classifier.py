@@ -82,7 +82,7 @@ def run_12ECG_classifier(data:np.ndarray, header_data:List[str], loaded_model:Di
             dl_data,
             lowcut=TrainCfg.bandpass[0],
             highcut=TrainCfg.bandpass[1],
-            order=5,
+            order=TrainCfg.bandpass_order,
             fs=TrainCfg.fs,
         )
     if dl_data.shape[1] >= TrainCfg.siglen:
@@ -95,22 +95,15 @@ def run_12ECG_classifier(data:np.ndarray, header_data:List[str], loaded_model:Di
             # normalize
             dl_data = ((dl_data - np.mean(dl_data)) / np.std(dl_data)).astype(dtype)
         dl_data = ensure_siglen(dl_data, siglen=TrainCfg.siglen, fmt="lead_first")
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
+    dl_data = torch.from_numpy(dl_data).to(device=device)
 
     dl_scores = []
     for subset, model in loaded_model.items():
-        subset_scores, subset_bin = model.inference(torch.from_numpy(dl_data))
-        # subset_scores = extend_predictions(
-        #     subset_scores,
-        #     TrainCfg.tranche_classes[subset],
-        #     ModelCfg.full_classes,
-        # )
-        # subset_bin = extend_predictions(
-        #     subset_bin,
-        #     TrainCfg.tranche_classes[subset],
-        #     ModelCfg.full_classes,
-        # )
-        # scores.append(subset_scores)
-        # conclusions.append(subset_bin)
+        subset_scores, subset_bin = model.inference(dl_data)
         subset_scores = extend_predictions(
             subset_scores,
             ModelCfg.tranche_classes[subset],
@@ -135,7 +128,7 @@ def run_12ECG_classifier(data:np.ndarray, header_data:List[str], loaded_model:Di
         dl_conclusions[row_idx, dl_nsr_cid] = 1
     elif dl_conclusions.sum() == 0:
         dl_conclusions = ((dl_scores+ModelCfg.bin_pred_look_again_tol) >= max_prob)
-        dl_conclusions = dl_conclusions & (dl_scores >= ModelCfg.bin_pred_nsr_thr)
+        dl_conclusions = (dl_conclusions & (dl_scores >= ModelCfg.bin_pred_nsr_thr))
         dl_conclusions = dl_conclusions.astype(int)
 
     dl_scores = extend_predictions(
