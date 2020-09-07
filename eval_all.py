@@ -8,6 +8,7 @@ from typing import Optional, Sequence
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+import torch
 from torch.utils.data import DataLoader
 import multiprocessing as mp
 
@@ -54,7 +55,7 @@ def eval_all(tranches:Optional[str]=None) -> pd.DataFrame:
     truth_labels, truth_array = [], []
     binary_predictions, scalar_predictions = [], []
     classes = ModelCfg.full_classes
-    # ds.records = ds.records[:10]
+    # ds.records = ds.records[:10]  # for fast debug
     with tqdm(ds.records, total=len(ds.records)) as t:
         for rec in t:
             data_fp = dr.get_data_filepath(rec)
