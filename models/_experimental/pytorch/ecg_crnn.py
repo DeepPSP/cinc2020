@@ -4,7 +4,7 @@ for classifying ECG arrhythmias
 """
 from copy import deepcopy
 from itertools import repeat
-from typing import Union, Optional, Sequence, NoReturn
+from typing import Union, Optional, Tuple, Sequence, NoReturn
 from numbers import Real, Number
 
 import torch
@@ -25,7 +25,7 @@ from models.utils.torch_utils import (
     ZeroPadding,
     StackedLSTM,
     # AML_Attention, AML_GatedAttention,
-    NaiveAttention, AttentionWithContext, MultiHeadAttention,
+    AttentionWithContext, MultiHeadAttention,
 )
 from utils.utils_nn import compute_conv_output_shape
 from utils.misc import dict_to_str
@@ -899,10 +899,6 @@ class ECG_CRNN(nn.Module):
                     bidirectional=self.config.rnn.attention.bidirectional,
                     return_sequences=True,
                 ),
-                # NaiveAttention(
-                #     in_channels=attn_in_channels,
-                #     bias=self.config.rnn.attention.bias,
-                # ),
                 SelfAttention(
                     in_features=attn_in_channels,
                     head_num=self.config.rnn.attention.head_num,

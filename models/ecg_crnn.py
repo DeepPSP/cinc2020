@@ -838,10 +838,6 @@ class ECG_CRNN(nn.Module):
                     bidirectional=self.config.rnn.attention.bidirectional,
                     return_sequences=True,
                 ),
-                # NaiveAttention(
-                #     in_channels=attn_in_channels,
-                #     bias=self.config.rnn.attention.bias,
-                # ),
                 SelfAttention(
                     in_features=attn_in_channels,
                     head_num=self.config.rnn.attention.head_num,

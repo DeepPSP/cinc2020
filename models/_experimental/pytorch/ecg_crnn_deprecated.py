@@ -24,7 +24,7 @@ from models.utils.torch_utils import (
     ZeroPadding,
     StackedLSTM,
     # AML_Attention, AML_GatedAttention,
-    NaiveAttention, AttentionWithContext, MultiHeadAttention,
+    AttentionWithContext, MultiHeadAttention,
 )
 from .ecg_crnn import CPSCBlock, CPSCCNN
 from utils.utils_nn import compute_conv_output_shape
