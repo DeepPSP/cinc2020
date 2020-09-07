@@ -208,12 +208,14 @@ TrainCfg.rnn_name = 'none'  # 'none', 'lstm', 'attention'
 
 # configs of inputs and outputs
 TrainCfg.input_len = int(500 * 8.0)  # almost all records has duration >= 8s
+TrainCfg.siglen = TrainCfg.input_len
 TrainCfg.bin_pred_thr = ModelCfg.bin_pred_thr
 TrainCfg.bin_pred_look_again_tol = ModelCfg.bin_pred_look_again_tol
 TrainCfg.bin_pred_nsr_thr = ModelCfg.bin_pred_nsr_thr
 
 
 ModelCfg.dl_classes = deepcopy(TrainCfg.classes)
+ModelCfg.dl_siglen = TrainCfg.siglen
 ModelCfg.tranche_classes = deepcopy(TrainCfg.tranche_classes)
 ModelCfg.special_classes = ['Brady', 'LAD', 'RAD', 'PR', 'LQRSV']
 ModelCfg.full_classes = ModelCfg.dl_classes + ModelCfg.special_classes

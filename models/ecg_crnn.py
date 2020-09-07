@@ -862,7 +862,10 @@ class ECG_CRNN(nn.Module):
         self.sigmoid = nn.Sigmoid()  # for making inference
 
     def forward(self, input:Tensor) -> Tensor:
-        """
+        """ finished, partly checked (rnn part might have bugs),
+
+        input: of shape (batch_size, channels, seq_len)
+        output: of shape (batch_size, n_classes)
         """
         x = self.cnn(input)  # batch_size, channels, seq_len
         # print(f"cnn out shape = {x.shape}")
@@ -891,8 +894,27 @@ class ECG_CRNN(nn.Module):
         return pred
 
     @torch.no_grad()
-    def inference(self, input:Tensor, class_names:bool=False, bin_pred_thr:float=0.5) -> Union[np.ndarray, pd.DataFrame]:
-        """
+    def inference(self, input:Tensor, class_names:bool=False, bin_pred_thr:float=0.5) -> Tuple[Union[np.ndarray, pd.DataFrame], np.ndarray]:
+        """ finished, checked,
+
+        auxiliary function to `forward`,
+
+        Parameters:
+        -----------
+        input: Tensor,
+            input tensor, of shape (batch_size, channels, seq_len)
+        class_names: bool, default False,
+            if True, the returned scalar predictions will be a `DataFrame`,
+            with class names for each scalar prediction
+        bin_pred_thr: float, default 0.5,
+            the threshold for making binary predictions from scalar predictions
+
+        Returns:
+        --------
+        pred: ndarray or DataFrame,
+            scalar predictions, (and binary predictions if `class_names` is True)
+        bin_pred: ndarray,
+            the array (with values 0, 1 for each class) of binary prediction
         """
         if "NSR" in self.classes:
             nsr_cid = self.classes.index("NSR")
@@ -923,7 +945,6 @@ class ECG_CRNN(nn.Module):
             for row_idx in range(len(pred)):
                 pred.at[row_idx, 'bin_pred'] = \
                     np.array(self.classes)[np.where(bin_pred==1)[0]].tolist()
-            return pred
         return pred, bin_pred
 
     @property

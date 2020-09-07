@@ -85,8 +85,8 @@ def run_12ECG_classifier(data:np.ndarray, header_data:List[str], loaded_model:Di
             order=TrainCfg.bandpass_order,
             fs=TrainCfg.fs,
         )
-    if dl_data.shape[1] >= TrainCfg.siglen:
-        dl_data = ensure_siglen(dl_data, siglen=TrainCfg.siglen, fmt="lead_first")
+    if dl_data.shape[1] >= ModelCfg.dl_siglen:
+        dl_data = ensure_siglen(dl_data, siglen=ModelCfg.dl_siglen, fmt="lead_first")
         if TrainCfg.normalize_data:
             # normalize
             dl_data = ((dl_data - np.mean(dl_data)) / np.std(dl_data)).astype(dtype)
@@ -94,7 +94,7 @@ def run_12ECG_classifier(data:np.ndarray, header_data:List[str], loaded_model:Di
         if TrainCfg.normalize_data:
             # normalize
             dl_data = ((dl_data - np.mean(dl_data)) / np.std(dl_data)).astype(dtype)
-        dl_data = ensure_siglen(dl_data, siglen=TrainCfg.siglen, fmt="lead_first")
+        dl_data = ensure_siglen(dl_data, siglen=ModelCfg.dl_siglen, fmt="lead_first")
     if torch.cuda.is_available():
         device = torch.device("cuda")
     else:
