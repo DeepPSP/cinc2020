@@ -37,7 +37,25 @@ __all__ = [
 
 
 def run_12ECG_classifier(data:np.ndarray, header_data:List[str], loaded_model:Dict[str, nn.Module], verbose:int=0) -> Tuple[List[int], List[float], List[str]]:
-    """
+    """ finished, checked,
+
+    Parameters:
+    -----------
+    data: ndarray,
+    header_data: list of str,
+        lines read from header file
+    loaded_model: dict,
+        models loaded for making predictions (except for classes treated by special detectors)
+    verbose: int, default 0,
+
+    Returns:
+    --------
+    current_label: list,
+        binary prediction
+    current_score:
+        scalar prediction
+    classes:
+        prediction classes, with ordering in accordance with `current_label` and `current_score`
     """
     dtype = np.float32 if ModelCfg.torch_dtype == "float" else np.float64
 

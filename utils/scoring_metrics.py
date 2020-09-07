@@ -19,18 +19,18 @@ __all__ = [
 ]
 
 
-def evaluate_12ECG_score(classes:List[str], truth:np.ndarray, binary_pred:np.ndarray, scalar_pred:np.ndarray) -> Tuple[float]:
+def evaluate_12ECG_score(classes:List[str], truth:Sequence, binary_pred:Sequence, scalar_pred:Sequence) -> Tuple[float]:
     """ finished, checked,
 
     Parameters:
     -----------
     classes: list of str,
         list of all the classes, in the format of abbrevations
-    truth: ndarray,
+    truth: sequence,
         ground truth array, of shape (n_records, n_classes), with values 0 or 1
-    binary_pred: ndarray,
+    binary_pred: sequence,
         binary predictions, of shape (n_records, n_classes), with values 0 or 1
-    scalar_pred: ndarray,
+    scalar_pred: sequence,
         probability predictions, of shape (n_records, n_classes), with values within [0,1]
 
     Returns:
@@ -48,20 +48,24 @@ def evaluate_12ECG_score(classes:List[str], truth:np.ndarray, binary_pred:np.nda
     # equivalent_classes = [['713427006', '59118001'], ['284470004', '63593006'], ['427172004', '17338001']]
     weights = load_weights(classes=classes)
 
+    _truth = np.array(truth)
+    _binary_pred = np.array(binary_pred)
+    _scalar_pred = np.array(scalar_pred)
+
     print('- AUROC and AUPRC...')
-    auroc, auprc = compute_auc(truth, scalar_pred)
+    auroc, auprc = compute_auc(_truth, _scalar_pred)
 
     print('- Accuracy...')
-    accuracy = compute_accuracy(truth, binary_pred)
+    accuracy = compute_accuracy(_truth, _binary_pred)
 
     print('- F-measure...')
-    f_measure = compute_f_measure(truth, binary_pred)
+    f_measure = compute_f_measure(_truth, _binary_pred)
 
     print('- F-beta and G-beta measures...')
-    f_beta_measure, g_beta_measure = compute_beta_measures(truth, binary_pred, beta=2)
+    f_beta_measure, g_beta_measure = compute_beta_measures(_truth, _binary_pred, beta=2)
 
     print('- Challenge metric...')
-    challenge_metric = compute_challenge_metric(weights, truth, binary_pred, classes, normal_class)
+    challenge_metric = compute_challenge_metric(weights, _truth, _binary_pred, classes, normal_class)
 
     print('Done.')
 
