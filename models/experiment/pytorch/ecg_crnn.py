@@ -37,7 +37,7 @@ if ModelCfg.torch_dtype.lower() == 'double':
 
 __all__ = [
     # CRNN structure 1
-    "ATI_CNN",
+    "ECG_CRNN",
     "VGGBlock", "VGG16",
     "ResNetStanfordBlock", "ResNetStanford",
     "ResNetBasicBlock", "ResNetBottleNeck", "ResNet",
@@ -158,7 +158,7 @@ class VGGBlock(nn.Sequential):
 
 class VGG16(nn.Sequential):
     """
-    CNN feature extractor of the CRNN models proposed in refs of `ATI_CNN`
+    CNN feature extractor of the CRNN models proposed in refs of `ECG_CRNN`
     """
     __DEBUG__ = True
     __name__ = "VGG16"
@@ -735,7 +735,7 @@ class ResNet(nn.Sequential):
     1. check performances of activations other than "nn.ReLU", especially mish and swish
     2. to add
     """
-    __DEBUG__ = False
+    __DEBUG__ = True
     __name__ = "ResNet"
     building_block = ResNetBasicBlock
 
@@ -788,31 +788,45 @@ class ResNet(nn.Sequential):
                 list(repeat(self.config.filter_lengths, len(self.config.num_blocks)))
         else:
             self.__filter_lengths = self.config.filter_lengths
-            assert len(self.__filter_lengths) == self.config.num_blocks
+            assert len(self.__filter_lengths) == len(self.config.num_blocks), \
+                f"`config.filter_lengths` indicates {len(self.__filter_lengths)} macro blocks, while `config.num_blocks` indicates {len(self.config.num_blocks)}"
         if isinstance(self.config.subsample_lengths, int):
             self.__subsample_lengths = \
                 list(repeat(self.config.subsample_lengths, len(self.config.num_blocks)))
         else:
             self.__subsample_lengths = self.config.subsample_lengths
-            assert len(self.__subsample_lengths) == self.config.num_blocks
+            assert len(self.__subsample_lengths) == len(self.config.num_blocks), \
+                f"`config.subsample_lengths` indicates {len(self.__subsample_lengths)} macro blocks, while `config.num_blocks` indicates {len(self.config.num_blocks)}"
 
         # grouped resnet (basic) blocks,
         # number of channels are doubled at the first block of each macro-block
         for macro_idx, nb in enumerate(self.config.num_blocks):
             macro_in_channels = (2**macro_idx) * self.config.init_num_filters
-            macro_filter_length = self.__filter_lengths[macro_idx]
-            macro_subsample_length = self.__subsample_lengths[macro_idx]
+            macro_filter_lengths = self.__filter_lengths[macro_idx]
+            macro_subsample_lengths = self.__subsample_lengths[macro_idx]
             block_in_channels = macro_in_channels
             block_num_filters = 2 * block_in_channels
+            if isinstance(macro_filter_lengths, int):
+                block_filter_lengths = list(repeat(macro_filter_lengths, nb))
+            else:
+                block_filter_lengths = macro_filter_lengths
+            assert len(block_filter_lengths) == nb, \
+                f"at the {macro_idx}-th macro block, `macro_subsample_lengths` indicates {len(macro_subsample_lengths)} building blocks, while `config.num_blocks[{macro_idx}]` indicates {nb}"
+            if isinstance(macro_subsample_lengths, int):
+                block_subsample_lengths = list(repeat(1, nb))
+                block_subsample_lengths[-1] = macro_subsample_lengths
+            else:
+                block_subsample_lengths = macro_subsample_lengths
+            assert len(block_subsample_lengths) == nb, \
+                f"at the {macro_idx}-th macro block, `macro_subsample_lengths` indicates {len(macro_subsample_lengths)} building blocks, while `config.num_blocks[{macro_idx}]` indicates {nb}"
             for block_idx in range(nb):
-                block_subsample_length = self.config.subsample_length if block_idx == 0 else 1
                 self.add_module(
                     f"block_{macro_idx}_{block_idx}",
                     self.building_block(
                         in_channels=block_in_channels,
                         num_filters=block_num_filters,
-                        filter_length=macro_filter_length,
-                        subsample_length=macro_subsample_length,
+                        filter_length=block_filter_lengths[block_idx],
+                        subsample_length=block_subsample_lengths[block_idx],
                         groups=self.config.groups,
                         dilation=1,
                         **(self.config.block)
@@ -865,100 +879,186 @@ class ResNet(nn.Sequential):
         return n_params
 
 
-class ATI_CNN(nn.Module):
+class ECG_CRNN(nn.Module):
     """
 
-    CRNN models proposed in the following refs.
+    C(R)NN models modified from the following refs.
 
     References:
     -----------
     [1] Yao, Qihang, et al. "Time-Incremental Convolutional Neural Network for Arrhythmia Detection in Varied-Length Electrocardiogram." 2018 IEEE 16th Intl Conf on Dependable, Autonomic and Secure Computing, 16th Intl Conf on Pervasive Intelligence and Computing, 4th Intl Conf on Big Data Intelligence and Computing and Cyber Science and Technology Congress (DASC/PiCom/DataCom/CyberSciTech). IEEE, 2018.
     [2] Yao, Qihang, et al. "Multi-class Arrhythmia detection from 12-lead varied-length ECG using Attention-based Time-Incremental Convolutional Neural Network." Information Fusion 53 (2020): 174-182.
+    [3] Hannun, Awni Y., et al. "Cardiologist-level arrhythmia detection and classification in ambulatory electrocardiograms using a deep neural network." Nature medicine 25.1 (2019): 65.
+    [4] https://stanfordmlgroup.github.io/projects/ecg2/
+    [5] https://github.com/awni/ecg
+    [6] CPSC2018 entry 0236
     """
     __DEBUG__ = True
-    __name__ = "ATI_CNN"
+    __name__ = 'ECG_CRNN'
 
-    def __init__(self, classes:list, input_len:int, config:dict) -> NoReturn:
+    def __init__(self, classes:Sequence[str], input_len:Optional[int]=None, config:Optional[ED]=None) -> NoReturn:
         """ finished, checked,
 
         Parameters:
         -----------
         classes: list,
             list of the classes for classification
-        input_len: int,
-            sequence length (last dim.) of the input
-        config: dict,
+        input_len: int, optional,
+            sequence length (last dim.) of the input,
+            defaults to `TrainCfg.input_len`,
+            will not be used in the inference mode
+        config: dict, optional,
             other hyper-parameters, including kernel sizes, etc.
             ref. the corresponding config file
         """
         super().__init__()
-        self.classes = classes
+        self.classes = list(classes)
         self.n_classes = len(classes)
         self.n_leads = 12
-        self.input_len = input_len
-        self.config = deepcopy(ATI_CNN_CONFIG)
-        self.config.update(config)
+        self.input_len = input_len or TrainCfg.input_len
+        self.config = deepcopy(ECG_CRNN_CONFIG)
+        self.config.update(config or {})
         if self.__DEBUG__:
-            print(f"configuration of ATI_CNN is as follows\n{dict_to_str(self.config)}")
+            print(f"classes (totally {self.n_classes}) for prediction:{self.classes}")
+            print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
         
         cnn_choice = self.config.cnn.name.lower()
-        if cnn_choice == "vgg16":
-            self.cnn = VGG16(self.n_leads, **(self.config.cnn.vgg16))
+        if "vgg16" in cnn_choice:
+            self.cnn = VGG16(self.n_leads, **(self.config.cnn[cnn_choice]))
             rnn_input_size = self.config.cnn.vgg16.num_filters[-1]
-        elif cnn_choice == "resnet":
-            self.cnn = ResNet(self.n_leads, **(self.config.cnn.resnet))
-            rnn_input_size = 2**len(self.config.cnn.num_blocks) * self.config.cnn.init_num_filters
-        cnn_output_shape = self.cnn.compute_output_shape(input_len, batch_size=None)
+        elif "resnet" in cnn_choice:
+            self.cnn = ResNet(self.n_leads, **(self.config.cnn[cnn_choice]))
+            rnn_input_size = \
+                2**len(self.config.cnn.resnet.num_blocks) * self.config.cnn.resnet.init_num_filters
+        else:
+            raise NotImplementedError
         # self.cnn_output_len = cnn_output_shape[2]
         if self.__DEBUG__:
+            cnn_output_shape = self.cnn.compute_output_shape(self.input_len, batch_size=None)
             print(f"cnn output shape (batch_size, features, seq_len) = {cnn_output_shape}")
 
-        rnn_choice = self.config.rnn.name.lower()
-        if rnn_choice == 'lstm':
+        if self.config.rnn.name.lower() == 'none':
+            self.rnn = None
+            _, clf_input_size, _ = self.cnn.compute_output_shape(self.input_len, batch_size=None)
+            self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
+        elif self.config.rnn.name.lower() == 'lstm':
+            hidden_sizes = self.config.rnn.lstm.hidden_sizes + [self.n_classes]
+            if self.__DEBUG__:
+                print(f"lstm hidden sizes {self.config.rnn.lstm.hidden_sizes} ---> {hidden_sizes}")
             self.rnn = StackedLSTM(
                 input_size=rnn_input_size,
-                hidden_sizes=self.config.rnn.hidden_sizes,
-                bias=self.config.rnn.bias,
-                dropout=self.config.rnn.dropout,
-                bidirectional=self.config.rnn.bidirectional,
-                return_sequences=self.config.rnn.retseq,
+                hidden_sizes=hidden_sizes,
+                bias=self.config.rnn.lstm.bias,
+                dropout=self.config.rnn.lstm.dropout,
+                bidirectional=self.config.rnn.lstm.bidirectional,
+                return_sequences=self.config.rnn.lstm.retseq,
             )
+            if self.config.rnn.lstm.retseq:
+                self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
+            else:
+                self.max_pool = None
             clf_input_size = self.rnn.compute_output_shape(None,None)[-1]
-            # if self.config.rnn.bidirectional:
-            #     clf_input_size = 2*self.config.rnn.hidden_sizes[-1]
-            # else:
-            #     clf_input_size = self.config.rnn.hidden_sizes[-1]
-            # if self.config.rnn.retseq:
-            #     clf_input_size *= self.cnn_output_len
-        elif rnn_choice == 'attention':
-            raise NotImplementedError
+        elif self.config.rnn.name.lower() == 'attention':
+            hidden_sizes = self.config.rnn.attention.hidden_sizes
+            attn_in_channels = hidden_sizes[-1]
+            if self.config.rnn.attention.bidirectional:
+                attn_in_channels *= 2
+            self.rnn = nn.Sequential(
+                StackedLSTM(
+                    input_size=rnn_input_size,
+                    hidden_sizes=hidden_sizes,
+                    bias=self.config.rnn.attention.bias,
+                    dropout=self.config.rnn.attention.dropout,
+                    bidirectional=self.config.rnn.attention.bidirectional,
+                    return_sequences=True,
+                ),
+                # NaiveAttention(
+                #     in_channels=attn_in_channels,
+                #     bias=self.config.rnn.attention.bias,
+                # ),
+                SelfAttention(
+                    in_features=attn_in_channels,
+                    head_num=self.config.rnn.attention.head_num,
+                    dropout=self.config.rnn.attention.dropout,
+                    bias=self.config.rnn.attention.bias,
+                )
+            )
+            self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
+            clf_input_size = self.rnn[-1].compute_output_shape(None,None)[-1]
         else:
             raise NotImplementedError
 
         if self.__DEBUG__:
             print(f"clf_input_size = {clf_input_size}")
 
-        if self.config.rnn.retseq:
-            self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
+        # input of `self.clf` has shape: batch_size, channels
         self.clf = nn.Linear(clf_input_size, self.n_classes)
+        self.sigmoid = nn.Sigmoid()  # for making inference
 
     def forward(self, input:Tensor) -> Tensor:
         """
         """
         x = self.cnn(input)  # batch_size, channels, seq_len
-        # input shape of lstm: (seq_len, batch, input_size)
-        x = x.permute(2,0,1)  # seq_len, batch_size, channels
-        x = self.rnn(x)
-        # the directions can be separated using 
-        # output.view(seq_len, batch, num_directions, hidden_size), 
-        # with forward and backward being direction 0 and 1 respectively
-        if self.config.rnn.retseq:
-            # (seq_len, batch, channels) -> (batch, channels, seq_len)
-            x = x.permute(1,2,0)
-            x = self.max_pool(x)  # (batch, channels, 1)
-            x = torch.flatten(x, 1)  # (batch, channels)
-        pred = self.clf(x)
+        # print(f"cnn out shape = {x.shape}")
+        if self.rnn:
+            # (batch_size, channels, seq_len) -> (seq_len, batch_size, input_size)
+            x = x.permute(2,0,1)
+            x = self.rnn(x)
+            if self.max_pool:
+                # (seq_len, batch_size, channels) -> (batch_size, channels, seq_len)
+                x = x.permute(1,2,0)
+                x = self.max_pool(x)  # (batch_size, channels, 1)
+                # x = torch.flatten(x, start_dim=1)  # (batch_size, channels)
+                x = x.squeeze(dim=-1)
+            else:
+                # x of shape (batch_size, channels)
+                pass
+            # print(f"rnn out shape = {x.shape}")
+        else:
+            # (batch_size, channels, seq_len) --> (batch_size, channels)
+            x = self.max_pool(x)
+            # print(f"max_pool out shape = {x.shape}")
+            # x = torch.flatten(x, start_dim=1)
+            x = x.squeeze(dim=-1)
+        # print(f"clf in shape = {x.shape}")
+        pred = self.clf(x)  # batch_size, n_classes
         return pred
+
+    @torch.no_grad()
+    def inference(self, input:Tensor, class_names:bool=False, bin_pred_thr:float=0.5) -> Union[np.ndarray, pd.DataFrame]:
+        """
+        """
+        if "NSR" in self.classes:
+            nsr_cid = self.classes.index("NSR")
+        elif "426783006" in self.classes:
+            nsr_cid = self.classes.index("426783006")
+        else:
+            nsr_cid = None
+        pred = self.forward(input)
+        pred = self.sigmoid(pred)
+        bin_pred = (pred>=bin_pred_thr).int()
+        pred = pred.cpu().detach().numpy()
+        bin_pred = bin_pred.cpu().detach().numpy()
+        for row_idx, row in enumerate(bin_pred):
+            row_max_prob = pred[row_idx,...].max()
+            if row_max_prob < ModelCfg.bin_pred_nsr_thr and nsr_cid is not None:
+                bin_pred[row_idx, nsr_cid] = 1
+            elif row.sum() == 0:
+                bin_pred[row_idx,...] = \
+                    (((pred[row_idx,...]+ModelCfg.bin_pred_look_again_tol) >= row_max_prob) & (pred[row_idx,...] >= ModelCfg.bin_pred_nsr_thr)).astype(int)
+        if class_names:
+            pred = pd.DataFrame(pred)
+            pred.columns = self.classes
+            # pred['bin_pred'] = pred.apply(
+            #     lambda row: np.array(self.classes)[np.where(row.values>=bin_pred_thr)[0]],
+            #     axis=1
+            # )
+            pred['bin_pred'] = ''
+            for row_idx in range(len(pred)):
+                pred.at[row_idx, 'bin_pred'] = \
+                    np.array(self.classes)[np.where(bin_pred==1)[0]].tolist()
+            return pred
+        return pred, bin_pred
 
     @property
     def module_size(self):
@@ -1168,6 +1268,7 @@ class CPSCCNN(nn.Sequential):
         return n_params
 
 
+@DeprecationWarning
 class CPSC(nn.Sequential):
     """
     SOTA model of the CPSC2018 challenge

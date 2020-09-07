@@ -2,56 +2,19 @@
 utilities for nn models
 """
 from itertools import repeat
-from typing import Union, Sequence, Tuple, Optional, NoReturn
+from typing import Union, Sequence, List, Tuple, Optional, NoReturn
 
 import numpy as np
 np.set_printoptions(precision=5, suppress=True)
 
 
 __all__ = [
-    "get_mask",
     "extend_predictions",
     "compute_output_shape",
     "compute_conv_output_shape",
     "compute_maxpool_output_shape",
     "compute_avgpool_output_shape",
 ]
-
-
-def get_mask(shape:Union[int, Sequence[int]], critical_points:np.ndarray, left_bias:int, right_bias:int, return_fmt:str="mask") -> Union[np.ndarray,list]:
-    """ finished, checked,
-
-    get the mask around the `critical_points`
-
-    Parameters:
-    -----------
-    shape: int, or sequence of int,
-        shape of the mask (and the original data)
-    critical_points: ndarray,
-        indices (of the last dimension) of the points around which to be masked (value 1)
-    left_bias: int, non-negative
-        bias to the left of the critical points for the mask
-    right_bias: int, non-negative
-        bias to the right of the critical points for the mask
-    return_fmt: str, default "mask",
-        format of the return values,
-        "mask" for the usual mask,
-        can also be "intervals", which consists of a list of intervals
-
-    Returns:
-    --------
-    mask: ndarray or list,
-    """
-    if isinstance(shape, int):
-        shape = (shape,)
-    l_itv = [[max(0,cp-left_bias),min(shape[-1],cp+right_bias)] for cp in critical_points]
-    if return_fmt.lower() == "mask":
-        mask = np.zeros(shape=shape, dtype=int)
-        for itv in l_itv:
-            mask[..., itv[0]:itv[1]] = 1
-    elif return_fmt.lower() == "intervals":
-        mask = l_itv
-    return mask
 
 
 def extend_predictions(preds:Sequence, classes:List[str], extended_classes:List[str]) -> np.ndarray:
