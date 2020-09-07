@@ -26,8 +26,8 @@ from cfg import ModelCfg
 from models.utils.torch_utils import (
     Conv_Bn_Activation,
     DownSample, ZeroPadding,
-    compute_deconv_output_shape,
 )
+from utils.utils_nn import compute_deconv_output_shape
 from utils.misc import dict_to_str
 
 

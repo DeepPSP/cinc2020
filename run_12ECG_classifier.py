@@ -20,8 +20,8 @@ from model_configs.ecg_crnn import ECG_CRNN_CONFIG
 from utils.misc import (
     rdheader,
     ensure_lead_fmt, ensure_siglen,
-    extend_predictions,
 )
+from utils.utils_nn import extend_predictions
 from utils.utils_signal import butter_bandpass_filter
 from cfg import ModelCfg, TrainCfg
 

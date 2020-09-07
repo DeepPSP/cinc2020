@@ -26,8 +26,8 @@ from models.utils.torch_utils import (
     StackedLSTM,
     # AML_Attention, AML_GatedAttention,
     NaiveAttention, AttentionWithContext, MultiHeadAttention,
-    compute_conv_output_shape,
 )
+from utils.utils_nn import compute_conv_output_shape
 from utils.misc import dict_to_str
 
 

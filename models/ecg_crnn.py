@@ -30,8 +30,8 @@ from models.utils.torch_utils import (
     AttentionWithContext,
     SelfAttention, MultiHeadAttention,
     AttentivePooling,
-    compute_conv_output_shape,
 )
+from utils.utils_nn import compute_conv_output_shape
 from utils.misc import dict_to_str
 
 
