@@ -16,6 +16,7 @@ from cfg import ModelCfg, TrainCfg
 from data_reader import CINC2020Reader as CR
 from dataset import CINC2020
 from models.utils.torch_utils import default_collate_fn as collate_fn
+from utils.utils_nn import extend_predictions
 from utils.scoring_metrics import evaluate_12ECG_score
 from driver import load_challenge_data
 from run_12ECG_classifier import load_12ECG_model, run_12ECG_classifier
@@ -135,10 +136,11 @@ def eval_all_parallel(tranches:Optional[str]=None) -> pd.DataFrame:
     binary_predictions = np.array([]).reshape(0, len(ModelCfg.full_classes))
     scalar_predictions = np.array([]).reshape(0, len(ModelCfg.full_classes))
 
-    with tqdm(total=n_train) as pbar:
+    with tqdm(total=len(ds)) as pbar:
         for step, (signals, labels) in enumerate(data_loader):
             signals = signals.to(device=device, dtype=_DTYPE)
             labels = labels.numpy()
+            truth_array = np.concatenate((truth_array, labels))
 
             dl_scores = []
             for subset, model in loaded_models.items():
@@ -185,24 +187,66 @@ def eval_all_parallel(tranches:Optional[str]=None) -> pd.DataFrame:
             )
 
             with mp.Pool(processes=batch_size) as pool:
-                partial_conclusion = pool.starmap(
+                sd_conclusion = pool.starmap(
                     func=_run_special_detector_once,
                     iterable=signals.tolist(),
                 )
+            sd_conclusion = np.array(sd_conclusion)
 
+            step_scores = np.where(dl_scores>=sd_conclusion, dl_scores, sd_conclusion)
+            step_conclusions = np.where(dl_conclusions*sd_conclusion!=0, np.ones_like(dl_conclusions, dtype=int), np.zeros_like(dl_conclusions, dtype=int))
+
+            binary_predictions = np.concatenate((binary_predictions, step_conclusions))
+            scalar_predictions = np.concatenate((scalar_predictions, step_scores))
             pbar.update(signals.shape[0])
+
+    truth_labels = [dr.get_labels(rec, fmt='a') for rec in ds.records]
+
+    # gather results into a DataFrame
+    print("gathering results into a `DataFrame`...")
+    df_eval_res = pd.DataFrame(scalar_predictions)
+    df_eval_res.columns = ModelCfg.full_classes
+    df_eval_res['binary_predictions'] = ''
+    df_eval_res['truth_labels'] = ''
+    for idx, row in df_eval_res.iterrows():
+        df_eval_res.at[idx, 'binary_predictions'] = \
+            np.array(ModelCfg.full_classes)[np.where(binary_predictions[idx]==1)[0]].tolist()
+        df_eval_res.at[idx, 'truth_labels'] = truth_labels[idx]
+
+    auroc, auprc, accuracy, f_measure, f_beta_measure, g_beta_measure, challenge_metric = \
+        evaluate_12ECG_score(
+            classes=ModelCfg.full_classes,
+            truth=np.array(truth_array),
+            scalar_pred=np.array(scalar_predictions),
+            binary_pred=np.array(binary_predictions),
+        )
+    msg = f"""
+        results on tranches {tranches or 'all'}:
+        ------------------------------
+        auroc:              {auroc}
+        auprc:              {auprc}
+        accuracy:           {accuracy}
+        f_measure:          {f_measure}
+        f_beta_measure:     {f_beta_measure}
+        g_beta_measure:     {g_beta_measure}
+        challenge_metric:   {challenge_metric}
+        ----------------------------------------
+    """
+    print(msg)  # in case no logger
+
+    return df_eval_res
 
 
 def _run_special_detector_once(data:Sequence):
     """ for running `eval_all_parallel`
     """
-    partial_conclusion = special_detectors(np.array(data), ModelCfg.fs, sig_fmt="lead_first")
-    is_brady = partial_conclusion.is_brady
-    is_tachy = partial_conclusion.is_tachy
-    is_LAD = partial_conclusion.is_LAD
-    is_RAD = partial_conclusion.is_RAD
-    is_PR = partial_conclusion.is_PR
-    is_LQRSV = partial_conclusion.is_LQRSV
+    sd_conclusion = special_detectors(np.array(data), ModelCfg.fs, sig_fmt="lead_first")
+    is_brady = sd_conclusion.is_brady
+    is_tachy = sd_conclusion.is_tachy
+    is_LAD = sd_conclusion.is_LAD
+    is_RAD = sd_conclusion.is_RAD
+    is_PR = sd_conclusion.is_PR
+    is_LQRSV = sd_conclusion.is_LQRSV
 
     tmp = np.zeros(shape=(len(ModelCfg.full_classes,)))
     tmp[ModelCfg.full_classes.index('Brady')] = int(is_brady)
@@ -210,6 +254,6 @@ def _run_special_detector_once(data:Sequence):
     tmp[ModelCfg.full_classes.index('RAD')] = int(is_RAD)
     tmp[ModelCfg.full_classes.index('PR')] = int(is_PR)
     tmp[ModelCfg.full_classes.index('LQRSV')] = int(is_LQRSV)
-    partial_conclusion = tmp
+    sd_conclusion = tmp
 
-    return partial_conclusion
+    return sd_conclusion
