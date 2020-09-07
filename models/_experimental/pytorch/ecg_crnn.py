@@ -36,14 +36,10 @@ if ModelCfg.torch_dtype.lower() == 'double':
 
 
 __all__ = [
-    # CRNN structure 1
     "ECG_CRNN",
     "VGGBlock", "VGG16",
-    "ResNetStanfordBlock", "ResNetStanford",
+    "CPSCBlock", "CPSCCNN",
     "ResNetBasicBlock", "ResNetBottleNeck", "ResNet",
-    # CRNN structure 2
-    "CPSC",
-    "CPSCBlock", "CPSCBlock",
 ]
 
 
@@ -223,274 +219,6 @@ class VGG16(nn.Sequential):
         for module in self:
             output_shape = module.compute_output_shape(seq_len, batch_size)
             _, _, seq_len = output_shape
-        return output_shape
-
-    @property
-    def module_size(self):
-        """
-        """
-        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
-        n_params = sum([np.prod(p.size()) for p in module_parameters])
-        return n_params
-
-
-class ResNetStanfordBlock(nn.Module):
-    """
-    building blocks of the CNN feature extractor `ResNetStanford`
-    """
-    __DEBUG__ = True
-    __name__ = "ResNetStanfordBlock"
-    
-    def __init__(self, block_index:int, in_channels:int, num_filters:int, filter_length:int, subsample_length:int, dilation:int=1, **config) -> NoReturn:
-        """ finished, checked,
-
-        the main stream uses `subsample_length` as stride to perform down-sampling,
-        the short cut uses `subsample_length` as pool size to perform down-sampling,
-
-        Parameters:
-        -----------
-        block_index: int,
-            index of the block in the whole sequence of `ResNetStanford`
-        in_channels: int,
-            number of features (channels) of the input
-        num_filters: int,
-            number of filters for the convolutional layers
-        filter_length: int,
-            length (size) of the filter kernels
-        subsample_length: int,
-            subsample length,
-            including pool size for short cut, and stride for the top convolutional layer
-        config: dict,
-            other hyper-parameters, including
-            filter length (kernel size), activation choices, weight initializer, dropout,
-            and short cut patterns, etc.
-
-        Issues:
-        -------
-        1. even kernel size would case mismatch of shapes of main stream and short cut
-        """
-        super().__init__()
-        self.__block_index = block_index
-        self.__in_channels = in_channels
-        self.__out_channels = num_filters
-        self.__kernel_size = filter_length
-        self.__down_scale = subsample_length
-        self.__stride = subsample_length
-        self.config = ED(deepcopy(config))
-        self.__num_convs = self.config.num_skip
-        
-        self.__increase_channels = (self.__out_channels > self.__in_channels)
-        self.short_cut = self._make_short_cut_layer()
-        
-        self.main_stream = nn.Sequential()
-        conv_in_channels = self.__in_channels
-        for i in range(self.__num_convs):
-            if not (block_index == 0 and i == 0):
-                self.main_stream.add_module(
-                    f"ba_{self.__block_index}_{i}",
-                    Bn_Activation(
-                        num_features=self.__in_channels,
-                        activation=self.config.activation,
-                        kw_activation=self.config.kw_activation,
-                        dropout=self.config.dropout if i > 0 else 0,
-                    ),
-                )
-            self.main_stream.add_module(
-                f"conv_{self.__block_index}_{i}",
-                Conv_Bn_Activation(
-                    in_channels=conv_in_channels,
-                    out_channels=self.__out_channels,
-                    kernel_size=self.__kernel_size,
-                    stride = (self.__stride if i == 0 else 1),
-                    batch_norm=False,
-                    activation=None,
-                    kernel_initializer=self.config.kernel_initializer,
-                    kw_initializer=self.config.kw_initializer,
-                )
-            )
-            conv_in_channels = self.__out_channels
-
-    def forward(self, input:Tensor) -> Tensor:
-        """
-        """
-        if self.__DEBUG__:
-            print(f"forwarding in the {self.__block_index}-th `ResNetStanfordBlock`...")
-            args = {k.split("__")[1]:v for k,v in self.__dict__.items() if isinstance(v, Number) and '__' in k}
-            print(f"input arguments:\n{args}")
-            print(f"input shape = {input.shape}")
-        if self.short_cut:
-            sc = self.short_cut(input)
-        else:
-            sc = input
-        output = self.main_stream(input)
-        if self.__DEBUG__:
-            print(f"shape of short_cut output = {sc.shape}, shape of main stream output = {output.shape}")
-        output = output +sc
-        return output
-
-    def _make_short_cut_layer(self) -> Union[nn.Module, type(None)]:
-        """
-        """
-        if self.__down_scale > 1 or self.__increase_channels:
-            if self.config.increase_channels_method.lower() == 'conv':
-                short_cut = DownSample(
-                    down_scale=self.__down_scale,
-                    in_channels=self.__in_channels,
-                    out_channels=self.__out_channels,
-                    batch_norm=False,
-                    mode=self.config.subsample_mode,
-                )
-            if self.config.increase_channels_method.lower() == 'zero_padding':
-                short_cut = nn.Sequential(
-                    DownSample(
-                        down_scale=self.__down_scale,
-                        in_channels=self.__in_channels,
-                        out_channels=self.__in_channels,
-                        batch_norm=False,
-                        mode=self.config.subsample_mode,
-                    ),
-                    ZeroPadding(self.__in_channels, self.__out_channels),
-                )
-        else:
-            short_cut = None
-        return short_cut
-
-    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
-        """ finished, checked,
-
-        Parameters:
-        -----------
-        seq_len: int,
-            length of the 1d sequence
-        batch_size: int, optional,
-            the batch size, can be None
-
-        Returns:
-        --------
-        output_shape: sequence,
-            the output shape of this block, given `seq_len` and `batch_size`
-        """
-        _seq_len = seq_len
-        for module in self.main_stream:
-            output_shape = module.compute_output_shape(_seq_len, batch_size)
-            _, _, _seq_len = output_shape
-        return output_shape
-
-    @property
-    def module_size(self):
-        """
-        """
-        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
-        n_params = sum([np.prod(p.size()) for p in module_parameters])
-        return n_params
-
-
-class ResNetStanford(nn.Sequential):
-    """
-    the model proposed in ref. [1] and implemented in ref. [2]
-
-    References:
-    -----------
-    [1] Hannun, Awni Y., et al. "Cardiologist-level arrhythmia detection and classification in ambulatory electrocardiograms using a deep neural network." Nature medicine 25.1 (2019): 65.
-    [2] https://github.com/awni/ecg
-    """
-    __DEBUG__ = True
-    __name__ = "ResNetStanford"
-
-    def __init__(self, in_channels:int, **config) -> NoReturn:
-        """ NOT finished, NOT checked,
-        
-        Parameters:
-        -----------
-        in_channels: int,
-            number of channels in the input
-        config: dict,
-            other hyper-parameters of the Module, including
-            number of convolutional layers, number of filters for each layer, etc.
-        """
-        super().__init__()
-        self.__in_channels = in_channels
-        self.config = ED(deepcopy(config))
-
-        if self.__DEBUG__:
-            print(f"configuration of ResNetStanford is as follows\n{dict_to_str(self.config)}")
-
-        self.add_module(
-            "cba_1",
-            Conv_Bn_Activation(
-                in_channels=self.__in_channels,
-                out_channels=self.config.num_filters_start,
-                kernel_size=self.config.filter_lengths,
-                stride=1,
-                batch_norm=True,
-                activation=self.config.block.activation,
-                kw_activation=self.config.block.kw_activation,
-                kernel_initializer=self.config.block.kernel_initializer,
-                kw_initializer=self.config.block.kw_initializer,
-            )
-        )
-
-        module_in_channels = self.config.num_filters_start
-        for idx, subsample_length in enumerate(self.config.subsample_lengths):
-            num_filters = self.get_num_filters_at_index(idx, self.config.num_filters_start)
-            self.add_module(
-                f"resnet_block_{idx}",
-                ResNetStanfordBlock(
-                    block_index=idx,
-                    in_channels=module_in_channels,
-                    num_filters=num_filters,
-                    filter_length=self.config.filter_lengths,
-                    subsample_length=subsample_length,
-                    **(self.config.block),
-                )
-            )
-            module_in_channels = num_filters
-            # if idx % self.config.increase_channels_at == 0 and idx > 0:
-            #     module_in_channels *= 2
-
-    def forward(self, input:Tensor) -> Tensor:
-        """
-        """
-        output = super().forward(input)
-        return output
-
-    def get_num_filters_at_index(self, index:int, num_start_filters:int) -> int:
-        """ finished, checked,
-
-        Parameters:
-        -----------
-        index: int,
-            index of a `ResNetStanfordBlock` in the sequence of such blocks in the whole network
-        num_start_filters: int,
-            number of filters of the first convolutional layer of the whole network
-
-        Returns:
-        --------
-        num_filters: int,
-            number of filters at the {index}-th `ResNetStanfordBlock`
-        """
-        num_filters = 2**int(index / self.config.increase_channels_at) * num_start_filters
-        return num_filters
-
-    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
-        """ finished, checked,
-
-        Parameters:
-        -----------
-        seq_len: int,
-            length of the 1d sequence
-        batch_size: int, optional,
-            the batch size, can be None
-
-        Returns:
-        --------
-        output_shape: sequence,
-            the output shape of this Module, given `seq_len` and `batch_size`
-        """
-        _seq_len = seq_len
-        for module in self:
-            output_shape = module.compute_output_shape(_seq_len, batch_size)
-            _, _, _seq_len = output_shape
         return output_shape
 
     @property
@@ -879,196 +607,6 @@ class ResNet(nn.Sequential):
         return n_params
 
 
-class ECG_CRNN(nn.Module):
-    """
-
-    C(R)NN models modified from the following refs.
-
-    References:
-    -----------
-    [1] Yao, Qihang, et al. "Time-Incremental Convolutional Neural Network for Arrhythmia Detection in Varied-Length Electrocardiogram." 2018 IEEE 16th Intl Conf on Dependable, Autonomic and Secure Computing, 16th Intl Conf on Pervasive Intelligence and Computing, 4th Intl Conf on Big Data Intelligence and Computing and Cyber Science and Technology Congress (DASC/PiCom/DataCom/CyberSciTech). IEEE, 2018.
-    [2] Yao, Qihang, et al. "Multi-class Arrhythmia detection from 12-lead varied-length ECG using Attention-based Time-Incremental Convolutional Neural Network." Information Fusion 53 (2020): 174-182.
-    [3] Hannun, Awni Y., et al. "Cardiologist-level arrhythmia detection and classification in ambulatory electrocardiograms using a deep neural network." Nature medicine 25.1 (2019): 65.
-    [4] https://stanfordmlgroup.github.io/projects/ecg2/
-    [5] https://github.com/awni/ecg
-    [6] CPSC2018 entry 0236
-    """
-    __DEBUG__ = True
-    __name__ = 'ECG_CRNN'
-
-    def __init__(self, classes:Sequence[str], input_len:Optional[int]=None, config:Optional[ED]=None) -> NoReturn:
-        """ finished, checked,
-
-        Parameters:
-        -----------
-        classes: list,
-            list of the classes for classification
-        input_len: int, optional,
-            sequence length (last dim.) of the input,
-            defaults to `TrainCfg.input_len`,
-            will not be used in the inference mode
-        config: dict, optional,
-            other hyper-parameters, including kernel sizes, etc.
-            ref. the corresponding config file
-        """
-        super().__init__()
-        self.classes = list(classes)
-        self.n_classes = len(classes)
-        self.n_leads = 12
-        self.input_len = input_len or TrainCfg.input_len
-        self.config = deepcopy(ECG_CRNN_CONFIG)
-        self.config.update(config or {})
-        if self.__DEBUG__:
-            print(f"classes (totally {self.n_classes}) for prediction:{self.classes}")
-            print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
-        
-        cnn_choice = self.config.cnn.name.lower()
-        if "vgg16" in cnn_choice:
-            self.cnn = VGG16(self.n_leads, **(self.config.cnn[cnn_choice]))
-            rnn_input_size = self.config.cnn.vgg16.num_filters[-1]
-        elif "resnet" in cnn_choice:
-            self.cnn = ResNet(self.n_leads, **(self.config.cnn[cnn_choice]))
-            rnn_input_size = \
-                2**len(self.config.cnn.resnet.num_blocks) * self.config.cnn.resnet.init_num_filters
-        else:
-            raise NotImplementedError
-        # self.cnn_output_len = cnn_output_shape[2]
-        if self.__DEBUG__:
-            cnn_output_shape = self.cnn.compute_output_shape(self.input_len, batch_size=None)
-            print(f"cnn output shape (batch_size, features, seq_len) = {cnn_output_shape}")
-
-        if self.config.rnn.name.lower() == 'none':
-            self.rnn = None
-            _, clf_input_size, _ = self.cnn.compute_output_shape(self.input_len, batch_size=None)
-            self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
-        elif self.config.rnn.name.lower() == 'lstm':
-            hidden_sizes = self.config.rnn.lstm.hidden_sizes + [self.n_classes]
-            if self.__DEBUG__:
-                print(f"lstm hidden sizes {self.config.rnn.lstm.hidden_sizes} ---> {hidden_sizes}")
-            self.rnn = StackedLSTM(
-                input_size=rnn_input_size,
-                hidden_sizes=hidden_sizes,
-                bias=self.config.rnn.lstm.bias,
-                dropout=self.config.rnn.lstm.dropout,
-                bidirectional=self.config.rnn.lstm.bidirectional,
-                return_sequences=self.config.rnn.lstm.retseq,
-            )
-            if self.config.rnn.lstm.retseq:
-                self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
-            else:
-                self.max_pool = None
-            clf_input_size = self.rnn.compute_output_shape(None,None)[-1]
-        elif self.config.rnn.name.lower() == 'attention':
-            hidden_sizes = self.config.rnn.attention.hidden_sizes
-            attn_in_channels = hidden_sizes[-1]
-            if self.config.rnn.attention.bidirectional:
-                attn_in_channels *= 2
-            self.rnn = nn.Sequential(
-                StackedLSTM(
-                    input_size=rnn_input_size,
-                    hidden_sizes=hidden_sizes,
-                    bias=self.config.rnn.attention.bias,
-                    dropout=self.config.rnn.attention.dropout,
-                    bidirectional=self.config.rnn.attention.bidirectional,
-                    return_sequences=True,
-                ),
-                # NaiveAttention(
-                #     in_channels=attn_in_channels,
-                #     bias=self.config.rnn.attention.bias,
-                # ),
-                SelfAttention(
-                    in_features=attn_in_channels,
-                    head_num=self.config.rnn.attention.head_num,
-                    dropout=self.config.rnn.attention.dropout,
-                    bias=self.config.rnn.attention.bias,
-                )
-            )
-            self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
-            clf_input_size = self.rnn[-1].compute_output_shape(None,None)[-1]
-        else:
-            raise NotImplementedError
-
-        if self.__DEBUG__:
-            print(f"clf_input_size = {clf_input_size}")
-
-        # input of `self.clf` has shape: batch_size, channels
-        self.clf = nn.Linear(clf_input_size, self.n_classes)
-        self.sigmoid = nn.Sigmoid()  # for making inference
-
-    def forward(self, input:Tensor) -> Tensor:
-        """
-        """
-        x = self.cnn(input)  # batch_size, channels, seq_len
-        # print(f"cnn out shape = {x.shape}")
-        if self.rnn:
-            # (batch_size, channels, seq_len) -> (seq_len, batch_size, input_size)
-            x = x.permute(2,0,1)
-            x = self.rnn(x)
-            if self.max_pool:
-                # (seq_len, batch_size, channels) -> (batch_size, channels, seq_len)
-                x = x.permute(1,2,0)
-                x = self.max_pool(x)  # (batch_size, channels, 1)
-                # x = torch.flatten(x, start_dim=1)  # (batch_size, channels)
-                x = x.squeeze(dim=-1)
-            else:
-                # x of shape (batch_size, channels)
-                pass
-            # print(f"rnn out shape = {x.shape}")
-        else:
-            # (batch_size, channels, seq_len) --> (batch_size, channels)
-            x = self.max_pool(x)
-            # print(f"max_pool out shape = {x.shape}")
-            # x = torch.flatten(x, start_dim=1)
-            x = x.squeeze(dim=-1)
-        # print(f"clf in shape = {x.shape}")
-        pred = self.clf(x)  # batch_size, n_classes
-        return pred
-
-    @torch.no_grad()
-    def inference(self, input:Tensor, class_names:bool=False, bin_pred_thr:float=0.5) -> Union[np.ndarray, pd.DataFrame]:
-        """
-        """
-        if "NSR" in self.classes:
-            nsr_cid = self.classes.index("NSR")
-        elif "426783006" in self.classes:
-            nsr_cid = self.classes.index("426783006")
-        else:
-            nsr_cid = None
-        pred = self.forward(input)
-        pred = self.sigmoid(pred)
-        bin_pred = (pred>=bin_pred_thr).int()
-        pred = pred.cpu().detach().numpy()
-        bin_pred = bin_pred.cpu().detach().numpy()
-        for row_idx, row in enumerate(bin_pred):
-            row_max_prob = pred[row_idx,...].max()
-            if row_max_prob < ModelCfg.bin_pred_nsr_thr and nsr_cid is not None:
-                bin_pred[row_idx, nsr_cid] = 1
-            elif row.sum() == 0:
-                bin_pred[row_idx,...] = \
-                    (((pred[row_idx,...]+ModelCfg.bin_pred_look_again_tol) >= row_max_prob) & (pred[row_idx,...] >= ModelCfg.bin_pred_nsr_thr)).astype(int)
-        if class_names:
-            pred = pd.DataFrame(pred)
-            pred.columns = self.classes
-            # pred['bin_pred'] = pred.apply(
-            #     lambda row: np.array(self.classes)[np.where(row.values>=bin_pred_thr)[0]],
-            #     axis=1
-            # )
-            pred['bin_pred'] = ''
-            for row_idx in range(len(pred)):
-                pred.at[row_idx, 'bin_pred'] = \
-                    np.array(self.classes)[np.where(bin_pred==1)[0]].tolist()
-            return pred
-        return pred, bin_pred
-
-    @property
-    def module_size(self):
-        """
-        """
-        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
-        n_params = sum([np.prod(p.size()) for p in module_parameters])
-        return n_params
-
-
 class CPSCBlock(nn.Sequential):
     """
     building block of the SOTA model of CPSC2018 challenge
@@ -1268,88 +806,186 @@ class CPSCCNN(nn.Sequential):
         return n_params
 
 
-@DeprecationWarning
-class CPSC(nn.Sequential):
+class ECG_CRNN(nn.Module):
     """
-    SOTA model of the CPSC2018 challenge
+
+    C(R)NN models modified from the following refs.
+
+    References:
+    -----------
+    [1] Yao, Qihang, et al. "Time-Incremental Convolutional Neural Network for Arrhythmia Detection in Varied-Length Electrocardiogram." 2018 IEEE 16th Intl Conf on Dependable, Autonomic and Secure Computing, 16th Intl Conf on Pervasive Intelligence and Computing, 4th Intl Conf on Big Data Intelligence and Computing and Cyber Science and Technology Congress (DASC/PiCom/DataCom/CyberSciTech). IEEE, 2018.
+    [2] Yao, Qihang, et al. "Multi-class Arrhythmia detection from 12-lead varied-length ECG using Attention-based Time-Incremental Convolutional Neural Network." Information Fusion 53 (2020): 174-182.
+    [3] Hannun, Awni Y., et al. "Cardiologist-level arrhythmia detection and classification in ambulatory electrocardiograms using a deep neural network." Nature medicine 25.1 (2019): 65.
+    [4] https://stanfordmlgroup.github.io/projects/ecg2/
+    [5] https://github.com/awni/ecg
+    [6] CPSC2018 entry 0236
     """
     __DEBUG__ = True
-    __name__ = "CPSC"
-    
-    def __init__(self, classes:list, input_len:int, **config) -> NoReturn:
-        """
+    __name__ = 'ECG_CRNN'
+
+    def __init__(self, classes:Sequence[str], input_len:Optional[int]=None, config:Optional[ED]=None) -> NoReturn:
+        """ finished, checked,
 
         Parameters:
         -----------
         classes: list,
             list of the classes for classification
-        input_len: int,
-            sequence length (last dim.) of the input
-        config: dict,
+        input_len: int, optional,
+            sequence length (last dim.) of the input,
+            defaults to `TrainCfg.input_len`,
+            will not be used in the inference mode
+        config: dict, optional,
             other hyper-parameters, including kernel sizes, etc.
             ref. the corresponding config file
         """
         super().__init__()
-        self.classes = classes
+        self.classes = list(classes)
         self.n_classes = len(classes)
         self.n_leads = 12
-        self.input_len = input_len
-        self.config = deepcopy(CPSC_CONFIG)
-        self.config.update(config)
+        self.input_len = input_len or TrainCfg.input_len
+        self.config = deepcopy(ECG_CRNN_CONFIG)
+        self.config.update(config or {})
         if self.__DEBUG__:
-            print(f"configuration of CPSC is as follows\n{dict_to_str(self.config)}")
-
+            print(f"classes (totally {self.n_classes}) for prediction:{self.classes}")
+            print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
+        
         cnn_choice = self.config.cnn.name.lower()
-        if cnn_choice == 'cpsc_2018':
-            cnn_config = self.config.cnn.cpsc
-            self.cnn = CPSCCNN(
-                filter_lengths=cnn_config.filter_lengths,
-                subsample_lengths=cnn_config.subsample_lengths,
-                dropouts=cnn_config.dropouts,
+        if "vgg16" in cnn_choice:
+            self.cnn = VGG16(self.n_leads, **(self.config.cnn[cnn_choice]))
+            rnn_input_size = self.config.cnn.vgg16.num_filters[-1]
+        elif "resnet" in cnn_choice:
+            self.cnn = ResNet(self.n_leads, **(self.config.cnn[cnn_choice]))
+            rnn_input_size = \
+                2**len(self.config.cnn.resnet.num_blocks) * self.config.cnn.resnet.init_num_filters
+        else:
+            raise NotImplementedError
+        # self.cnn_output_len = cnn_output_shape[2]
+        if self.__DEBUG__:
+            cnn_output_shape = self.cnn.compute_output_shape(self.input_len, batch_size=None)
+            print(f"cnn output shape (batch_size, features, seq_len) = {cnn_output_shape}")
+
+        if self.config.rnn.name.lower() == 'none':
+            self.rnn = None
+            _, clf_input_size, _ = self.cnn.compute_output_shape(self.input_len, batch_size=None)
+            self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
+        elif self.config.rnn.name.lower() == 'lstm':
+            hidden_sizes = self.config.rnn.lstm.hidden_sizes + [self.n_classes]
+            if self.__DEBUG__:
+                print(f"lstm hidden sizes {self.config.rnn.lstm.hidden_sizes} ---> {hidden_sizes}")
+            self.rnn = StackedLSTM(
+                input_size=rnn_input_size,
+                hidden_sizes=hidden_sizes,
+                bias=self.config.rnn.lstm.bias,
+                dropout=self.config.rnn.lstm.dropout,
+                bidirectional=self.config.rnn.lstm.bidirectional,
+                return_sequences=self.config.rnn.lstm.retseq,
             )
+            if self.config.rnn.lstm.retseq:
+                self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
+            else:
+                self.max_pool = None
+            clf_input_size = self.rnn.compute_output_shape(None,None)[-1]
+        elif self.config.rnn.name.lower() == 'attention':
+            hidden_sizes = self.config.rnn.attention.hidden_sizes
+            attn_in_channels = hidden_sizes[-1]
+            if self.config.rnn.attention.bidirectional:
+                attn_in_channels *= 2
+            self.rnn = nn.Sequential(
+                StackedLSTM(
+                    input_size=rnn_input_size,
+                    hidden_sizes=hidden_sizes,
+                    bias=self.config.rnn.attention.bias,
+                    dropout=self.config.rnn.attention.dropout,
+                    bidirectional=self.config.rnn.attention.bidirectional,
+                    return_sequences=True,
+                ),
+                # NaiveAttention(
+                #     in_channels=attn_in_channels,
+                #     bias=self.config.rnn.attention.bias,
+                # ),
+                SelfAttention(
+                    in_features=attn_in_channels,
+                    head_num=self.config.rnn.attention.head_num,
+                    dropout=self.config.rnn.attention.dropout,
+                    bias=self.config.rnn.attention.bias,
+                )
+            )
+            self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
+            clf_input_size = self.rnn[-1].compute_output_shape(None,None)[-1]
         else:
             raise NotImplementedError
 
-        cnn_output_shape = self.cnn.compute_output_shape(self.input_len)
+        if self.__DEBUG__:
+            print(f"clf_input_size = {clf_input_size}")
 
-        self.rnn = nn.Sequential()
-        self.rnn.add_module(
-            "bidirectional_gru",
-            nn.GRU(input_size=12, hidden_size=12, bidirectional=True),
-        )
-        self.rnn.add_module(
-            "leaky",
-            Activations["leaky"](negative_slope=0.2),
-        )
-        self.rnn.add_module(
-            "dropout",
-            nn.Dropout(0.2),
-        )
-        self.rnn.add_module(
-            "attention",
-            AttentionWithContext(12, 12),
-        )
-        self.rnn.add_module(
-            "batch_normalization",
-            nn.BatchNorm1d(12),
-        )
-        self.rnn.add_module(
-            "leaky",
-            Activations["leaky"](negative_slope=0.2),
-        )
-        self.rnn.add_module(
-            "dropout",
-            nn.Dropout(0.2),
-        )
+        # input of `self.clf` has shape: batch_size, channels
+        self.clf = nn.Linear(clf_input_size, self.n_classes)
+        self.sigmoid = nn.Sigmoid()  # for making inference
 
-        # self.clf = nn.Linear()  # TODO: set correct the in-and-out-features
-        
     def forward(self, input:Tensor) -> Tensor:
         """
         """
-        output = self.cnn(input)
-        output = self.rnn(output)
-        return output
+        x = self.cnn(input)  # batch_size, channels, seq_len
+        # print(f"cnn out shape = {x.shape}")
+        if self.rnn:
+            # (batch_size, channels, seq_len) -> (seq_len, batch_size, input_size)
+            x = x.permute(2,0,1)
+            x = self.rnn(x)
+            if self.max_pool:
+                # (seq_len, batch_size, channels) -> (batch_size, channels, seq_len)
+                x = x.permute(1,2,0)
+                x = self.max_pool(x)  # (batch_size, channels, 1)
+                # x = torch.flatten(x, start_dim=1)  # (batch_size, channels)
+                x = x.squeeze(dim=-1)
+            else:
+                # x of shape (batch_size, channels)
+                pass
+            # print(f"rnn out shape = {x.shape}")
+        else:
+            # (batch_size, channels, seq_len) --> (batch_size, channels)
+            x = self.max_pool(x)
+            # print(f"max_pool out shape = {x.shape}")
+            # x = torch.flatten(x, start_dim=1)
+            x = x.squeeze(dim=-1)
+        # print(f"clf in shape = {x.shape}")
+        pred = self.clf(x)  # batch_size, n_classes
+        return pred
+
+    @torch.no_grad()
+    def inference(self, input:Tensor, class_names:bool=False, bin_pred_thr:float=0.5) -> Union[np.ndarray, pd.DataFrame]:
+        """
+        """
+        if "NSR" in self.classes:
+            nsr_cid = self.classes.index("NSR")
+        elif "426783006" in self.classes:
+            nsr_cid = self.classes.index("426783006")
+        else:
+            nsr_cid = None
+        pred = self.forward(input)
+        pred = self.sigmoid(pred)
+        bin_pred = (pred>=bin_pred_thr).int()
+        pred = pred.cpu().detach().numpy()
+        bin_pred = bin_pred.cpu().detach().numpy()
+        for row_idx, row in enumerate(bin_pred):
+            row_max_prob = pred[row_idx,...].max()
+            if row_max_prob < ModelCfg.bin_pred_nsr_thr and nsr_cid is not None:
+                bin_pred[row_idx, nsr_cid] = 1
+            elif row.sum() == 0:
+                bin_pred[row_idx,...] = \
+                    (((pred[row_idx,...]+ModelCfg.bin_pred_look_again_tol) >= row_max_prob) & (pred[row_idx,...] >= ModelCfg.bin_pred_nsr_thr)).astype(int)
+        if class_names:
+            pred = pd.DataFrame(pred)
+            pred.columns = self.classes
+            # pred['bin_pred'] = pred.apply(
+            #     lambda row: np.array(self.classes)[np.where(row.values>=bin_pred_thr)[0]],
+            #     axis=1
+            # )
+            pred['bin_pred'] = ''
+            for row_idx in range(len(pred)):
+                pred.at[row_idx, 'bin_pred'] = \
+                    np.array(self.classes)[np.where(bin_pred==1)[0]].tolist()
+            return pred
+        return pred, bin_pred
 
     @property
     def module_size(self):
