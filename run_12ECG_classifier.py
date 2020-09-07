@@ -23,6 +23,7 @@ from utils.misc import (
 )
 from utils.utils_nn import extend_predictions
 from utils.utils_signal import butter_bandpass_filter
+from utils.misc import dict_to_str
 from cfg import ModelCfg, TrainCfg
 
 if ModelCfg.torch_dtype.lower() == "double":
@@ -63,6 +64,9 @@ def run_12ECG_classifier(data:np.ndarray, header_data:List[str], loaded_model:Di
     is_PR = partial_conclusion.is_PR
     is_LQRSV = partial_conclusion.is_LQRSV
 
+    if verbose >= 1:
+        print(f"results from special detectors: {dict_to_str(partial_conclusion)}")
+
     tmp = np.zeros(shape=(len(ModelCfg.full_classes,)))
     tmp[ModelCfg.full_classes.index('Brady')] = int(is_brady)
     tmp[ModelCfg.full_classes.index('LAD')] = int(is_LAD)
@@ -99,16 +103,24 @@ def run_12ECG_classifier(data:np.ndarray, header_data:List[str], loaded_model:Di
         device = torch.device("cuda")
     else:
         device = torch.device("cpu")
-    dl_data = torch.from_numpy(dl_data).to(device=device)
+    # unsqueeze to add a batch dimention
+    dl_data = (torch.from_numpy(dl_data)).unsqueeze(0).to(device=device)
 
     dl_scores = []
     for subset, model in loaded_model.items():
+        model.eval()
         subset_scores, subset_bin = model.inference(dl_data)
-        subset_scores = extend_predictions(
-            subset_scores,
-            ModelCfg.tranche_classes[subset],
-            ModelCfg.dl_classes,
-        )
+        if verbose >= 1:
+            print(f"for tranches `{subset}`")
+            print(f"subset_scores = {subset_scores}")
+            print(f"subset_bin = {subset_bin}")
+        if subset in ModelCfg.tranche_classes.keys():
+            subset_scores = extend_predictions(
+                subset_scores,
+                ModelCfg.tranche_classes[subset],
+                ModelCfg.dl_classes,
+            )
+        subset_scores = subset_scores[0]  # remove the batch dimension
         dl_scores.append(subset_scores)
 
     if "NSR" in ModelCfg.dl_classes:
@@ -175,11 +187,13 @@ def load_12ECG_model(input_directory:Optional[str]=None):
         )
         model_weight_path = ModelCfg.tranche_model[k]
         loaded_model[k].load_state_dict(torch.load(model_weight_path, map_location=device))
+        loaded_model[k].eval()
 
     loaded_model["all"] = ECG_CRNN(
         classes=ModelCfg.dl_classes,
         config=deepcopy(ECG_CRNN_CONFIG),
     )
     loaded_model["all"].load_state_dict(torch.load(ModelCfg.tranche_model["all"], map_location=device))
+    loaded_model["all"].eval()
 
     return loaded_model
