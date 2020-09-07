@@ -1,5 +1,6 @@
 """
 """
+import time
 from itertools import repeat
 from copy import deepcopy
 from typing import Optional
@@ -8,12 +9,12 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from cfg import ModelCfg
+from cfg import ModelCfg, TrainCfg
 from data_reader import CINC2020Reader as CR
 from dataset import CINC2020
 from utils.scoring_metrics import evaluate_12ECG_score
 from driver import load_challenge_data
-from run_12ECG_classifier import run_12ECG_classifier
+from run_12ECG_classifier import load_12ECG_model, run_12ECG_classifier
 
 
 __all__ = [
@@ -32,6 +33,8 @@ def eval_all(tranches:Optional[str]=None) -> pd.DataFrame:
         ds_config.tranches_for_training = tranches
     ds = CINC2020(config=ds_config, training=False)
 
+    time.sleep(3)
+
     truth_labels, truth_array = [], []
     binary_predictions, scalar_predictions = [], []
     classes = ModelCfg.full_classes
@@ -40,7 +43,7 @@ def eval_all(tranches:Optional[str]=None) -> pd.DataFrame:
             data_fp = dr.get_data_filepath(rec)
             data, header_data = load_challenge_data(data_fp)
             current_label, current_score, _ = \
-                run_12ECG_classifier(data, header_data, hehe_models, verbose=0)
+                run_12ECG_classifier(data, header_data, models, verbose=0)
             binary_predictions.append(current_label)
             scalar_predictions.append(current_score)
             tl = dr.get_labels(rec, fmt='a')
@@ -61,7 +64,7 @@ def eval_all(tranches:Optional[str]=None) -> pd.DataFrame:
         df_eval_res.at[idx, 'binary_predictions'] = \
             classes[np.where(binary_predictions[idx]==1)[0]].tolist()
         df_eval_res.at[idx, 'truth_labels'] = truth_labels[idx]
-    class = classes.tolist()
+    classes = classes.tolist()
 
     auroc, auprc, accuracy, f_measure, f_beta_measure, g_beta_measure, challenge_metric = \
         evaluate_12ECG_score(
