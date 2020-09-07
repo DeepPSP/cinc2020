@@ -2,6 +2,7 @@
 utilities for nn models
 """
 from itertools import repeat
+from math import floor
 from typing import Union, Sequence, List, Tuple, Optional, NoReturn
 
 import numpy as np

@@ -2,7 +2,7 @@
 basic building blocks, for 1d signal (time series)
 """
 import sys
-from math import floor, sqrt
+from math import sqrt
 from itertools import repeat
 from typing import Union, Sequence, Tuple, Optional, NoReturn
 
