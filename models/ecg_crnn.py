@@ -670,19 +670,6 @@ class CPSCCNN(nn.Sequential):
         config: dict,
             other hyper-parameters of the Module, ref. corresponding config file
         """
-    def __init__(self, filter_lengths:Sequence[int], subsample_lengths:Sequence[int], dropouts:Optional[float]=None, **kwargs) -> NoReturn:
-        """ finished, checked,
-
-        Parameters:
-        -----------
-        filter_lengths: sequence of int,
-            filter length (kernel size) of each convolutional layer in each `CPSCBlock`
-        subsample_lengths: sequence of int,
-            subsample length (stride) of each convolutional layer in each `CPSCBlock`
-        dropout: sequence of float, optional,
-            dropout for each `CPSCBlock`
-        kwargs: dict,
-        """
         super().__init__()
         self.__in_channels = in_channels
         self.config = ED(deepcopy(config))
@@ -758,6 +745,7 @@ class ECG_CRNN(nn.Module):
     [4] https://stanfordmlgroup.github.io/projects/ecg2/
     [5] https://github.com/awni/ecg
     [6] CPSC2018 entry 0236
+    [7] CPSC2019 entry 0416
     """
     __DEBUG__ = True
     __name__ = 'ECG_CRNN'

@@ -260,15 +260,16 @@ class Conv_Bn_Activation(nn.Sequential):
             if True, adds a learnable bias to the output
         """
         super().__init__()
-        if padding is None:
-            self.__padding = (kernel_size - 1) // 2  # 'same' padding when stride = 1
-        elif isinstance(padding, int):
-            self.__padding = padding
         self.__in_channels = in_channels
         self.__out_channels = out_channels
         self.__kernel_size = kernel_size
         self.__stride = stride
         self.__dilation = dilation
+        if padding is None:
+            # 'same' padding
+            self.__padding = (self.__dilation * (self.__kernel_size - 1)) // 2
+        elif isinstance(padding, int):
+            self.__padding = padding
         self.__groups = groups
         self.__bias = bias
         self.__kw_activation = kwargs.get("kw_activation", {})
@@ -403,10 +404,14 @@ class DownSample(nn.Sequential):
 
         if self.__mode == 'max':
             if self.__in_channels == self.__out_channels:
-                down_layer = nn.MaxPool1d(kernel_size=self.__down_scale, padding=self.__padding)
+                down_layer = nn.MaxPool1d(
+                    kernel_size=self.__down_scale, padding=self.__padding
+                )
             else:
                 down_layer = nn.Sequential((
-                    nn.MaxPool1d(kernel_size=self.__down_scale, padding=self.__padding),
+                    nn.MaxPool1d(
+                        kernel_size=self.__down_scale, padding=self.__padding
+                    ),
                     nn.Conv1d(
                         self.__in_channels, self.__out_channels, 
                         kernel_size=1, groups=self.__groups, bias=False
@@ -414,14 +419,18 @@ class DownSample(nn.Sequential):
                 ))
         elif self.__mode == 'avg':
             if self.__in_channels == self.__out_channels:
-                down_layer = nn.AvgPool1d(kernel_size=self.__down_scale, padding=self.__padding)
+                down_layer = nn.AvgPool1d(
+                    kernel_size=self.__down_scale, padding=self.__padding
+                )
             else:
                 down_layer = nn.Sequential(
                     (
-                        nn.AvgPool1d(kernel_size=self.__down_scale, padding=self.__padding),
+                        nn.AvgPool1d(
+                            kernel_size=self.__down_scale, padding=self.__padding
+                        ),
                         nn.Conv1d(
                             self.__in_channels,self.__out_channels,
-                            kernel_size=1,groups=self.__groups, bias=False,
+                            kernel_size=1, groups=self.__groups, bias=False,
                         ),
                     )
                 )

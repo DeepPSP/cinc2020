@@ -18,6 +18,8 @@ __all__ = [
     "resnet_stanford",
     "cpsc_block_basic", "cpsc_block_mish", "cpsc_block_swish",
     "cpsc_2018", "cpsc_2018_leadwise",
+    "multi_scopic_block",
+    "multi_scopic", "multi_scopic_leadwise",
 ]
 
 
@@ -112,7 +114,7 @@ resnet.bias = False
 
 resnet_leadwise = deepcopy(resnet)
 resnet_leadwise.groups = 12
-resnet_leadwise.init_num_filters=96
+resnet_leadwise.init_num_filters = 96
 
 
 resnet_block_basic = ED()
@@ -244,17 +246,11 @@ multi_scopic.scopes = [
     ],
 ]
 multi_scopic.filter_lengths = [
-    [
-        11, 7, 5,
-    ],
-    [
-        11, 7, 5,
-    ],
-    [
-        11, 7, 5,
-    ],
+    [11, 7, 5,],
+    [11, 7, 5,],
+    [11, 7, 5,],
 ]
-multi_scopic.subsample_lengths = 2
+multi_scopic.subsample_lengths = list(repeat(2, len(multi_scopic.scopes)))
 _base_num_filters = 36
 multi_scopic.num_filters = [
     [
@@ -273,6 +269,16 @@ multi_scopic.num_filters = [
         _base_num_filters*16,
     ],
 ]
+multi_scopic.dropouts = [
+    [0, 0.2, 0],
+    [0, 0.2, 0],
+    [0, 0.2, 0],
+]
+multi_scopic.bias = True
+multi_scopic.kernel_initializer = "he_normal"
+multi_scopic.kw_initializer = {}
+multi_scopic.activation = "relu"
+multi_scopic.kw_activation = {}
 
 multi_scopic_leadwise = deepcopy(multi_scopic)
 multi_scopic_leadwise.groups = 12
@@ -285,5 +291,9 @@ multi_scopic_leadwise.num_filters = [
 
 
 multi_scopic_block = ED()
-multi_scopic_block
-
+multi_scopic_block.subsample_mode = 'max'  # or 'conv', 'avg', 'nearest', 'linear', 'bilinear'
+multi_scopic_block.bias = multi_scopic.bias
+multi_scopic_block.kernel_initializer = multi_scopic.kernel_initializer
+multi_scopic_block.kw_initializer = deepcopy(multi_scopic.kw_initializer)
+multi_scopic_block.activation = multi_scopic.activation
+multi_scopic_block.kw_activation =deepcopy( multi_scopic.kw_activation)

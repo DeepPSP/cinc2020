@@ -11,6 +11,8 @@ from .cnn import (
     resnet_block_stanford, resnet_stanford,
     resnet_block_basic, resnet_bottle_neck,
     resnet, resnet_leadwise,
+    multi_scopic_block,
+    multi_scopic, multi_scopic_leadwise,
 )
 from .rnn import (
     lstm,
@@ -50,6 +52,11 @@ ECG_CRNN_CONFIG.cnn.resnet_leadwise.block = deepcopy(resnet_block_basic)
 
 ECG_CRNN_CONFIG.cnn.resnet_stanford = deepcopy(resnet_stanford)
 ECG_CRNN_CONFIG.cnn.resnet_stanford.block = deepcopy(resnet_block_stanford)
+
+ECG_CRNN_CONFIG.cnn.multi_scopic = deepcopy(multi_scopic)
+ECG_CRNN_CONFIG.cnn.multi_scopic.block = deepcopy(multi_scopic_block)
+ECG_CRNN_CONFIG.cnn.multi_scopic_leadwise = deepcopy(multi_scopic_leadwise)
+ECG_CRNN_CONFIG.cnn.multi_scopic_leadwise.block = deepcopy(multi_scopic_block)
 
 
 # rnn part
