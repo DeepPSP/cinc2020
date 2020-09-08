@@ -15,6 +15,7 @@ import multiprocessing as mp
 from cfg import ModelCfg, TrainCfg
 from data_reader import CINC2020Reader as CR
 from dataset import CINC2020
+from models.special_detectors import special_detectors
 from models.utils.torch_utils import default_collate_fn as collate_fn
 from utils.utils_nn import extend_predictions
 from utils.scoring_metrics import evaluate_12ECG_score
@@ -51,6 +52,7 @@ def eval_all(tranches:Optional[str]=None) -> pd.DataFrame:
         ds_config.tranches_for_training = tranches
     ds = CINC2020(config=ds_config, training=False)
 
+    print("start collecting results...")
     time.sleep(3)
 
     truth_labels, truth_array = [], []
@@ -110,8 +112,12 @@ def eval_all(tranches:Optional[str]=None) -> pd.DataFrame:
     return df_eval_res
 
 
+@DeprecationWarning
 def eval_all_parallel(tranches:Optional[str]=None) -> pd.DataFrame:
-    """ NOT finished, not checked,
+    """
+    since signal preprocessing in `special_detectors` already uses `multiprocessing`,
+    it would raise
+    ``AssertionError: daemonic processes are not allowed to have children``
     """
     batch_size = 16
 
@@ -137,10 +143,18 @@ def eval_all_parallel(tranches:Optional[str]=None) -> pd.DataFrame:
     binary_predictions = np.array([]).reshape(0, len(ModelCfg.full_classes))
     scalar_predictions = np.array([]).reshape(0, len(ModelCfg.full_classes))
 
+    print("start collecting results...")
+    time.sleep(3)
+
     with tqdm(total=len(ds)) as pbar:
         for step, (signals, labels) in enumerate(data_loader):
             signals = signals.to(device=device, dtype=_DTYPE)
             labels = labels.numpy()
+            labels = extend_predictions(
+                labels,
+                ds.all_classes,
+                ModelCfg.full_classes,
+            )
             truth_array = np.concatenate((truth_array, labels))
 
             dl_scores = []
@@ -190,7 +204,7 @@ def eval_all_parallel(tranches:Optional[str]=None) -> pd.DataFrame:
             with mp.Pool(processes=batch_size) as pool:
                 sd_conclusion = pool.starmap(
                     func=_run_special_detector_once,
-                    iterable=signals.tolist(),
+                    iterable=[(s,) for s in signals.tolist()],
                 )
             sd_conclusion = np.array(sd_conclusion)
 
