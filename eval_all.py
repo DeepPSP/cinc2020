@@ -83,8 +83,9 @@ def eval_all(tranches:Optional[str]=None) -> pd.DataFrame:
         df_eval_res.at[idx, 'binary_predictions'] = \
             classes[np.where(binary_predictions[idx]==1)[0]].tolist()
         df_eval_res.at[idx, 'truth_labels'] = truth_labels[idx]
-    classes = classes.tolist()
+    df_eval_res.index = ds.records
 
+    classes = classes.tolist()
     auroc, auprc, accuracy, f_measure, f_beta_measure, g_beta_measure, challenge_metric = \
         evaluate_12ECG_score(
             classes=classes,
@@ -212,6 +213,7 @@ def eval_all_parallel(tranches:Optional[str]=None) -> pd.DataFrame:
         df_eval_res.at[idx, 'binary_predictions'] = \
             np.array(ModelCfg.full_classes)[np.where(binary_predictions[idx]==1)[0]].tolist()
         df_eval_res.at[idx, 'truth_labels'] = truth_labels[idx]
+    df_eval_res.index = ds.records
 
     auroc, auprc, accuracy, f_measure, f_beta_measure, g_beta_measure, challenge_metric = \
         evaluate_12ECG_score(
