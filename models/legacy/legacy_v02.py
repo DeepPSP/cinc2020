@@ -1,5 +1,5 @@
 """
-CRNN structure models,
+validated CRNN structure models,
 for classifying ECG arrhythmias
 """
 from copy import deepcopy
@@ -7,40 +7,41 @@ from itertools import repeat
 from typing import Union, Optional, Tuple, Sequence, NoReturn
 from numbers import Real, Number
 
+import numpy as np
+np.set_printoptions(precision=5, suppress=True)
+import pandas as pd
 import torch
 from torch import nn
 from torch import Tensor
 import torch.nn.functional as F
 from easydict import EasyDict as ED
 
-torch.set_default_tensor_type(torch.DoubleTensor)
-
-from cfg import ModelCfg
-from model_configs.ati_cnn import ATI_CNN_CONFIG
-from model_configs.cpsc import CPSC_CONFIG
+# from cfg import ModelCfg
+from model_configs import ECG_CRNN_CONFIG
+from cfg import TrainCfg, ModelCfg
+# from model_configs.cpsc import CPSC_CONFIG
 from models.utils.torch_utils import (
     Mish, Swish, Activations,
     Bn_Activation, Conv_Bn_Activation,
     DownSample,
     ZeroPadding,
-    StackedLSTM,
+    StackedLSTM, BidirectionalLSTM,
     # AML_Attention, AML_GatedAttention,
-    AttentionWithContext, MultiHeadAttention,
+    AttentionWithContext,
+    SelfAttention, MultiHeadAttention,
+    AttentivePooling,
 )
 from utils.utils_nn import compute_conv_output_shape
 from utils.misc import dict_to_str
 
 
-if ModelCfg.torch_dtype.lower() == 'double':
-    torch.set_default_tensor_type(torch.DoubleTensor)
-
-
 __all__ = [
     "ECG_CRNN",
-    "VGGBlock", "VGG16",
-    "CPSCBlock", "CPSCCNN",
-    "ResNetBasicBlock", "ResNetBottleNeck", "ResNet",
 ]
+
+
+if ModelCfg.torch_dtype.lower() == 'double':
+    torch.set_default_tensor_type(torch.DoubleTensor)
 
 
 class VGGBlock(nn.Sequential):
@@ -154,7 +155,7 @@ class VGGBlock(nn.Sequential):
 
 class VGG16(nn.Sequential):
     """
-    CNN feature extractor of the CRNN models proposed in refs of `ECG_CRNN`
+    CNN feature extractor of the CRNN models proposed in refs of `ATI_CNN`
     """
     __DEBUG__ = True
     __name__ = "VGG16"
@@ -378,68 +379,6 @@ class ResNetBasicBlock(nn.Module):
             output_shape = module.compute_output_shape(_seq_len, batch_size)
             _, _, _seq_len = output_shape
         return output_shape
-
-    @property
-    def module_size(self):
-        """
-        """
-        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
-        n_params = sum([np.prod(p.size()) for p in module_parameters])
-        return n_params
-
-
-class ResNetBottleNeck(nn.Module):
-    """
-    to write
-    """
-    __DEBUG__ = True
-    __name__ = "ResNetBottleNeck"
-    expansion = 4
-
-    def __init__(self, in_channels:int, num_filters:int, subsample_length:int, groups:int=1, dilation:int=1, **config) -> NoReturn:
-        """ NOT finished, NOT checked,
-
-        Parameters:
-        -----------
-        in_channels: int,
-            number of features (channels) of the input
-        num_filters: int,
-            number of filters for the convolutional layers
-        subsample_length: int,
-            subsample length,
-            including pool size for short cut, and stride for the top convolutional layer
-        groups: int, default 1,
-            pattern of connections between inputs and outputs,
-            for more details, ref. `nn.Conv1d`
-        config: dict,
-            other hyper-parameters, including
-            filter length (kernel size), activation choices, weight initializer,
-            and short cut patterns, etc.
-        """
-        super().__init__()
-        raise NotImplementedError
-
-    def forward(self, input:Tensor) -> Tensor:
-        """
-        """
-        raise NotImplementedError
-
-    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
-        """ finished, checked,
-
-        Parameters:
-        -----------
-        seq_len: int,
-            length of the 1d sequence
-        batch_size: int, optional,
-            the batch size, can be None
-
-        Returns:
-        --------
-        output_shape: sequence,
-            the output shape of this block, given `seq_len` and `batch_size`
-        """
-        raise NotImplementedError
 
     @property
     def module_size(self):
@@ -806,85 +745,6 @@ class CPSCCNN(nn.Sequential):
         return n_params
 
 
-class MultiScopicBasicBlock(nn.Sequential):
-    """
-    """
-    __DEBUG__ = True
-    __name__ = "MultiScopicBasicBlock"
-
-    def __init__(self, in_channels:int, scopes:Union[int,Sequence[int]], num_filters:Union[int,Sequence[int]], filter_lengths:Union[int,Sequence[int]], subsample_lengths:Union[int,Sequence[int]], **config):
-        """
-        """
-        super().__init__()
-        self.__in_channels = in_channels
-        self.__scopes = scopes
-
-    def forward(self, input:Tensor) -> Tensor:
-        """
-        """
-        raise NotImplementedError
-
-    @property
-    def module_size(self):
-        """
-        """
-        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
-        n_params = sum([np.prod(p.size()) for p in module_parameters])
-        return n_params
-
-
-class MultiScopicBranch(nn.Sequential):
-    """
-    """
-    __DEBUG__ = True
-    __name__ = "MultiScopicBranch"
-
-    def __init__(self, in_channels:int, scopes:Union[int,Sequence[int]], num_filters:Union[int,Sequence[int]], filter_lengths:Union[int,Sequence[int]], subsample_lengths:Union[int,Sequence[int]], **config):
-        """
-        """
-        super().__init__()
-        self.__in_channels = in_channels
-        self.__scopes = scopes
-
-    def forward(self, input:Tensor) -> Tensor:
-        """
-        """
-        raise NotImplementedError
-
-    @property
-    def module_size(self):
-        """
-        """
-        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
-        n_params = sum([np.prod(p.size()) for p in module_parameters])
-        return n_params
-
-
-class MultiScopicCNN(nn.Module):
-    """
-    """
-    __DEBUG__ = True
-    __name__ = "MultiScopicCNN"
-
-    def __init__(self, in_channels:int, **config) -> NoReturn:
-        """
-        """
-        super().__init__()
-
-    def forward(self, input:Tensor) -> Tensor:
-        """
-        """
-        raise NotImplementedError
-
-    @property
-    def module_size(self):
-        """
-        """
-        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
-        n_params = sum([np.prod(p.size()) for p in module_parameters])
-        return n_params
-
-
 class ECG_CRNN(nn.Module):
     """
 
@@ -998,7 +858,10 @@ class ECG_CRNN(nn.Module):
         self.sigmoid = nn.Sigmoid()  # for making inference
 
     def forward(self, input:Tensor) -> Tensor:
-        """
+        """ finished, partly checked (rnn part might have bugs),
+
+        input: of shape (batch_size, channels, seq_len)
+        output: of shape (batch_size, n_classes)
         """
         x = self.cnn(input)  # batch_size, channels, seq_len
         # print(f"cnn out shape = {x.shape}")
@@ -1027,8 +890,27 @@ class ECG_CRNN(nn.Module):
         return pred
 
     @torch.no_grad()
-    def inference(self, input:Tensor, class_names:bool=False, bin_pred_thr:float=0.5) -> Union[np.ndarray, pd.DataFrame]:
-        """
+    def inference(self, input:Tensor, class_names:bool=False, bin_pred_thr:float=0.5) -> Tuple[Union[np.ndarray, pd.DataFrame], np.ndarray]:
+        """ finished, checked,
+
+        auxiliary function to `forward`,
+
+        Parameters:
+        -----------
+        input: Tensor,
+            input tensor, of shape (batch_size, channels, seq_len)
+        class_names: bool, default False,
+            if True, the returned scalar predictions will be a `DataFrame`,
+            with class names for each scalar prediction
+        bin_pred_thr: float, default 0.5,
+            the threshold for making binary predictions from scalar predictions
+
+        Returns:
+        --------
+        pred: ndarray or DataFrame,
+            scalar predictions, (and binary predictions if `class_names` is True)
+        bin_pred: ndarray,
+            the array (with values 0, 1 for each class) of binary prediction
         """
         if "NSR" in self.classes:
             nsr_cid = self.classes.index("NSR")
@@ -1059,7 +941,6 @@ class ECG_CRNN(nn.Module):
             for row_idx in range(len(pred)):
                 pred.at[row_idx, 'bin_pred'] = \
                     np.array(self.classes)[np.where(bin_pred==1)[0]].tolist()
-            return pred
         return pred, bin_pred
 
     @property

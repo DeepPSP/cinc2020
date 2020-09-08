@@ -222,3 +222,68 @@ del cpsc_block_swish.kw_activation
 
 
 # TODO: add more
+
+# configs of multi_scopic cnn net are set by path, not by level
+multi_scopic = ED()
+multi_scopic.groups = 1
+multi_scopic.scopes = [
+    [
+        [1,],
+        [1,1,],
+        [1,1,1,],
+    ],
+    [
+        [2,],
+        [2,4,],
+        [8,8,8,],
+    ],
+    [
+        [4,],
+        [4,8,],
+        [16,32,64,],
+    ],
+]
+multi_scopic.filter_lengths = [
+    [
+        11, 7, 5,
+    ],
+    [
+        11, 7, 5,
+    ],
+    [
+        11, 7, 5,
+    ],
+]
+multi_scopic.subsample_lengths = 2
+_base_num_filters = 36
+multi_scopic.num_filters = [
+    [
+        _base_num_filters*4,
+        _base_num_filters*8,
+        _base_num_filters*16,
+    ],
+    [
+        _base_num_filters*4,
+        _base_num_filters*8,
+        _base_num_filters*16,
+    ],
+    [
+        _base_num_filters*4,
+        _base_num_filters*8,
+        _base_num_filters*16,
+    ],
+]
+
+multi_scopic_leadwise = deepcopy(multi_scopic)
+multi_scopic_leadwise.groups = 12
+_base_num_filters = 96
+multi_scopic_leadwise.num_filters = [
+    _base_num_filters*4,
+    _base_num_filters*8,
+    _base_num_filters*16,
+]
+
+
+multi_scopic_block = ED()
+multi_scopic_block
+
