@@ -445,6 +445,11 @@ def get_args(**kwargs):
         help='the tranches for training',
         dest='tranches_for_training')
     parser.add_argument(
+        '-b', '--batch-size',
+        type=int, default=128,
+        help='the batch size for training',
+        dest='batch_size')
+    parser.add_argument(
         '-c', '--cnn-name',
         type=str, default='resnet',
         help='choice of cnn feature extractor',
