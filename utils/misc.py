@@ -214,20 +214,28 @@ def dict_to_str(d:Union[dict, list, tuple], current_depth:int=1, indent_spaces:i
                 val = ", ".join([item for item in val])
                 s += f"{prefix}{val}\n"
         else:
-            for v in d:
+            for idx, v in enumerate(d):
                 if isinstance(v, (dict, list, tuple)):
-                    s += f"{prefix}{dict_to_str(v, current_depth+1)}\n"
+                    s += f"{prefix}{dict_to_str(v, current_depth+1)}"
                 else:
                     val = f"\042{v}\042" if isinstance(v, str) else v
-                    s += f"{prefix}{val}\n"
+                    s += f"{prefix}{val}"
+                if idx < len(d) - 1:
+                    s += ",\n"
+                else:
+                    s += "\n"
     elif isinstance(d, dict):
-        for k, v in d.items():
+        for idx, (k, v) in enumerate(d.items()):
             key = f"\042{k}\042" if isinstance(k, str) else k
             if isinstance(v, (dict, list, tuple)):
-                s += f"{prefix}{key}: {dict_to_str(v, current_depth+1)}\n"
+                s += f"{prefix}{key}: {dict_to_str(v, current_depth+1)}"
             else:
                 val = f"\042{v}\042" if isinstance(v, str) else v
-                s += f"{prefix}{key}: {val}\n"
+                s += f"{prefix}{key}: {val}"
+            if idx < len(d) - 1:
+                s += ",\n"
+            else:
+                s += "\n"
     s += unit_indent*(current_depth-1)
     s = f"{{{s}}}" if isinstance(d, dict) else f"[{s}]"
     return s
