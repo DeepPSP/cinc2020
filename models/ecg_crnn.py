@@ -781,7 +781,7 @@ class ECG_CRNN(nn.Module):
         elif "resnet" in cnn_choice:
             self.cnn = ResNet(self.n_leads, **(self.config.cnn[cnn_choice]))
             rnn_input_size = \
-                2**len(self.config.cnn.resnet.num_blocks) * self.config.cnn.resnet.init_num_filters
+                2**len(self.config.cnn[cnn_choice].num_blocks) * self.config.cnn[cnn_choice].init_num_filters
         else:
             raise NotImplementedError
         # self.cnn_output_len = cnn_output_shape[2]

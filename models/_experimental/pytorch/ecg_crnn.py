@@ -1135,16 +1135,17 @@ class ECG_CRNN(nn.Module):
         cnn_choice = self.config.cnn.name.lower()
         if "vgg16" in cnn_choice:
             self.cnn = VGG16(self.n_leads, **(self.config.cnn[cnn_choice]))
-            rnn_input_size = self.config.cnn.vgg16.num_filters[-1]
+            # rnn_input_size = self.config.cnn.vgg16.num_filters[-1]
         elif "resnet" in cnn_choice:
             self.cnn = ResNet(self.n_leads, **(self.config.cnn[cnn_choice]))
-            rnn_input_size = \
-                2**len(self.config.cnn.resnet.num_blocks) * self.config.cnn.resnet.init_num_filters
+            # rnn_input_size = \
+            #     2**len(self.config.cnn[cnn_choice].num_blocks) * self.config.cnn[cnn_choice].init_num_filters
         elif "multi_scopic" in cnn_choice:
             self.cnn = MultiScopicCNN(self.n_leads, **(self.config.cnn[cnn_choice]))
-            rnn_input_size = self.cnn.compute_output_shape(None, None)[1]
+            # rnn_input_size = self.cnn.compute_output_shape(None, None)[1]
         else:
             raise NotImplementedError
+        rnn_input_size = self.cnn.compute_output_shape(self.input_len, batch_size=None)[1]
 
         if self.__DEBUG__:
             cnn_output_shape = self.cnn.compute_output_shape(self.input_len, batch_size=None)
