@@ -284,9 +284,21 @@ multi_scopic_leadwise = deepcopy(multi_scopic)
 multi_scopic_leadwise.groups = 12
 _base_num_filters = 96
 multi_scopic_leadwise.num_filters = [
-    _base_num_filters*4,
-    _base_num_filters*8,
-    _base_num_filters*16,
+    [
+        _base_num_filters*4,
+        _base_num_filters*8,
+        _base_num_filters*16,
+    ],
+    [
+        _base_num_filters*4,
+        _base_num_filters*8,
+        _base_num_filters*16,
+    ],
+    [
+        _base_num_filters*4,
+        _base_num_filters*8,
+        _base_num_filters*16,
+    ],
 ]
 
 
