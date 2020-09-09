@@ -4,6 +4,7 @@ for classifying ECG arrhythmias
 """
 from copy import deepcopy
 from itertools import repeat
+from collections import OrderedDict
 from typing import Union, Optional, Tuple, Sequence, NoReturn
 from numbers import Real, Number
 
