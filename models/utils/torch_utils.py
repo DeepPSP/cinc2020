@@ -5,6 +5,7 @@ import sys
 from math import sqrt
 from itertools import repeat
 from typing import Union, Sequence, Tuple, Optional, NoReturn
+from numbers import Real
 
 from packaging import version
 import numpy as np
@@ -38,11 +39,12 @@ __all__ = [
     "Bn_Activation", "Conv_Bn_Activation",
     "DownSample",
     "BidirectionalLSTM", "StackedLSTM",
-    "AML_Attention", "AML_GatedAttention",
+    # "AML_Attention", "AML_GatedAttention",
     "AttentionWithContext",
     "MultiHeadAttention", "SelfAttention",
     "AttentivePooling",
     "ZeroPadding",
+    "SeqLin",
     "WeightedBCELoss", "BCEWithLogitsWithClassWeightLoss",
     "default_collate_fn",
 ]
@@ -286,7 +288,7 @@ class Conv_Bn_Activation(nn.Sequential):
                 kernel_initializer(conv_layer.weight)
             elif isinstance(kernel_initializer, str) and kernel_initializer.lower() in Initializers.keys():
                 Initializers[kernel_initializer.lower()](conv_layer.weight, **self.__kw_initializer)
-            else:  # TODO: add more activations
+            else:  # TODO: add more initializers
                 raise ValueError(f"initializer `{kernel_initializer}` not supported")
         self.add_module("conv1d", conv_layer)
 
@@ -493,7 +495,7 @@ class DownSample(nn.Sequential):
         Returns:
         --------
         output_shape: sequence,
-            the output shape of this `Bn_Activation` layer, given `seq_len` and `batch_size`
+            the output shape of this `DownSample` layer, given `seq_len` and `batch_size`
         """
         if self.__mode == 'conv':
             out_seq_len = compute_conv_output_shape(
@@ -735,6 +737,7 @@ class StackedLSTM(nn.Sequential):
 
 # ---------------------------------------------
 # attention mechanisms, from various sources
+@DeprecationWarning
 class AML_Attention(nn.Module):
     """ NOT checked,
 
@@ -767,6 +770,8 @@ class AML_Attention(nn.Module):
         A = self.attention(input)  # NxK
         return A
 
+
+@DeprecationWarning
 class AML_GatedAttention(nn.Module):
     """ NOT checked,
 
@@ -925,7 +930,7 @@ class AttentionWithContext(nn.Module):
         Returns:
         --------
         output_shape: sequence,
-            the output shape of this `ZeroPadding` layer, given `seq_len` and `batch_size`
+            the output shape of this `AttentionWithContext` layer, given `seq_len` and `batch_size`
         """
         output_shape = (batch_size, self.__out_channels, seq_len)
         return output_shape
@@ -1075,7 +1080,7 @@ class MultiHeadAttention(nn.Module):
         Returns:
         --------
         output_shape: sequence,
-            the output shape of this MHA layer, given `seq_len` and `batch_size`
+            the output shape of this `MHA` layer, given `seq_len` and `batch_size`
         """
         output_shape = (seq_len, batch_size, self.in_features*self.head_num)
         return output_shape
@@ -1156,7 +1161,7 @@ class SelfAttention(nn.Module):
         Returns:
         --------
         output_shape: sequence,
-            the output shape of this MHA layer, given `seq_len` and `batch_size`
+            the output shape of this `SelfAttention` layer, given `seq_len` and `batch_size`
         """
         output_shape = (seq_len, batch_size, self.in_features)
         return output_shape
@@ -1188,6 +1193,7 @@ class AttentivePooling(nn.Module):
         activation: str or Module,
             name of the activation or an activation `Module`
         dropout: float, default 0.2,
+            dropout ratio before computing attention scores
         """
         super().__init__()
         self.__in_channels = in_channels
@@ -1232,7 +1238,7 @@ class AttentivePooling(nn.Module):
         Returns:
         --------
         output_shape: sequence,
-            the output shape of this AttentivePooling layer, given `seq_len` and `batch_size`
+            the output shape of this `AttentivePooling` layer, given `seq_len` and `batch_size`
         """
         output_shape = (batch_size, self.__in_channels)
         return output_shape
@@ -1308,6 +1314,119 @@ class ZeroPadding(nn.Module):
             the output shape of this `ZeroPadding` layer, given `seq_len` and `batch_size`
         """
         output_shape = (batch_size, self.__out_channels, seq_len)
+        return output_shape
+
+    @property
+    def module_size(self):
+        """
+        """
+        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        n_params = sum([np.prod(p.size()) for p in module_parameters])
+        return n_params
+
+
+class SeqLin(nn.Sequential):
+    """
+    Sequential linear,
+    might be useful in learning non-linear classifying hyper-surfaces
+    """
+    __DEBUG__ = False
+    __name__ = "SeqLin"
+
+    def __init__(self, in_channels:int, out_channels:Sequence[int], activation:str="relu", kernel_initializer:Optional[str]=None, bias:bool=True, dropouts:Union[float,Sequence[float]]=0.0, **kwargs) -> NoReturn:
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        in_channels: int,
+            number of channels in the input
+        out_channels: sequence of int,
+            number of ouput channels for each linear layer
+        activation: str, default "relu",
+            name of activation after each linear layer
+        kernel_initializer: str, optional,
+            name of kernel initializer for `weight` of each linear layer
+        bias: bool, default True,
+            if True, each linear layer will have a learnable bias vector
+        dropouts: float or sequence of float, default 0,
+            dropout ratio(s) (if > 0) after each (activation after each) linear layer
+        """
+        super().__init__()
+        self.__in_channels = in_channels
+        self.__out_channels = out_channels
+        self.__num_layers = len(self.__out_channels)
+        self.__kw_activation = kwargs.get("kw_activation", {})
+        self.__kw_initializer = kwargs.get("kw_initializer", {})
+        if activation.lower() in Activations.keys():
+            self.__activation = activation.lower()
+        else:
+            raise ValueError(f"activation `{activation}` not supported")
+        if kernel_initializer:
+            if kernel_initializer.lower() in Initializers.keys():
+                self.__kernel_initializer = Initializers[kernel_initializer.lower()]
+            else:
+                raise ValueError(f"initializer `{kernel_initializer}` not supported")
+        else:
+            self.__kernel_initializer = None
+        self.__bias = bias
+        if isinstance(dropouts, Real):
+            self.__dropouts = list(repeat(dropouts, self.__num_layers))
+        else:
+            self.__dropouts = dropouts
+            assert len(self.__dropouts) == self.__num_layers, \
+                f"`out_channels` indicates {self.__num_layers} linear layers, while `dropouts` indicates {len(self.__dropouts)}"
+        
+        lin_in_channels = self.__in_channels
+        for idx in range(self.__num_layers):
+            lin_layer = nn.Linear(
+                in_features=lin_in_channels,
+                out_features=self.__out_channels[idx],
+                bias=self.__bias,
+            )
+            if self.__kernel_initializer:
+                self.__kernel_initializer(lin_layer.weight, **self.__kw_initializer)
+            self.add_module(
+                f"lin_{idx}",
+                lin_layer,
+            )
+            self.add_module(
+                f"act_{idx}",
+                Activations[self.__activation](**self.__kw_activation),
+            )
+            if self.__dropouts[idx] > 0:
+                self.add_module(
+                    f"dropout_{idx}",
+                    nn.Dropout(self.__dropouts[idx]),
+                )
+            lin_in_channels = self.__out_channels[idx]
+
+    def forward(self, input:Tensor) -> Tensor:
+        """
+        input: of shape (batch_size, channels) or (batch_size, seq_len, channels)
+        """
+        output = super().forward(input)
+        return output
+
+    def compute_output_shape(self, seq_len:Optional[int]=None, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        seq_len: int, optional,
+            length of the 1d sequence,
+            if is None, then the input is composed of single feature vectors for each batch
+        batch_size: int, optional,
+            the batch size, can be None
+
+        Returns:
+        --------
+        output_shape: sequence,
+            the output shape of this `SeqLin` layer, given `seq_len` and `batch_size`
+        """
+        if seq_len is None:
+            output_shape = (batch_size, self.__out_channels[-1])
+        else:
+            output_shape = (batch_size, seq_len, self.__out_channels[-1])
         return output_shape
 
     @property
