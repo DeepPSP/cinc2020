@@ -38,7 +38,8 @@ attention.hidden_sizes = [12*24, 12*6]
 # might be able to let the model learn better classifying hyper-surfaces
 linear = ED()
 linear.out_channels = [
-    512, 128,
+    256, 64,
 ]
-linear.dropout = 0.2
-linear.activation = 'relu'
+linear.bias = True
+linear.dropouts = 0.2
+linear.activation = 'mish'

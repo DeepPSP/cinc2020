@@ -20,7 +20,7 @@ from easydict import EasyDict as ED
 torch.set_default_tensor_type(torch.DoubleTensor)
 
 from cfg import ModelCfg
-from model_configs.ati_cnn import ATI_CNN_CONFIG
+from model_configs import ECG_CRNN_CONFIG
 from model_configs.cpsc import CPSC_CONFIG
 from models.utils.torch_utils import (
     Mish, Swish, Activations,
@@ -30,6 +30,7 @@ from models.utils.torch_utils import (
     StackedLSTM,
     # AML_Attention, AML_GatedAttention,
     AttentionWithContext, MultiHeadAttention,
+    SeqLin,
 )
 from utils.utils_nn import compute_conv_output_shape
 from utils.misc import dict_to_str
@@ -929,7 +930,7 @@ class MultiScopicBranch(nn.Sequential):
     __DEBUG__ = True
     __name__ = "MultiScopicBranch"
 
-    def __init__(self, in_channels:int, scopes:Sequence[Sequence[int]], num_filters:Union[Sequence[int],Sequence[Sequence[int]]], filter_lengths:Union[Sequence[int],Sequence[Sequence[int]]], subsample_lengths:Union[int,Sequence[int]], groups:int=1, **config):
+    def __init__(self, in_channels:int, scopes:Sequence[Sequence[int]], num_filters:Union[Sequence[int],Sequence[Sequence[int]]], filter_lengths:Union[Sequence[int],Sequence[Sequence[int]]], subsample_lengths:Union[int,Sequence[int]], groups:int=1, **config) -> NoReturn:
         """
 
         Parameters:
@@ -1114,7 +1115,7 @@ class ECG_CRNN(nn.Module):
             list of the classes for classification
         input_len: int, optional,
             sequence length (last dim.) of the input,
-            defaults to `TrainCfg.input_len`,
+            defaults to `ModelCfg.dl_siglen`,
             will not be used in the inference mode
         config: dict, optional,
             other hyper-parameters, including kernel sizes, etc.
@@ -1124,7 +1125,7 @@ class ECG_CRNN(nn.Module):
         self.classes = list(classes)
         self.n_classes = len(classes)
         self.n_leads = 12
-        self.input_len = input_len or TrainCfg.input_len
+        self.input_len = input_len or ModelCfg.dl_siglen
         self.config = deepcopy(ECG_CRNN_CONFIG)
         self.config.update(config or {})
         if self.__DEBUG__:
@@ -1144,7 +1145,7 @@ class ECG_CRNN(nn.Module):
             rnn_input_size = self.cnn.compute_output_shape(None, None)[1]
         else:
             raise NotImplementedError
-        # self.cnn_output_len = cnn_output_shape[2]
+
         if self.__DEBUG__:
             cnn_output_shape = self.cnn.compute_output_shape(self.input_len, batch_size=None)
             print(f"cnn output shape (batch_size, features, seq_len) = {cnn_output_shape}")
@@ -1153,6 +1154,16 @@ class ECG_CRNN(nn.Module):
             self.rnn = None
             _, clf_input_size, _ = self.cnn.compute_output_shape(self.input_len, batch_size=None)
             self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
+        elif self.config.rnn.name.lower() == 'linear':
+            self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
+            self.rnn = SeqLin(
+                in_channels=rnn_input_size,
+                out_channels=self.config.rnn.linear.out_channels,
+                activation=self.config.rnn.linear.activation,
+                bias=self.config.rnn.linear.bias,
+                dropouts=self.config.rnn.linear.dropouts,
+            )
+            clf_input_size = self.rnn.compute_output_shape(None,None)[-1]
         elif self.config.rnn.name.lower() == 'lstm':
             hidden_sizes = self.config.rnn.lstm.hidden_sizes + [self.n_classes]
             if self.__DEBUG__:
@@ -1201,6 +1212,8 @@ class ECG_CRNN(nn.Module):
 
         # input of `self.clf` has shape: batch_size, channels
         self.clf = nn.Linear(clf_input_size, self.n_classes)
+
+        # sigmoid for inference
         self.sigmoid = nn.Sigmoid()  # for making inference
 
     def forward(self, input:Tensor) -> Tensor:
@@ -1208,7 +1221,7 @@ class ECG_CRNN(nn.Module):
         """
         x = self.cnn(input)  # batch_size, channels, seq_len
         # print(f"cnn out shape = {x.shape}")
-        if self.rnn:
+        if self.config.rnn.name.lower() in ['lstm', 'attention']:
             # (batch_size, channels, seq_len) -> (seq_len, batch_size, input_size)
             x = x.permute(2,0,1)
             x = self.rnn(x)
@@ -1222,7 +1235,13 @@ class ECG_CRNN(nn.Module):
                 # x of shape (batch_size, channels)
                 pass
             # print(f"rnn out shape = {x.shape}")
-        else:
+        elif self.config.rnn.name.lower() in ['linear']:
+            # (batch_size, channels, seq_len) --> (batch_size, channels)
+            x = self.max_pool(x)
+            x = x.squeeze(dim=-1)
+            # seq_lin
+            x = self.rnn(x)
+        else:  # 'none'
             # (batch_size, channels, seq_len) --> (batch_size, channels)
             x = self.max_pool(x)
             # print(f"max_pool out shape = {x.shape}")

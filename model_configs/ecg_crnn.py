@@ -17,6 +17,7 @@ from .cnn import (
 from .rnn import (
     lstm,
     attention,
+    linear,
 )
 
 
@@ -61,10 +62,11 @@ ECG_CRNN_CONFIG.cnn.multi_scopic_leadwise.block = deepcopy(multi_scopic_block)
 
 # rnn part
 ECG_CRNN_CONFIG.rnn = ED()
-ECG_CRNN_CONFIG.rnn.name = 'none'
+ECG_CRNN_CONFIG.rnn.name = 'linear'  # 'none', 'lstm', 'attention'
 
 ECG_CRNN_CONFIG.rnn.lstm = deepcopy(lstm)
 ECG_CRNN_CONFIG.rnn.attention = deepcopy(attention)
+ECG_CRNN_CONFIG.rnn.linear = deepcopy(linear)
 
 
 # global pooling
