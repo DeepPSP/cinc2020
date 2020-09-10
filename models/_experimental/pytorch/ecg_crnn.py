@@ -1,5 +1,5 @@
 """
-CRNN structure models,
+C(R)NN structure models,
 for classifying ECG arrhythmias
 """
 from copy import deepcopy

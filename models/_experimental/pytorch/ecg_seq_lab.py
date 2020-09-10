@@ -1,5 +1,8 @@
 """
-Sequence labeling nets, for wave delineation
+Sequence labeling nets, for wave delineation,
+
+the labeling granularity is the frequency of the input signal,
+divided by the length (counted by the number of basic blocks) of each branch
 """
 
 if ModelCfg.torch_dtype.lower() == 'double':
@@ -330,26 +333,98 @@ class MultiScopicCNN(nn.Module):
 class ECG_SEQ_LAB_NET(nn.module):
     """
     """
-    def __init__(self, classes:Sequence[str], input_len:Optional[int]=None, config:Optional[ED]=None) -> NoReturn:
+    def __init__(self, classes:Sequence[str], config:dict) -> NoReturn:
         """ finished, checked,
 
         Parameters:
         -----------
         classes: list,
             list of the classes for sequence labeling
-        input_len: int, optional,
-            sequence length (last dim.) of the input,
-            defaults to `ModelCfg.dl_siglen`,
-            will not be used in the inference mode
         config: dict, optional,
             other hyper-parameters, including kernel sizes, etc.
             ref. the corresponding config file
         """
         super().__init__()
-        raise NotImplementedError
+        self.n_classes = len(classes)
+        self.n_leads = 12
+        self.config = ED(deepcopy(config))
+        if self.__DEBUG__:
+            print(f"classes (totally {self.n_classes}) for prediction:{self.classes}")
+            print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
+            __debug_seq_len = 4000
+        
+        # currently, the CNN part only uses `MultiScopicCNN`
+        self.cnn = MultiScopicCNN(self.n_leads, **(self.config.cnn[cnn_choice]))
+        rnn_input_size = self.cnn.compute_output_shape(self.input_len, batch_size=None)[1]
+
+        if self.__DEBUG__:
+            cnn_output_shape = self.cnn.compute_output_shape(self.input_len, batch_size=None)
+            print(f"cnn output shape (batch_size, features, seq_len) = {cnn_output_shape}")
+
+        # if self.config.rnn.name.lower() == 'linear':
+        #     self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
+        #     self.rnn = SeqLin(
+        #         in_channels=rnn_input_size,
+        #         out_channels=self.config.rnn.linear.out_channels,
+        #         activation=self.config.rnn.linear.activation,
+        #         bias=self.config.rnn.linear.bias,
+        #         dropouts=self.config.rnn.linear.dropouts,
+        #     )
+        #     clf_input_size = self.rnn.compute_output_shape(None,None)[-1]
+        # elif self.config.rnn.name.lower() == 'lstm':
+        #     hidden_sizes = self.config.rnn.lstm.hidden_sizes + [self.n_classes]
+        #     if self.__DEBUG__:
+        #         print(f"lstm hidden sizes {self.config.rnn.lstm.hidden_sizes} ---> {hidden_sizes}")
+        #     self.rnn = StackedLSTM(
+        #         input_size=rnn_input_size,
+        #         hidden_sizes=hidden_sizes,
+        #         bias=self.config.rnn.lstm.bias,
+        #         dropout=self.config.rnn.lstm.dropout,
+        #         bidirectional=self.config.rnn.lstm.bidirectional,
+        #         return_sequences=self.config.rnn.lstm.retseq,
+        #     )
+        #     if self.config.rnn.lstm.retseq:
+        #         self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
+        #     else:
+        #         self.max_pool = None
+        #     clf_input_size = self.rnn.compute_output_shape(None,None)[-1]
+        # elif self.config.rnn.name.lower() == 'attention':
+        #     hidden_sizes = self.config.rnn.attention.hidden_sizes
+        #     attn_in_channels = hidden_sizes[-1]
+        #     if self.config.rnn.attention.bidirectional:
+        #         attn_in_channels *= 2
+        #     self.rnn = nn.Sequential(
+        #         StackedLSTM(
+        #             input_size=rnn_input_size,
+        #             hidden_sizes=hidden_sizes,
+        #             bias=self.config.rnn.attention.bias,
+        #             dropout=self.config.rnn.attention.dropout,
+        #             bidirectional=self.config.rnn.attention.bidirectional,
+        #             return_sequences=True,
+        #         ),
+        #         SelfAttention(
+        #             in_features=attn_in_channels,
+        #             head_num=self.config.rnn.attention.head_num,
+        #             dropout=self.config.rnn.attention.dropout,
+        #             bias=self.config.rnn.attention.bias,
+        #         )
+        #     )
+        #     self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
+        #     clf_input_size = self.rnn[-1].compute_output_shape(None,None)[-1]
+        # else:
+        #     raise NotImplementedError
+
+        # if self.__DEBUG__:
+        #     print(f"clf_input_size = {clf_input_size}")
+
+        # # input of `self.clf` has shape: batch_size, channels
+        # self.clf = nn.Linear(clf_input_size, self.n_classes)
+
+        # # sigmoid for inference
+        # self.sigmoid = nn.Sigmoid()  # for making inference
 
     def forward(self, input:Tensor) -> Tensor:
-        """
+        """ NOT finished,
         """
         raise NotImplementedError
 

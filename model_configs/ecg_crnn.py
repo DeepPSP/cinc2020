@@ -1,5 +1,5 @@
 """
-the model of CRNN structures
+configs of models of CRNN structures, for classification
 """
 from copy import deepcopy
 

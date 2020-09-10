@@ -1,5 +1,5 @@
 """
-validated CRNN structure models,
+validated C(R)NN structure models,
 for classifying ECG arrhythmias
 """
 from copy import deepcopy

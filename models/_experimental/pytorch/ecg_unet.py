@@ -532,7 +532,7 @@ class ECG_UNET(nn.Module):
         Returns:
         --------
         output_shape: sequence,
-            the output shape of this `DownDoubleConv` layer, given `seq_len` and `batch_size`
+            the output shape of this `ECG_UNET` layer, given `seq_len` and `batch_size`
         """
         output_shape = (batch_size, self.n_classes, seq_len)
         return output_shape
