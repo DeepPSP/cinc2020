@@ -4,7 +4,8 @@ from 3 files of the official evaluation repo:
     dx_mapping_scored.csv, dx_mapping_unscored.csv, weights.csv
 """
 from io import StringIO
-from typing import Union, Sequence, Dict
+from typing import Union, Optional, List, Tuple, Sequence, Dict
+from numbers import Real
 
 import numpy as np
 import pandas as pd
@@ -18,8 +19,11 @@ __all__ = [
     "dx_mapping_scored",
     "dx_mapping_unscored",
     "dx_mapping_all",
+    "equiv_class_dict",
     "load_weights",
     "get_class",
+    "get_class_count",
+    "get_class_weight",
     "normalize_class",
     "dx_cooccurrence_all",
     "dx_cooccurrence_scored",
@@ -215,6 +219,24 @@ df_weights_fullname.index = \
     df_weights_fullname.index.map(lambda i: snomed_ct_code_to_fullname[i])
 
 
+abbr_to_fullname = \
+    ED({row['Abbreviation']:row['Dx'] for _,row in dx_mapping_all.iterrows()})
+fullname_to_abbr = ED({v:k for k,v in abbr_to_fullname.items()})
+
+
+equiv_class_dict = ED({
+    'CRBBB': 'RBBB',
+    'SVPB': 'PAC',
+    'VPB': 'PVC',
+    '713427006': '59118001',
+    '63593006': '284470004',
+    '17338001': '427172004',
+    'complete right bundle branch block': 'right bundle branch block',
+    'supraventricular premature beats': 'premature atrial contraction',
+    'ventricular premature beats': 'premature ventricular contractions',
+})
+
+
 
 def load_weights(classes:Sequence[Union[int,str]]=None, return_fmt:str='np') -> Union[np.ndarray, pd.DataFrame]:
     """ finished, checked,
@@ -299,6 +321,133 @@ def get_class(snomed_ct_code:Union[str,int]) -> Dict[str,str]:
         "fullname": snomed_ct_code_to_fullname[str(snomed_ct_code)],
     }
     return arrhythmia_class
+
+
+def get_class_count(tranches:Union[str, Sequence[str]], exclude_classes:Optional[Sequence[str]]=None, scored_only:bool=False, normalize:bool=True, threshold:Optional[Real]=0, fmt:str='a') ->Dict[str, int]:
+    """ finished, checked,
+
+    Parameters:
+    -----------
+    tranches: str or sequence of str,
+        tranches to count classes, can be combinations of "A", "B", "C", "D", "E", "F"
+    exclude_classes: sequence of str, optional,
+        abbrevations or SNOMED CT Codes of classes to be excluded from counting
+    scored_only: bool, default True,
+        if True, only scored classes are counted
+    normalize: bool, default True,
+        collapse equivalent classes into one,
+        used only when `scored_only` = True
+    threshold: real number,
+        minimum ratio (0-1) or absolute number (>1) of a class to be counted
+    fmt: str, default 'a',
+        the format of the names of the classes in the returned dict,
+        can be one of the following (case insensitive):
+        - 'a', abbreviations
+        - 'f', full names
+        - 's', SNOMED CT Code
+
+    Returns:
+    --------
+    class_count: dict,
+        key: class in the format of `fmt`
+        value: count of a class in `tranches`
+    """
+    assert threshold >= 0
+    tranche_names = ED({
+        "A": "CPSC",
+        "B": "CPSC-Extra",
+        "C": "StPetersburg",
+        "D": "PTB",
+        "E": "PTB-XL",
+        "F": "Georgia",
+    })
+    tranche_names = [tranche_names[t] for t in tranches]
+    _exclude_classes = [normalize_class(c) for c in (exclude_classes or [])]
+    df = dx_mapping_scored.copy() if scored_only else dx_mapping_all.copy()
+    class_count = ED()
+    for _, row in df.iterrows():
+        key = row["Abbreviation"]
+        val = row[tranche_names].values.sum()
+        if val == 0:
+            continue
+        if key in _exclude_classes:
+            continue
+        if normalize and scored_only:
+            key = equiv_class_dict.get(key, key)
+        if key in _exclude_classes:
+            continue
+        if key in class_count.keys():
+            class_count[key] += val
+        else:
+            class_count[key] = val
+    tmp = ED()
+    tot_count = sum(class_count.values())
+    _threshold = threshold if threshold >= 1 else threshold * tot_count
+    if fmt.lower() == 's':
+        for key, val in class_count.items():
+            if val < _threshold:
+                continue
+            tmp[abbr_to_snomed_ct_code[key]] = val
+        class_count = tmp.copy()
+    elif fmt.lower() == 'f':
+        for key, val in class_count.items():
+            if val < _threshold:
+                continue
+            tmp[abbr_to_fullname[key]] = val
+        class_count = tmp.copy()
+    else:
+        class_count = {key: val for key, val in class_count.items() if val >= _threshold}
+    del tmp
+    return class_count
+
+
+def get_class_weight(tranches:Union[str, Sequence[str]], exclude_classes:Optional[Sequence[str]]=None, scored_only:bool=False, normalize:bool=True, threshold:Optional[Real]=0, fmt:str='a', min_weight:Real=0.5) ->Dict[str, int]:
+    """ finished, checked,
+
+    Parameters:
+    -----------
+    tranches: str or sequence of str,
+        tranches to count classes, can be combinations of "A", "B", "C", "D", "E", "F"
+    exclude_classes: sequence of str, optional,
+        abbrevations or SNOMED CT Codes of classes to be excluded from counting
+    scored_only: bool, default True,
+        if True, only scored classes are counted
+    normalize: bool, default True,
+        collapse equivalent classes into one,
+        used only when `scored_only` = True
+    threshold: real number,
+        minimum ratio (0-1) or absolute number (>1) of a class to be counted
+    fmt: str, default 'a',
+        the format of the names of the classes in the returned dict,
+        can be one of the following (case insensitive):
+        - 'a', abbreviations
+        - 'f', full names
+        - 's', SNOMED CT Code
+    min_weight: real number, default 0.5,
+        minimum value of the weight of all classes,
+        or equivalently the weight of the largest class
+
+    Returns:
+    --------
+    class_weight: dict,
+        key: class in the format of `fmt`
+        value: weight of a class in `tranches`
+    """
+    class_count = get_class_count(
+        tranches=tranches,
+        exclude_classes=exclude_classes,
+        scored_only=scored_only,
+        normalize=normalize,
+        threshold=threshold,
+        fmt=fmt,
+    )
+    class_weight = ED({
+        key: sum(class_count.values()) / val for key, val in class_count.items()
+    })
+    class_weight = ED({
+        key: min_weight * val / min(class_weight.values()) for key, val in class_weight.items()
+    })
+    return class_weight
 
 
 dx_cooccurrence_all = pd.read_csv(StringIO(""",IAVB,AF,AFL,Brady,CRBBB,IRBBB,LAnFB,LAD,LBBB,LQRSV,NSIVCB,PR,PAC,PVC,LPR,LQT,QAb,RAD,RBBB,SA,SB,NSR,STach,SVPB,TAb,TInv,VPB,IIAVB,abQRS,AJR,AMI,AMIs,AnMIs,AnMI,AB,AFAFL,AH,AP,ATach,AVJR,AVB,BPAC,BTS,BBB,CD,CAF,CMI,CHB,CIAHB,CHD,SQT,DIB,ERe,FB,HF,HVD,HTV,IR,ILBBB,ICA,IIs,ISTD,JE,JPC,JTach,LIs,LAA,LAE,LAH,LPFB,LVH,LVS,MoI,MI,MIs,NSSTTA,OldMI,VPVC,PAF,PSVT,PVT,RAb,RAF,RAAb,RAH,RVH,STC,SPRI,SAB,SND,STD,STE,STIAb,SVB,SVT,ALR,TIA,UAb,VBig,VEB,VEsB,VEsR,VF,VFL,VH,VPP,VPEx,VTach,VTrig,WAP,WPW

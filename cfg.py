@@ -8,6 +8,11 @@ from copy import deepcopy
 import numpy as np
 from easydict import EasyDict as ED
 
+from utils.scoring_aux_data import (
+    equiv_class_dict,
+    get_class_weight,
+)
+
 
 __all__ = [
     "PreprocCfg",
@@ -102,6 +107,7 @@ ModelCfg.tranche_model = ED({
     # 'all' refers to tranches A, B, E, F
     "all": os.path.join(_BASE_DIR, "saved_models", "ECG_CRNN_resnet_leadwise_none_tranche_all.pth"),
 })
+ModelCfg.special_classes = ['Brady', 'LAD', 'RAD', 'PR', 'LQRSV']
 
 
 # training configurations for machine learning and deep learning
@@ -116,52 +122,72 @@ TrainCfg.keep_checkpoint_max = 20
 # configs of training data
 TrainCfg.fs = ModelCfg.fs
 TrainCfg.data_format = "channel_first"
+TrainCfg.special_classes = ModelCfg.special_classes.copy()
 TrainCfg.normalize_data = True
 TrainCfg.train_ratio = 0.8
 TrainCfg.min_class_weight = 0.5
 TrainCfg.tranches_for_training = ''  # one of '', 'AB', 'E', 'F'
-TrainCfg.tranche_class_counts = ED({
-    # classes with too few recordings are ignored
-    # classes dealt with special detectors are ignored
-    "A": {
-        'IAVB': 722, 'AF': 1221, 'LBBB': 236, 'PAC': 616, 'RBBB': 1857, 'NSR': 918,
-    },
-    "B": {
-        'IAVB': 106, 'AF': 153, 'AFL': 54, 'IRBBB': 86, 'LBBB': 38, 'PAC': 126, 'PVC': 196, 'RBBB': 114, 'SB': 45, 'STach': 303, 'TAb': 22,
-    },
-    "AB": {
-        'IAVB': 828, 'AF': 1374, 'AFL': 54, 'IRBBB': 86, 'LBBB': 274, 'PAC': 742, 'PVC': 196, 'RBBB': 1971, 'SB': 45, 'NSR': 922, 'STach': 303, 'TAb': 22,
-    },
-    "E": {
-        'IAVB': 797, 'AF': 1514, 'AFL': 73, 'RBBB': 542, 'IRBBB': 1118, 'LAnFB': 1626, 'LBBB': 536, 'NSIVCB': 789, 'PAC': 555, 'LPR': 340, 'LQT': 118, 'QAb': 548, 'SA': 772, 'SB': 637, 'NSR': 18092, 'STach': 826, 'TAb': 2345, 'TInv': 294,
-    },
-    "F": {
-        'IAVB': 769, 'AF': 570, 'AFL': 186, 'RBBB': 570, 'IRBBB': 407, 'LAnFB': 180, 'LBBB': 231, 'NSIVCB': 203, 'PAC': 640, 'LQT': 1391, 'QAb': 464, 'SA': 455, 'SB': 1677, 'NSR': 1752, 'STach': 1261, 'TAb': 2306, 'TInv': 812, 'PVC': 357,
-    },
-})
+# TrainCfg.tranche_class_counts = ED({
+#     # classes with too few recordings are ignored
+#     # classes dealt with special detectors are ignored
+#     t: get_class_count(
+#         t, exclude_classes=TrainCfg.special_classes, scored_only=True, threshold=20
+#     ) for t in ["A", "B", "AB", "E", "F"]
+#     # "A": {
+#     #     'IAVB': 722, 'AF': 1221, 'LBBB': 236, 'PAC': 616, 'RBBB': 1857, 'NSR': 918,
+#     # },
+#     # "B": {
+#     #     'IAVB': 106, 'AF': 153, 'AFL': 54, 'IRBBB': 86, 'LBBB': 38, 'PAC': 126, 'PVC': 196, 'RBBB': 114, 'SB': 45, 'STach': 303, 'TAb': 22,
+#     # },
+#     # "AB": {
+#     #     'IAVB': 828, 'AF': 1374, 'AFL': 54, 'IRBBB': 86, 'LBBB': 274, 'PAC': 742, 'PVC': 196, 'RBBB': 1971, 'SB': 45, 'NSR': 922, 'STach': 303, 'TAb': 22,
+#     # },
+#     # "E": {
+#     #     'IAVB': 797, 'AF': 1514, 'AFL': 73, 'RBBB': 542, 'IRBBB': 1118, 'LAnFB': 1626, 'LBBB': 536, 'NSIVCB': 789, 'PAC': 555, 'LPR': 340, 'LQT': 118, 'QAb': 548, 'SA': 772, 'SB': 637, 'NSR': 18092, 'STach': 826, 'TAb': 2345, 'TInv': 294,
+#     # },
+#     # "F": {
+#     #     'IAVB': 769, 'AF': 570, 'AFL': 186, 'RBBB': 570, 'IRBBB': 407, 'LAnFB': 180, 'LBBB': 231, 'NSIVCB': 203, 'PAC': 640, 'LQT': 1391, 'QAb': 464, 'SA': 455, 'SB': 1677, 'NSR': 1752, 'STach': 1261, 'TAb': 2306, 'TInv': 812, 'PVC': 357,
+#     # },
+# })
+# TrainCfg.tranche_class_weights = ED({
+#     t: {k: sum(t_cw.values())/v for k, v in t_cw.items()} \
+#         for t, t_cw in TrainCfg.tranche_class_counts.items()
+# })
+# TrainCfg.tranche_class_weights = ED({
+#     t: {k: TrainCfg.min_class_weight * v / min(t_cw.values()) for k, v in t_cw.items()} \
+#         for t, t_cw in TrainCfg.tranche_class_weights.items()
+# })  # normalize class weights so that the minimun one equals `TrainCfg.min_class_weight`
 TrainCfg.tranche_class_weights = ED({
-    t: {k: sum(t_cw.values())/v for k, v in t_cw.items()} \
-        for t, t_cw in TrainCfg.tranche_class_counts.items()
+    t: get_class_weight(
+        t,
+        exclude_classes=TrainCfg.special_classes,
+        scored_only=True,
+        threshold=20,
+        min_weight=TrainCfg.min_class_weight,
+    ) for t in ["A", "B", "AB", "E", "F"]
 })
-TrainCfg.tranche_class_weights = ED({
-    t: {k: TrainCfg.min_class_weight * v / min(t_cw.values()) for k, v in t_cw.items()} \
-        for t, t_cw in TrainCfg.tranche_class_weights.items()
-})  # normalize class weights so that the minimun one equals `TrainCfg.min_class_weight`
 TrainCfg.tranche_classes = ED({
     t: sorted(list(t_cw.keys())) \
         for t, t_cw in TrainCfg.tranche_class_weights.items()
 })
-TrainCfg.class_counts = ED({
-    'IAVB': 2394, 'AF': 3473, 'AFL': 314, 'RBBB': 3083, 'IRBBB': 1611, 'LAnFB': 1806, 'LBBB': 1041, 'NSIVCB': 996, 'PAC': 1937, 'PVC': 553, 'LPR': 340, 'LQT': 1513, 'QAb': 1013, 'SA': 1238, 'SB': 2359, 'NSR': 20846, 'STach': 2391, 'TAb': 4673, 'TInv': 1111,
-})  # count
-TrainCfg.class_weights = ED({
-    k: sum(TrainCfg.class_counts.values()) / v \
-        for k, v in TrainCfg.class_counts.items()
-})
-TrainCfg.class_weights = ED({
-    k: TrainCfg.min_class_weight * v / min(TrainCfg.class_weights.values()) \
-        for k, v in TrainCfg.class_weights.items()
-})  # normalize so that the smallest weight equals `TrainCfg.min_class_weight`
+# TrainCfg.class_counts = ED({
+#     'IAVB': 2394, 'AF': 3473, 'AFL': 314, 'RBBB': 3083, 'IRBBB': 1611, 'LAnFB': 1806, 'LBBB': 1041, 'NSIVCB': 996, 'PAC': 1937, 'PVC': 553, 'LPR': 340, 'LQT': 1513, 'QAb': 1013, 'SA': 1238, 'SB': 2359, 'NSR': 20846, 'STach': 2391, 'TAb': 4673, 'TInv': 1111,
+# })  # count
+# TrainCfg.class_weights = ED({
+#     k: sum(TrainCfg.class_counts.values()) / v \
+#         for k, v in TrainCfg.class_counts.items()
+# })
+# TrainCfg.class_weights = ED({
+#     k: TrainCfg.min_class_weight * v / min(TrainCfg.class_weights.values()) \
+#         for k, v in TrainCfg.class_weights.items()
+# })  # normalize so that the smallest weight equals `TrainCfg.min_class_weight`
+TrainCfg.class_weights = get_class_weight(
+    tranches="ABEF",
+    exclude_classes=TrainCfg.special_classes,
+    scored_only=True,
+    threshold=20,
+    min_weight=TrainCfg.min_class_weight,
+)
 TrainCfg.classes = sorted(list(TrainCfg.class_weights.keys()))
 
 # configs of signal preprocessing
@@ -217,7 +243,6 @@ TrainCfg.bin_pred_nsr_thr = ModelCfg.bin_pred_nsr_thr
 ModelCfg.dl_classes = deepcopy(TrainCfg.classes)
 ModelCfg.dl_siglen = TrainCfg.siglen
 ModelCfg.tranche_classes = deepcopy(TrainCfg.tranche_classes)
-ModelCfg.special_classes = ['Brady', 'LAD', 'RAD', 'PR', 'LQRSV']
 ModelCfg.full_classes = ModelCfg.dl_classes + ModelCfg.special_classes
 ModelCfg.cnn_name = TrainCfg.cnn_name
 ModelCfg.rnn_name = TrainCfg.rnn_name
