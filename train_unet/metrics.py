@@ -16,6 +16,7 @@ from numbers import Real
 from typing import Union, Optional, Sequence, Dict, Tuple
 
 import numpy as np
+np.set_printoptions(precision=5, suppress=True)
 from easydict import EasyDict as ED
 
 from utils.misc import (

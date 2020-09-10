@@ -65,17 +65,16 @@ from dataset import CINC2020
 from utils.misc import init_logger, get_date_str, dict_to_str, str2bool
 from utils.scoring_metrics import evaluate_12ECG_score
 
-
-__all__ = [
-    "train",
-]
-
-
 if ModelCfg.torch_dtype.lower() == 'double':
     torch.set_default_tensor_type(torch.DoubleTensor)
     _DTYPE = torch.float64
 else:
     _DTYPE = torch.float32
+
+
+__all__ = [
+    "train",
+]
 
 
 def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, logger:Optional[logging.Logger]=None, debug:bool=False):

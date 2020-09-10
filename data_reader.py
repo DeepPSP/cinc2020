@@ -32,6 +32,7 @@ from utils.scoring_aux_data import (
     dx_mapping_all, dx_mapping_scored, dx_mapping_unscored,
     normalize_class, abbr_to_snomed_ct_code,
     df_weights_abbr,
+    equiv_class_dict,
 )
 from utils import ecg_arrhythmia_knowledge as EAK
 from cfg import PlotCfg
@@ -216,13 +217,7 @@ class CINC2020Reader(object):
             'diagnosis','df_leads',
             'medical_prescription','history','symptom_or_surgery',
         ]
-        self.label_trans_dict = {
-            'CRBBB': 'RBBB', 'SVPB': 'PAC', 'VPB': 'PVC',
-            '713427006': '59118001', '63593006': '284470004', '17338001': '427172004',
-            'complete right bundle branch block': 'right bundle branch block',
-            'supraventricular premature beats': 'premature atrial contraction',
-            'ventricular premature beats': 'premature ventricular contractions',
-        }
+        self.label_trans_dict = equiv_class_dict.copy()
 
         self.value_correction_factor = ED({tranche:1 for tranche in self.db_tranches})
         self.value_correction_factor.F = 4.88  # ref. ISSUES 3

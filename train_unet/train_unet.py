@@ -36,7 +36,6 @@ from .dataset import LUDB
 from .metrics import compute_metrics
 from utils.misc import init_logger, get_date_str, dict_to_str, str2bool
 
-
 if ModelCfg.torch_dtype.lower() == 'double':
     torch.set_default_tensor_type(torch.DoubleTensor)
 
