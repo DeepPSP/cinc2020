@@ -3,11 +3,10 @@ Sequence labeling nets, for wave delineation,
 
 the labeling granularity is the frequency of the input signal,
 divided by the length (counted by the number of basic blocks) of each branch
+
+pipeline:
+multi-scopic cnn --> (bidi-lstm -->) "attention" --> seq linear
 """
-
-if ModelCfg.torch_dtype.lower() == 'double':
-    torch.set_default_tensor_type(torch.DoubleTensor)
-
 from copy import deepcopy
 from itertools import repeat
 from collections import OrderedDict
@@ -39,6 +38,9 @@ from models.utils.torch_utils import (
 )
 from utils.utils_nn import compute_conv_output_shape
 from utils.misc import dict_to_str
+
+if ModelCfg.torch_dtype.lower() == 'double':
+    torch.set_default_tensor_type(torch.DoubleTensor)
 
 
 class MultiScopicBasicBlock(nn.Sequential):
@@ -330,8 +332,58 @@ class MultiScopicCNN(nn.Module):
         return n_params
 
 
-class ECG_SEQ_LAB_NET(nn.module):
+class SeqLabAttn(nn.Module):
     """
+    """
+    __DEBUG__ = True
+    __name__ = "SeqLabAttn"
+
+    def __init__(self, in_channels:int, **config) -> NoReturn:
+        """
+        """
+        self.__in_channels = in_channels
+        self.config = ED(deepcopy(config))
+        if self.__DEBUG__:
+            print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
+  
+    def forward(self, input:Tensor) -> Tensor:
+        """
+        """
+        raise NotImplementedError
+
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        seq_len: int,
+            length of the 1d sequence
+        batch_size: int, optional,
+            the batch size, can be None
+
+        Returns:
+        --------
+        output_shape: sequence,
+            the output shape of this block, given `seq_len` and `batch_size`
+        """
+        raise NotImplementedError
+
+    @property
+    def module_size(self):
+        """
+        """
+        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        n_params = sum([np.prod(p.size()) for p in module_parameters])
+        return n_params
+
+
+class ECG_SEQ_LAB_NET(nn.module):
+    """ NOT finished,
+
+    SOTA model from CPSC2019 challenge (entry 0416)
+
+    pipeline:
+    multi-scopic cnn --> (bidi-lstm -->) "attention" --> seq linear
     """
     def __init__(self, classes:Sequence[str], config:dict) -> NoReturn:
         """ finished, checked,
@@ -361,7 +413,34 @@ class ECG_SEQ_LAB_NET(nn.module):
             cnn_output_shape = self.cnn.compute_output_shape(self.input_len, batch_size=None)
             print(f"cnn output shape (batch_size, features, seq_len) = {cnn_output_shape}")
 
-        # if self.config.rnn.name.lower() == 'linear':
+        if self.config.rnn.name.lower() == 'none':
+            self.rnn = None
+            attn_input_size = rnn_input_size
+        elif self.config.rnn.name.lower() == 'lstm':
+            self.rnn = StackedLSTM(
+                input_size=,
+                hidden_sizes=,
+                bias=,
+                dropout=,
+                bidirectional=True,
+                return_sequences=True,
+            )
+            attn_input_size = self.rnn.compute_output_shape(None,None)[-1]
+        else:
+            raise NotImplementedError
+
+        self.attn = nn.Sequential()
+        for idx, oc in enumerate(self.config.attn.out_channels):
+            self.attn.add_module(
+                f"lin_{idx}",
+                nn.Linear(
+                    in_features=attn_input_size,
+                    out_features=oc,
+                    bias=self.config.attn.bias
+                )
+            )
+            attn_input_size = oc
+        clf_input_size = self.config.attn.out_channels[-1]
         #     self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
         #     self.rnn = SeqLin(
         #         in_channels=rnn_input_size,

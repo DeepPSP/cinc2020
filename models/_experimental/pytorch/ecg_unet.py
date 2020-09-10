@@ -19,8 +19,6 @@ from torch import Tensor
 import torch.nn.functional as F
 from easydict import EasyDict as ED
 
-torch.set_default_tensor_type(torch.DoubleTensor)
-
 from cfg import ModelCfg
 from models.utils.torch_utils import (
     Conv_Bn_Activation,
@@ -28,7 +26,6 @@ from models.utils.torch_utils import (
     compute_deconv_output_shape,
 )
 from utils.misc import dict_to_str
-
 
 if ModelCfg.torch_dtype.lower() == 'double':
     torch.set_default_tensor_type(torch.DoubleTensor)
