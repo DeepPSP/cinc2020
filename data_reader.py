@@ -1203,7 +1203,9 @@ class CINC2020Reader(object):
 
         Returns:
         --------
-
+        raw_data: ndarray,
+            raw data (d_signal) loaded from corresponding data file,
+            without subtracting baseline nor dividing adc gain
         """
         tranche = self._get_tranche(rec)
         if backend.lower() == 'wfdb':
