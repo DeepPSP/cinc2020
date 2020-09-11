@@ -271,3 +271,19 @@ class CINC2020(Dataset):
         print(f"y saved to {filename}")
 
         self.__data_aug = prev_state
+
+    def _check_nan(self) -> NoReturn:
+        """ finished, checked,
+
+        during training, sometimes nan values are encountered,
+        which ruins the whole training process
+        """
+        prev_state = self.__data_aug
+        self.disable_data_augmentation()
+
+        for idx, (values, labels) in self:
+            if np.isnan(values).any():
+                print(f"values of {self.records[idx]} have nan values")
+            if np.isnan(labels).any():
+                print(f"labels of {self.records[idx]} have nan values")
+        self.__data_aug = prev_state
