@@ -1374,6 +1374,7 @@ class SeqLin(nn.Sequential):
             self.__dropouts = dropouts
             assert len(self.__dropouts) == self.__num_layers, \
                 f"`out_channels` indicates {self.__num_layers} linear layers, while `dropouts` indicates {len(self.__dropouts)}"
+        self.__skip_last_activation = kwargs.get("skip_last_activation", False)
         
         lin_in_channels = self.__in_channels
         for idx in range(self.__num_layers):
@@ -1388,15 +1389,16 @@ class SeqLin(nn.Sequential):
                 f"lin_{idx}",
                 lin_layer,
             )
-            self.add_module(
-                f"act_{idx}",
-                Activations[self.__activation](**self.__kw_activation),
-            )
-            if self.__dropouts[idx] > 0:
+            if idx < self.__num_layers-1 or not self.__skip_last_activation:
                 self.add_module(
-                    f"dropout_{idx}",
-                    nn.Dropout(self.__dropouts[idx]),
+                    f"act_{idx}",
+                    Activations[self.__activation](**self.__kw_activation),
                 )
+                if self.__dropouts[idx] > 0:
+                    self.add_module(
+                        f"dropout_{idx}",
+                        nn.Dropout(self.__dropouts[idx]),
+                    )
             lin_in_channels = self.__out_channels[idx]
 
     def forward(self, input:Tensor) -> Tensor:

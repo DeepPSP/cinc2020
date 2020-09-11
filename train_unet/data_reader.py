@@ -184,11 +184,11 @@ class LUDBReader(object):
         self._all_symbols = ['(', ')', 'p', 'N', 't']
         """
         this can be obtained using the following code:
-        >>> data_gen = LUDB(db_dir="/home/wenhao71/data/PhysioNet/ludb/1.0.0/")
+        >>> dr = LUDB(db_dir="/home/wenhao71/data/PhysioNet/ludb/1.0.0/")
         >>> all_symbols = set()
-        >>> for rec in data_gen.all_records:
-        ...     for ext in data_gen.beat_ann_ext:
-        ...         ann = wfdb.rdann(os.path.join(data_gen.db_dir, rec), extension=ext)
+        >>> for rec in dr.all_records:
+        ...     for ext in dr.beat_ann_ext:
+        ...         ann = wfdb.rdann(os.path.join(dr.db_dir, rec), extension=ext)
         ...         all_symbols.update(ann.symbol)
         """
         self._symbol_to_wavename = ED(N='qrs', p='pwave', t='twave')

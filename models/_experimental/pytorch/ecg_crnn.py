@@ -1153,9 +1153,9 @@ class ECG_CRNN(nn.Module):
         if self.config.rnn.name.lower() == 'none':
             self.rnn = None
             _, clf_input_size, _ = self.cnn.compute_output_shape(self.input_len, batch_size=None)
-            self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
+            self.pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
         elif self.config.rnn.name.lower() == 'linear':
-            self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
+            self.pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
             self.rnn = SeqLin(
                 in_channels=rnn_input_size,
                 out_channels=self.config.rnn.linear.out_channels,
@@ -1177,9 +1177,9 @@ class ECG_CRNN(nn.Module):
                 return_sequences=self.config.rnn.lstm.retseq,
             )
             if self.config.rnn.lstm.retseq:
-                self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
+                self.pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
             else:
-                self.max_pool = None
+                self.pool = None
             clf_input_size = self.rnn.compute_output_shape(None,None)[-1]
         elif self.config.rnn.name.lower() == 'attention':
             hidden_sizes = self.config.rnn.attention.hidden_sizes
@@ -1202,7 +1202,7 @@ class ECG_CRNN(nn.Module):
                     bias=self.config.rnn.attention.bias,
                 )
             )
-            self.max_pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
+            self.pool = nn.AdaptiveMaxPool1d((1,), return_indices=False)
             clf_input_size = self.rnn[-1].compute_output_shape(None,None)[-1]
         else:
             raise NotImplementedError
@@ -1228,10 +1228,10 @@ class ECG_CRNN(nn.Module):
             # (batch_size, channels, seq_len) -> (seq_len, batch_size, input_size)
             x = x.permute(2,0,1)
             x = self.rnn(x)
-            if self.max_pool:
+            if self.pool:
                 # (seq_len, batch_size, channels) -> (batch_size, channels, seq_len)
                 x = x.permute(1,2,0)
-                x = self.max_pool(x)  # (batch_size, channels, 1)
+                x = self.pool(x)  # (batch_size, channels, 1)
                 # x = torch.flatten(x, start_dim=1)  # (batch_size, channels)
                 x = x.squeeze(dim=-1)
             else:
@@ -1240,14 +1240,14 @@ class ECG_CRNN(nn.Module):
             # print(f"rnn out shape = {x.shape}")
         elif self.config.rnn.name.lower() in ['linear']:
             # (batch_size, channels, seq_len) --> (batch_size, channels)
-            x = self.max_pool(x)
+            x = self.pool(x)
             x = x.squeeze(dim=-1)
             # seq_lin
             x = self.rnn(x)
         else:  # 'none'
             # (batch_size, channels, seq_len) --> (batch_size, channels)
-            x = self.max_pool(x)
-            # print(f"max_pool out shape = {x.shape}")
+            x = self.pool(x)
+            # print(f"pool out shape = {x.shape}")
             # x = torch.flatten(x, start_dim=1)
             x = x.squeeze(dim=-1)
         # print(f"clf in shape = {x.shape}")

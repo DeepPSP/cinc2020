@@ -87,11 +87,11 @@ class CINC2020Reader(object):
     using for example the following code:
     >>> db_dir = "/media/cfs/wenhao71/data/cinc2020_data/"
     >>> working_dir = "./working_dir"
-    >>> data_gen = CINC2020Reader(db_dir=db_dir,working_dir=working_dir)
+    >>> dr = CINC2020Reader(db_dir=db_dir,working_dir=working_dir)
     >>> set_leads = []
-    >>> for tranche, l_rec in data_gen.all_records.items():
+    >>> for tranche, l_rec in dr.all_records.items():
     ...     for rec in l_rec:
-    ...         ann = data_gen.load_ann(rec)
+    ...         ann = dr.load_ann(rec)
     ...         leads = ann['df_leads']['lead_name'].values.tolist()
     ...     if leads not in set_leads:
     ...         set_leads.append(leads)
@@ -111,12 +111,12 @@ class CINC2020Reader(object):
     8. on Aug. 1, 2020, adc gain (including 'resolution', 'ADC'? in .hea files) of datasets INCART, PTB, and PTB-xl (tranches C, D, E) are corrected. After correction, (the .tar files of) the 3 datasets are all put in a "WFDB" subfolder. In order to keep the structures consistant, they are moved into "Training_StPetersburg", "Training_PTB", "WFDB" as previously. Using the following code, one can check the adc_gain and baselines of each tranche:
     >>> db_dir = "/media/cfs/wenhao71/data/cinc2020_data/"
     >>> working_dir = "./working_dir"
-    >>> data_gen = CINC2020(db_dir=db_dir,working_dir=working_dir)
+    >>> dr = CINC2020(db_dir=db_dir,working_dir=working_dir)
     >>> resolution = {tranche: set() for tranche in "ABCDEF"}
     >>> baseline = {tranche: set() for tranche in "ABCDEF"}
-    >>> for tranche, l_rec in data_gen.all_records.items():
+    >>> for tranche, l_rec in dr.all_records.items():
     ...     for rec in l_rec:
-    ...         ann = data_gen.load_ann(rec)
+    ...         ann = dr.load_ann(rec)
     ...         resolution[tranche] = resolution[tranche].union(set(ann['df_leads']['adc_gain']))
     ...         baseline[tranche] = baseline[tranche].union(set(ann['df_leads']['baseline']))
     >>> print(resolution, baseline)
@@ -286,6 +286,7 @@ class CINC2020Reader(object):
                 json.dump(to_save, f)
             with open(os.path.join(utils._BASE_DIR, "utils", filename), "w") as f:
                 json.dump(to_save, f)
+        self._all_records = ED(self._all_records)
 
 
     @property
