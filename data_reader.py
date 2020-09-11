@@ -1217,3 +1217,24 @@ class CINC2020Reader(object):
             rec_fp = self.get_data_filepath(rec, with_ext=True)
             raw_data = loadmat(rec_fp)['val']
         return raw_data
+
+
+    def _check_nan(self, tranches:Union[str, Sequence[str]]) -> NoReturn:
+        """ finished, checked,
+
+        check if records from `tranches` has nan values
+
+        accessing data using `p_signal` of `wfdb` would produce nan values,
+        if exceptionally large values are encountered,
+        this could help detect abnormal records as well
+
+        Parameters:
+        -----------
+        tranches: str or sequence of str,
+            tranches to check
+        """
+        for t in tranches:
+            for rec in self.all_records[t]:
+                data = self.load_data(rec)
+                if np.isnan(data).any():
+                    print(f"record {rec} from tranche {t} has nan values")
