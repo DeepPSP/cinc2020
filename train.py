@@ -298,7 +298,7 @@ def train(model:nn.Module, device:torch.device, config:dict, log_step:int=20, lo
             else:
                 eval_train_msg = ""
             msg = f"""
-                Train epoch_{epoch}:
+                Train epoch_{epoch + 1}:
                 --------------------
                 train/epoch_loss:        {epoch_loss}{eval_train_msg}
                 test/auroc:              {eval_res[0]}
