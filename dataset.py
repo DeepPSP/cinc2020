@@ -141,6 +141,9 @@ class CINC2020(Dataset):
     def _train_test_split(self, train_ratio:float=0.8, force_recompute:bool=False) -> List[str]:
         """ finished, checked,
 
+        do train test split,
+        it is ensured that both the train and the test set contain all classes
+
         Parameters:
         -----------
         train_ratio: float, default 0.8,
@@ -170,9 +173,13 @@ class CINC2020(Dataset):
             for t in _TRANCHES:
                 with tqdm(self.reader.all_records[t], total=len(self.reader.all_records[t])) as bar:
                     for rec in bar:
+                        if rec in self.reader.exceptional_records:
+                            # skip exceptional records
+                            continue
                         rec_labels = self.reader.get_labels(rec, scored_only=True, fmt='a', normalize=True)
                         rec_labels = [c for c in rec_labels if c in TrainCfg.tranche_classes[t]]
                         if len(rec_labels) == 0:
+                            # skip records with no scored class
                             continue
                         rec_samples = self.reader.load_resampled_data(rec).shape[1]
                         if rec_samples < self.siglen:
@@ -286,4 +293,5 @@ class CINC2020(Dataset):
                 print(f"values of {self.records[idx]} have nan values")
             if np.isnan(labels).any():
                 print(f"labels of {self.records[idx]} have nan values")
+
         self.__data_aug = prev_state
