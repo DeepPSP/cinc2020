@@ -133,7 +133,7 @@ class CINC2020Reader(object):
     3. (Aug. 15th) tranche F, the Georgia subset, has ADC gain 4880 which might be too high. Thus obtained voltages are too low. 1000 might be a suitable (correct) value of ADC gain for this tranche just as the other tranches.
     4. "E04603" (all leads), "E06072" (chest leads, epecially V1-V3), "E06909" (lead V2), "E07675" (lead V3), "E07941" (lead V6), "E08321" (lead V6) has exceptionally large values at rpeaks, reading (`load_data`) these two records using `wfdb` would bring in `nan` values. One can check using the following code
     >>> rec = "E04603"
-    >>> dr.plot(rec, data_gen.load_data(rec, backend="scipy", units='uv'))
+    >>> dr.plot(rec, dr.load_data(rec, backend="scipy", units='uv'))
 
     Usage:
     ------
@@ -183,14 +183,6 @@ class CINC2020Reader(object):
         })
 
         self.db_dir_base = db_dir
-        # self.db_dirs = ED({
-        #     "A": os.path.join(self.db_dir_base, "Training_WFDB"),
-        #     "B": os.path.join(self.db_dir_base, "Training_2"),
-        #     "C": os.path.join(self.db_dir_base, "Training_StPetersburg"),
-        #     "D": os.path.join(self.db_dir_base, "Training_PTB"),
-        #     "E": os.path.join(self.db_dir_base, "WFDB"),
-        #     "F": os.path.join(self.db_dir_base, "Training_E", "WFDB"),
-        # })
         self.db_dirs = ED({tranche:"" for tranche in self.db_tranches})
         self._all_records = None
         self._ls_rec()  # loads file system structures into self.db_dirs and self._all_records
@@ -198,14 +190,6 @@ class CINC2020Reader(object):
         self._diagnoses_records_list = None
         self._ls_diagnoses_records()
 
-        """
-        prefixes can be obtained using the following code:
-        >>> pfs = ED({k:set() for k in "ABCDEF"})
-        >>> for k, p in db_dir.items():
-        ...     af = os.listdir(p)
-        ...     for fn in af:
-        ...         pfs[k].add("".join(re.findall(r"[A-Z]", os.path.splitext(fn)[0])))
-        """
         self.freq = {
             "A": 500, "B": 500, "C": 257, "D": 1000, "E": 500, "F": 500,
         }
