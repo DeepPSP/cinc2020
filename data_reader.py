@@ -35,7 +35,7 @@ from utils.scoring_aux_data import (
     equiv_class_dict,
 )
 from utils import ecg_arrhythmia_knowledge as EAK
-from cfg import PlotCfg
+from cfg import PlotCfg, Standard12Leads
 
 
 __all__ = [
@@ -131,7 +131,9 @@ class CINC2020Reader(object):
     1. reading the .hea files, baselines of all records are 0, however it is not the case if one plot the signal
     2. about half of the LAD records satisfy the '2-lead' criteria, but fail for the '3-lead' criteria, which means that their axis is (-30°, 0°) which is not truely LAD
     3. (Aug. 15th) tranche F, the Georgia subset, has ADC gain 4880 which might be too high. Thus obtained voltages are too low. 1000 might be a suitable (correct) value of ADC gain for this tranche just as the other tranches.
-    4. "E04603", "E06072" has exceptionally large values at rpeaks, reading (`load_data`) these two records using `wfdb` would bring in `nan` values
+    4. "E04603" (all leads), "E06072" (chest leads, epecially V1-V3), "E06909" (lead V2), "E07675" (lead V3), "E07941" (lead V6), "E08321" (lead V6) has exceptionally large values at rpeaks, reading (`load_data`) these two records using `wfdb` would bring in `nan` values. One can check using the following code
+    >>> rec = "E04603"
+    >>> dr.plot(rec, data_gen.load_data(rec, backend="scipy", units='uv'))
 
     Usage:
     ------
@@ -168,6 +170,14 @@ class CINC2020Reader(object):
         self.ann_ext = 'hea'
 
         self.db_tranches = list("ABCDEF")
+        self.tranche_names = ED({
+            "A": "CPSC",
+            "B": "CPSC-Extra",
+            "C": "StPetersburg",
+            "D": "PTB",
+            "E": "PTB-XL",
+            "F": "Georgia",
+        })
         self.rec_prefix = ED({
             "A": "A", "B": "Q", "C": "I", "D": "S", "E": "HR", "F": "E",
         })
@@ -196,20 +206,12 @@ class CINC2020Reader(object):
         ...     for fn in af:
         ...         pfs[k].add("".join(re.findall(r"[A-Z]", os.path.splitext(fn)[0])))
         """
-        self.tranche_names = ED({
-            "A": "CPSC",
-            "B": "CPSC-Extra",
-            "C": "StPetersburg",
-            "D": "PTB",
-            "E": "PTB-XL",
-            "F": "Georgia",
-        })
         self.freq = {
             "A": 500, "B": 500, "C": 257, "D": 1000, "E": 500, "F": 500,
         }
         self.spacing = {t: 1000 / f for t,f in self.freq.items()}
 
-        self.all_leads = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6',]
+        self.all_leads = deepcopy(Standard12Leads)
 
         self.df_ecg_arrhythmia = dx_mapping_all[['Dx','SNOMED CT Code','Abbreviation']]
         self.ann_items = [
@@ -222,7 +224,7 @@ class CINC2020Reader(object):
         self.value_correction_factor = ED({tranche:1 for tranche in self.db_tranches})
         self.value_correction_factor.F = 4.88  # ref. ISSUES 3
 
-        self.exceptional_records = ["E04603", "E06072"]  # ref. ISSUES 4
+        self.exceptional_records = ["E04603", "E06072", "E06909", "E07675", "E07941", "E08321"]  # ref. ISSUES 4
 
 
     def get_subject_id(self, rec:str) -> int:
