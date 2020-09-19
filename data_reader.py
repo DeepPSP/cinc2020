@@ -222,7 +222,7 @@ class CINC2020Reader(object):
         Returns:
         --------
         sid: int,
-            the `get_subject_id` corr. to `rec`
+            the `subject_id` corr. to `rec`
         """
         s2d = {"A":"11", "B":"12", "C":"21", "D":"31", "E":"32", "F":"41"}
         s2d = {self.rec_prefix[k]:v for k,v in s2d.items()}
