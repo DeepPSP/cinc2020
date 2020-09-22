@@ -22,7 +22,7 @@ from easydict import EasyDict as ED
 
 from cfg import ModelCfg
 from models.utils.torch_utils import (
-    Conv_Bn_Activation,
+    Conv_Bn_Activation, MultiConv,
     DownSample, ZeroPadding,
     compute_deconv_output_shape,
 )
@@ -37,7 +37,7 @@ __all__ = [
 ]
 
 
-class TripleConv(nn.Sequential):
+class TripleConv(MultiConv):
     """
 
     CBA --> (Dropout) --> CBA --> (Dropout) --> CBA --> (Dropout)
@@ -67,89 +67,22 @@ class TripleConv(nn.Sequential):
             activation choices, weight initializer, batch normalization choices, etc.
             for the convolutional layers
         """
-        super().__init__()
-        self.__num_convs = 3
-        self.__in_channels = in_channels
+        _num_convs = 3
         if isinstance(out_channels, int):
-            self.__out_channels = list(repeat(out_channels, self.__num_convs))
+            _out_channels = list(repeat(out_channels, _num_convs))
         else:
-            self.__out_channels = list(out_channels)
-            # self.__num_convs = len(self.__out_channels)
-            assert self.__num_convs == len(self.__out_channels)
-        self.config = ED(deepcopy(config))
-        if self.__DEBUG__:
-            print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
+            _out_channels = list(out_channels)
+            assert _num_convs == len(_out_channels)
 
-        if isinstance(filter_lengths, int):
-            kernel_sizes = list(repeat(filter_lengths, self.__num_convs))
-        else:
-            kernel_sizes = list(filter_lengths)
-        assert len(kernel_sizes) == self.__num_convs
-
-        if isinstance(subsample_lengths, int):
-            strides = list(repeat(subsample_lengths, self.__num_convs))
-        else:
-            strides = list(subsample_lengths)
-        assert len(strides) == self.__num_convs
-
-        if isinstance(dropouts, Real):
-            dropouts = list(repeat(dropouts, self.__num_convs))
-        else:
-            dropouts = list(dropouts)
-        assert len(dropouts) == self.__num_convs
-
-        conv_in_channels = self.__in_channels
-        for idx, (oc, ks, sd, dp) in \
-            enumerate(zip(self.__out_channels, kernel_sizes, strides, dropouts)):
-            self.add_module(
-                f"cba_{idx}",
-                Conv_Bn_Activation(
-                    in_channels=conv_in_channels,
-                    out_channels=oc,
-                    kernel_size=ks,
-                    stride=sd,
-                    batch_norm=self.config.batch_norm,
-                    activation=self.config.activation,
-                    kw_activation=self.config.kw_activation,
-                    kernel_initializer=self.config.kernel_initializer,
-                    kw_initializer=self.config.kw_initializer,
-                ),
-            )
-            conv_in_channels = oc
-            if dp > 0:
-                self.add_module(
-                    f"dropout_{idx}",
-                    nn.Dropout(dp)
-                )
-    
-    def forward(self, input:Tensor) -> Tensor:
-        """
-        use the forward method of `nn.Sequential`
-        """
-        out = super().forward(input)
-        return out
-
-    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
-        """ finished, checked,
-
-        Parameters:
-        -----------
-        seq_len: int,
-            length of the 1d sequence
-        batch_size: int, optional,
-            the batch size, can be None
-
-        Returns:
-        --------
-        output_shape: sequence,
-            the output shape of this `DoubleConv` layer, given `seq_len` and `batch_size`
-        """
-        _seq_len = seq_len
-        for module in self:
-            if hasattr(module, __name__) and module.__name__ == Conv_Bn_Activation.__name__:
-                output_shape = module.compute_output_shape(_seq_len, batch_size)
-                _, _, _seq_len = output_shape
-        return output_shape
+        super().__init__(
+            in_channels=in_channels,
+            out_channels=_out_channels,
+            filter_lengths=filter_lengths,
+            subsample_lengths=subsample_lengths,
+            groups=groups,
+            dropouts=dropouts,
+            **config,
+        )
 
 
 class DownTripleConv(nn.Sequential):
@@ -248,7 +181,87 @@ class DownBranchedDoubleConv(nn.Module):
     """
     __DEBUG__ = True
     __name__ = "DownBranchedDoubleConv"
+    __MODES__ = deepcopy(DownSample.__MODES__)
 
+    def __init__(self, down_scale:int, in_channels:int, out_channels:Union[Sequence[int],int], filter_lengths:Union[Sequence[int],int], groups:int=1, dropouts:Union[Sequence[float], float]=0.0, mode:str='max', **config) -> NoReturn:
+        """ finished, NOT checked,
+
+        Parameters:
+        -----------
+        down_scale: int,
+            down sampling scale
+        in_channels: int,
+            number of channels in the input
+        out_channels: int, or sequence of int
+            number of channels produced by the (last) convolutional layer(s)
+        filter_lengths: int or sequence of int,
+            length(s) of the filters (kernel size)
+        subsample_lengths: int or sequence of int,
+            subsample length(s) (stride(s)) of the convolutions
+        groups: int, default 1,
+            connection pattern (of channels) of the inputs and outputs
+        dropouts: float or sequence of float, default 0.0,
+            dropout ratio after each `Conv_Bn_Activation`
+        config: dict,
+            other parameters, including
+            activation choices, weight initializer, batch normalization choices, etc.
+            for the convolutional layers
+        """
+        super().__init__()
+        self.__mode = mode.lower()
+        assert self.__mode in self.__MODES__
+        self.__down_scale = down_scale
+        self.__in_channels = in_channels
+        self.__out_channels = out_channels
+        self.config = ED(deepcopy(config))
+        if self.__DEBUG__:
+            print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
+
+        self.down_sample = DownSample(
+                down_scale=self.__down_scale,
+                in_channels=self.__in_channels,
+                batch_norm=False,
+                mode=mode,
+            )
+        self.add_module(
+            "triple_conv",
+            TripleConv(
+                in_channels=self.__in_channels,
+                out_channels=self.__out_channels,
+                filter_lengths=filter_lengths,
+                subsample_lengths=1,
+                groups=groups,
+                dropouts=dropouts,
+                **(self.config)
+            ),
+        )
+
+    def forward(self, input:Tensor) -> Tensor:
+        """
+        """
+        out = super().forward(input)
+        return out
+
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        seq_len: int,
+            length of the 1d sequence
+        batch_size: int, optional,
+            the batch size, can be None
+
+        Returns:
+        --------
+        output_shape: sequence,
+            the output shape of this `DownDoubleConv` layer, given `seq_len` and `batch_size`
+        """
+        _seq_len = seq_len
+        for module in self:
+            output_shape = module.compute_output_shape(seq_len=_seq_len)
+            _, _, _seq_len = output_shape
+        return output_shape
 
 
 class UpTripleConv(nn.Module):

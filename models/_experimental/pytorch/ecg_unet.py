@@ -21,7 +21,7 @@ from easydict import EasyDict as ED
 
 from cfg import ModelCfg
 from models.utils.torch_utils import (
-    Conv_Bn_Activation,
+    Conv_Bn_Activation, MultiConv,
     DownSample, ZeroPadding,
     compute_deconv_output_shape,
 )
@@ -36,7 +36,139 @@ __all__ = [
 ]
 
 
-class DoubleConv(nn.Sequential):
+# class DoubleConv(nn.Sequential):
+#     """
+
+#     building blocks of UNet
+    
+#     References:
+#     -----------
+#     https://github.com/milesial/Pytorch-UNet/blob/master/unet/unet_parts.py
+#     """
+#     __DEBUG__ = True
+#     __name__ = "DoubleConv"
+
+#     def __init__(self, in_channels:int, out_channels:int, filter_lengths:Union[Sequence[int],int], subsample_lengths:Union[Sequence[int],int]=1, groups:int=1, dropouts:Union[Sequence[float], float]=0.0, mid_channels:Optional[int]=None, **config) -> NoReturn:
+#         """ finished, NOT checked,
+
+#         Parameters:
+#         -----------
+#         in_channels: int,
+#             number of channels in the input
+#         out_channels: int,
+#             number of channels produced by the last convolutional layer
+#         filter_lengths: int or sequence of int,
+#             length(s) of the filters (kernel size)
+#         subsample_lengths: int or sequence of int,
+#             subsample length(s) (stride(s)) of the convolutions
+#         groups: int, default 1,
+#             connection pattern (of channels) of the inputs and outputs
+#         dropouts: float or sequence of float, default 0.0,
+#             dropout ratio after each `Conv_Bn_Activation`
+#         mid_channels: int, optional,
+#             number of channels produced by the first convolutional layer,
+#             defaults to `out_channels`
+#         config: dict,
+#             other parameters, including
+#             activation choices, weight initializer, batch normalization choices, etc.
+#             for the convolutional layers
+#         """
+#         super().__init__()
+#         self.__num_convs = 2
+#         self.__in_channels = in_channels
+#         self.__mid_channels = mid_channels if mid_channels is not None else out_channels
+#         self.__out_channels = out_channels
+#         self.config = ED(deepcopy(config))
+#         if self.__DEBUG__:
+#             print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
+
+#         if isinstance(filter_lengths, int):
+#             kernel_sizes = list(repeat(filter_lengths, self.__num_convs))
+#         else:
+#             kernel_sizes = filter_lengths
+#         assert len(kernel_sizes) == self.__num_convs
+
+#         if isinstance(subsample_lengths, int):
+#             strides = list(repeat(subsample_lengths, self.__num_convs))
+#         else:
+#             strides = subsample_lengths
+#         assert len(strides) == self.__num_convs
+
+#         if isinstance(dropouts, Real):
+#             dropouts = list(repeat(dropouts, self.__num_convs))
+#         else:
+#             dropouts = list(dropouts)
+#         assert len(dropouts) == self.__num_convs
+
+#         self.add_module(
+#             "cba_1",
+#             Conv_Bn_Activation(
+#                 in_channels=self.__in_channels,
+#                 out_channels=self.__mid_channels,
+#                 kernel_size=kernel_sizes[0],
+#                 stride=strides[0],
+#                 batch_norm=self.config.batch_norm,
+#                 activation=self.config.activation,
+#                 kw_activation=self.config.kw_activation,
+#                 kernel_initializer=self.config.kernel_initializer,
+#                 kw_initializer=self.config.kw_initializer,
+#             ),
+#         )
+#         if dropouts[0] > 0:
+#             self.add_module(
+#                 "dropout_1",
+#                 nn.Dropout(dropouts[0])
+#             )
+#         self.add_module(
+#             "cba_2",
+#             Conv_Bn_Activation(
+#                 in_channels=self.__mid_channels,
+#                 out_channels=self.__out_channels,
+#                 kernel_size=kernel_sizes[1],
+#                 stride=strides[1],
+#                 batch_norm=self.config.batch_norm,
+#                 activation=self.config.activation,
+#                 kw_activation=self.config.kw_activation,
+#                 kernel_initializer=self.config.kernel_initializer,
+#                 kw_initializer=self.config.kw_initializer,
+#             )
+#         )
+#         if dropouts[1] > 0:
+#             self.add_module(
+#                 "dropout_2",
+#                 nn.Dropout(dropouts[0])
+#             )
+
+#     def forward(self, input:Tensor) -> Tensor:
+#         """
+#         use the forward method of `nn.Sequential`
+#         """
+#         out = super().forward(input)
+#         return out
+
+#     def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+#         """ finished, checked,
+
+#         Parameters:
+#         -----------
+#         seq_len: int,
+#             length of the 1d sequence
+#         batch_size: int, optional,
+#             the batch size, can be None
+
+#         Returns:
+#         --------
+#         output_shape: sequence,
+#             the output shape of this `DoubleConv` layer, given `seq_len` and `batch_size`
+#         """
+#         _seq_len = seq_len
+#         for module in self:
+#             output_shape = module.compute_output_shape(_seq_len, batch_size)
+#             _, _, _seq_len = output_shape
+#         return output_shape
+
+
+class DoubleConv(MultiConv):
     """
 
     building blocks of UNet
@@ -73,99 +205,18 @@ class DoubleConv(nn.Sequential):
             activation choices, weight initializer, batch normalization choices, etc.
             for the convolutional layers
         """
-        super().__init__()
-        self.__num_convs = 2
-        self.__in_channels = in_channels
-        self.__mid_channels = mid_channels if mid_channels is not None else out_channels
-        self.__out_channels = out_channels
-        self.config = ED(deepcopy(config))
-        if self.__DEBUG__:
-            print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
-
-        if isinstance(filter_lengths, int):
-            kernel_sizes = list(repeat(filter_lengths, self.__num_convs))
-        else:
-            kernel_sizes = filter_lengths
-        assert len(kernel_sizes) == self.__num_convs
-
-        if isinstance(subsample_lengths, int):
-            strides = list(repeat(subsample_lengths, self.__num_convs))
-        else:
-            strides = subsample_lengths
-        assert len(strides) == self.__num_convs
-
-        if isinstance(dropouts, Real):
-            dropouts = list(repeat(dropouts, self.__num_convs))
-        else:
-            dropouts = list(dropouts)
-        assert len(dropouts) == self.__num_convs
-
-        self.add_module(
-            "cba_1",
-            Conv_Bn_Activation(
-                in_channels=self.__in_channels,
-                out_channels=self.__mid_channels,
-                kernel_size=kernel_sizes[0],
-                stride=strides[0],
-                batch_norm=self.config.batch_norm,
-                activation=self.config.activation,
-                kw_activation=self.config.kw_activation,
-                kernel_initializer=self.config.kernel_initializer,
-                kw_initializer=self.config.kw_initializer,
-            ),
+        _mid_channels = mid_channels if mid_channels is not None else out_channels
+        _out_channels = [_mid_channels, out_channels]
+        
+        super().__init__(
+            in_channels=in_channels,
+            out_channels=_out_channels,
+            filter_lengths=filter_lengths,
+            subsample_lengths=subsample_lengths,
+            groups=groups,
+            dropouts=dropouts,
+            **config
         )
-        if dropouts[0] > 0:
-            self.add_module(
-                "dropout_1",
-                nn.Dropout(dropouts[0])
-            )
-        self.add_module(
-            "cba_2",
-            Conv_Bn_Activation(
-                in_channels=self.__mid_channels,
-                out_channels=self.__out_channels,
-                kernel_size=kernel_sizes[1],
-                stride=strides[1],
-                batch_norm=self.config.batch_norm,
-                activation=self.config.activation,
-                kw_activation=self.config.kw_activation,
-                kernel_initializer=self.config.kernel_initializer,
-                kw_initializer=self.config.kw_initializer,
-            )
-        )
-        if dropouts[1] > 0:
-            self.add_module(
-                "dropout_2",
-                nn.Dropout(dropouts[0])
-            )
-
-    def forward(self, input:Tensor) -> Tensor:
-        """
-        use the forward method of `nn.Sequential`
-        """
-        out = super().forward(input)
-        return out
-
-    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
-        """ finished, checked,
-
-        Parameters:
-        -----------
-        seq_len: int,
-            length of the 1d sequence
-        batch_size: int, optional,
-            the batch size, can be None
-
-        Returns:
-        --------
-        output_shape: sequence,
-            the output shape of this `DoubleConv` layer, given `seq_len` and `batch_size`
-        """
-        _seq_len = seq_len
-        for module in self:
-            output_shape = module.compute_output_shape(_seq_len, batch_size)
-            _, _, _seq_len = output_shape
-        return output_shape
 
 
 class DownDoubleConv(nn.Sequential):
@@ -271,6 +322,14 @@ class DownDoubleConv(nn.Sequential):
             output_shape = module.compute_output_shape(seq_len=_seq_len)
             _, _, _seq_len = output_shape
         return output_shape
+
+    @property
+    def module_size(self) -> int:
+        """
+        """
+        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        n_params = sum([np.prod(p.size()) for p in module_parameters])
+        return n_params
 
 
 class UpDoubleConv(nn.Module):
@@ -412,6 +471,14 @@ class UpDoubleConv(nn.Module):
         _, _, _seq_len = output_shape
         output_shape = self.conv.compute_output_shape(_seq_len, batch_size)
         return output_shape
+
+    @property
+    def module_size(self) -> int:
+        """
+        """
+        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        n_params = sum([np.prod(p.size()) for p in module_parameters])
+        return n_params
 
 
 class ECG_UNET(nn.Module):
@@ -559,3 +626,11 @@ class ECG_UNET(nn.Module):
         """
         output_shape = (batch_size, self.n_classes, seq_len)
         return output_shape
+
+    @property
+    def module_size(self) -> int:
+        """
+        """
+        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        n_params = sum([np.prod(p.size()) for p in module_parameters])
+        return n_params
