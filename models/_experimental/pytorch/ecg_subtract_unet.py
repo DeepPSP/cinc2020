@@ -1,11 +1,12 @@
 """
-UNet structure models,
-mainly for ECG wave delineation
+2nd place (entry 0433) of CPSC2019
 
-References:
-[1] Moskalenko, Viktor, Nikolai Zolotykh, and Grigory Osipov. "Deep Learning for ECG Segmentation." International Conference on Neuroinformatics. Springer, Cham, 2019.
-[2] https://github.com/milesial/Pytorch-UNet/
+the main differences to a normal Unet are that
+1. at the bottom, subtraction (and concatenation) is used
+2. uses triple convolutions at each block, instead of double convolutions
+3. dropout is used between certain convolutional layers ("cba" layers indeed)
 """
+
 import sys
 from copy import deepcopy
 from collections import OrderedDict
@@ -32,31 +33,27 @@ if ModelCfg.torch_dtype.lower() == 'double':
 
 
 __all__ = [
-    "ECG_UNET",
+    "ECG_SUBTRACT_UNET",
 ]
 
 
-class DoubleConv(nn.Sequential):
+class TripleConv(nn.Sequential):
     """
 
-    building blocks of UNet
-    
-    References:
-    -----------
-    https://github.com/milesial/Pytorch-UNet/blob/master/unet/unet_parts.py
+    CBA --> (Dropout) --> CBA --> (Dropout) --> CBA --> (Dropout)
     """
     __DEBUG__ = True
-    __name__ = "DoubleConv"
+    __name__ = "TripleConv"
 
-    def __init__(self, in_channels:int, out_channels:int, filter_lengths:Union[Sequence[int],int], subsample_lengths:Union[Sequence[int],int]=1, groups:int=1, dropouts:Union[Sequence[float], float]=0.0, mid_channels:Optional[int]=None, **config) -> NoReturn:
+    def __init__(self, in_channels:int, out_channels:Union[Sequence[int],int], filter_lengths:Union[Sequence[int],int], subsample_lengths:Union[Sequence[int],int]=1, groups:int=1, dropouts:Union[Sequence[float], float]=0.0, **config) -> NoReturn:
         """ finished, NOT checked,
 
         Parameters:
         -----------
         in_channels: int,
             number of channels in the input
-        out_channels: int,
-            number of channels produced by the last convolutional layer
+        out_channels: int, or sequence of int
+            number of channels produced by the (last) convolutional layer(s)
         filter_lengths: int or sequence of int,
             length(s) of the filters (kernel size)
         subsample_lengths: int or sequence of int,
@@ -65,19 +62,20 @@ class DoubleConv(nn.Sequential):
             connection pattern (of channels) of the inputs and outputs
         dropouts: float or sequence of float, default 0.0,
             dropout ratio after each `Conv_Bn_Activation`
-        mid_channels: int, optional,
-            number of channels produced by the first convolutional layer,
-            defaults to `out_channels`
         config: dict,
             other parameters, including
             activation choices, weight initializer, batch normalization choices, etc.
             for the convolutional layers
         """
         super().__init__()
-        self.__num_convs = 2
+        self.__num_convs = 3
         self.__in_channels = in_channels
-        self.__mid_channels = mid_channels if mid_channels is not None else out_channels
-        self.__out_channels = out_channels
+        if isinstance(out_channels, int):
+            self.__out_channels = list(repeat(out_channels, self.__num_convs))
+        else:
+            self.__out_channels = list(out_channels)
+            # self.__num_convs = len(self.__out_channels)
+            assert self.__num_convs == len(self.__out_channels)
         self.config = ED(deepcopy(config))
         if self.__DEBUG__:
             print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
@@ -85,13 +83,13 @@ class DoubleConv(nn.Sequential):
         if isinstance(filter_lengths, int):
             kernel_sizes = list(repeat(filter_lengths, self.__num_convs))
         else:
-            kernel_sizes = filter_lengths
+            kernel_sizes = list(filter_lengths)
         assert len(kernel_sizes) == self.__num_convs
 
         if isinstance(subsample_lengths, int):
             strides = list(repeat(subsample_lengths, self.__num_convs))
         else:
-            strides = subsample_lengths
+            strides = list(subsample_lengths)
         assert len(strides) == self.__num_convs
 
         if isinstance(dropouts, Real):
@@ -100,45 +98,30 @@ class DoubleConv(nn.Sequential):
             dropouts = list(dropouts)
         assert len(dropouts) == self.__num_convs
 
-        self.add_module(
-            "cba_1",
-            Conv_Bn_Activation(
-                in_channels=self.__in_channels,
-                out_channels=self.__mid_channels,
-                kernel_size=kernel_sizes[0],
-                stride=strides[0],
-                batch_norm=self.config.batch_norm,
-                activation=self.config.activation,
-                kw_activation=self.config.kw_activation,
-                kernel_initializer=self.config.kernel_initializer,
-                kw_initializer=self.config.kw_initializer,
-            ),
-        )
-        if dropouts[0] > 0:
+        conv_in_channels = self.__in_channels
+        for idx, (oc, ks, sd, dp) in \
+            enumerate(zip(self.__out_channels, kernel_sizes, strides, dropouts)):
             self.add_module(
-                "dropout_1",
-                nn.Dropout(dropouts[0])
+                f"cba_{idx}",
+                Conv_Bn_Activation(
+                    in_channels=conv_in_channels,
+                    out_channels=oc,
+                    kernel_size=ks,
+                    stride=sd,
+                    batch_norm=self.config.batch_norm,
+                    activation=self.config.activation,
+                    kw_activation=self.config.kw_activation,
+                    kernel_initializer=self.config.kernel_initializer,
+                    kw_initializer=self.config.kw_initializer,
+                ),
             )
-        self.add_module(
-            "cba_2",
-            Conv_Bn_Activation(
-                in_channels=self.__mid_channels,
-                out_channels=self.__out_channels,
-                kernel_size=kernel_sizes[1],
-                stride=strides[1],
-                batch_norm=self.config.batch_norm,
-                activation=self.config.activation,
-                kw_activation=self.config.kw_activation,
-                kernel_initializer=self.config.kernel_initializer,
-                kw_initializer=self.config.kw_initializer,
-            )
-        )
-        if dropouts[1] > 0:
-            self.add_module(
-                "dropout_2",
-                nn.Dropout(dropouts[0])
-            )
-
+            conv_in_channels = oc
+            if dp > 0:
+                self.add_module(
+                    f"dropout_{idx}",
+                    nn.Dropout(dp)
+                )
+    
     def forward(self, input:Tensor) -> Tensor:
         """
         use the forward method of `nn.Sequential`
@@ -163,27 +146,20 @@ class DoubleConv(nn.Sequential):
         """
         _seq_len = seq_len
         for module in self:
-            output_shape = module.compute_output_shape(_seq_len, batch_size)
-            _, _, _seq_len = output_shape
+            if hasattr(module, __name__) and module.__name__ == Conv_Bn_Activation.__name__:
+                output_shape = module.compute_output_shape(_seq_len, batch_size)
+                _, _, _seq_len = output_shape
         return output_shape
 
 
-class DownDoubleConv(nn.Sequential):
+class DownTripleConv(nn.Sequential):
     """
-    Downscaling with maxpool then double conv
-    down sample (maxpool) --> double conv (conv --> conv)
-
-    channels are increased after down sampling
-    
-    References:
-    -----------
-    https://github.com/milesial/Pytorch-UNet/blob/master/unet/unet_parts.py
     """
     __DEBUG__ = True
-    __name__ = "DownDoubleConv"
+    __name__ = "DownTripleConv"
     __MODES__ = deepcopy(DownSample.__MODES__)
-
-    def __init__(self, down_scale:int, in_channels:int, out_channels:int, filter_lengths:Union[Sequence[int],int], groups:int=1, dropouts:Union[Sequence[float], float]=0.0, mid_channels:Optional[int]=None, mode:str='max', **config) -> NoReturn:
+    
+    def __init__(self, down_scale:int, in_channels:int, out_channels:Union[Sequence[int],int], filter_lengths:Union[Sequence[int],int], groups:int=1, dropouts:Union[Sequence[float], float]=0.0, mode:str='max', **config) -> NoReturn:
         """ finished, NOT checked,
 
         Parameters:
@@ -192,20 +168,16 @@ class DownDoubleConv(nn.Sequential):
             down sampling scale
         in_channels: int,
             number of channels in the input
-        out_channels: int,
-            number of channels produced by the last convolutional layer
+        out_channels: int, or sequence of int
+            number of channels produced by the (last) convolutional layer(s)
         filter_lengths: int or sequence of int,
             length(s) of the filters (kernel size)
+        subsample_lengths: int or sequence of int,
+            subsample length(s) (stride(s)) of the convolutions
         groups: int, default 1,
             connection pattern (of channels) of the inputs and outputs
         dropouts: float or sequence of float, default 0.0,
             dropout ratio after each `Conv_Bn_Activation`
-        mid_channels: int, optional,
-            number of channels produced by the first convolutional layer,
-            defaults to `out_channels`
-        mode: str, default 'max',
-            mode for down sampling,
-            can be one of `DownSample.__MODES__`
         config: dict,
             other parameters, including
             activation choices, weight initializer, batch normalization choices, etc.
@@ -216,7 +188,6 @@ class DownDoubleConv(nn.Sequential):
         assert self.__mode in self.__MODES__
         self.__down_scale = down_scale
         self.__in_channels = in_channels
-        self.__mid_channels = mid_channels if mid_channels is not None else out_channels
         self.__out_channels = out_channels
         self.config = ED(deepcopy(config))
         if self.__DEBUG__:
@@ -232,15 +203,14 @@ class DownDoubleConv(nn.Sequential):
             )
         )
         self.add_module(
-            "double_conv",
-            DoubleConv(
+            "triple_conv",
+            TripleConv(
                 in_channels=self.__in_channels,
                 out_channels=self.__out_channels,
                 filter_lengths=filter_lengths,
                 subsample_lengths=1,
                 groups=groups,
                 dropouts=dropouts,
-                mid_channels=self.__mid_channels,
                 **(self.config)
             ),
         )
@@ -273,10 +243,18 @@ class DownDoubleConv(nn.Sequential):
         return output_shape
 
 
-class UpDoubleConv(nn.Module):
+class DownBranchedDoubleConv(nn.Module):
+    """
+    """
+    __DEBUG__ = True
+    __name__ = "DownBranchedDoubleConv"
+
+
+
+class UpTripleConv(nn.Module):
     """
     Upscaling then double conv, with input of corr. down layer concatenated
-    up sampling --> conv (conv --> conv)
+    up sampling --> conv (conv --> (dropout -->) conv --> (dropout -->) conv)
         ^
         |
     extra input
@@ -284,10 +262,10 @@ class UpDoubleConv(nn.Module):
     channels are shrinked after up sampling
     """
     __DEBUG__ = True
-    __name__ = "UpDoubleConv"
+    __name__ = "UpTripleConv"
     __MODES__ = ['nearest', 'linear', 'area', 'deconv',]
 
-    def __init__(self, up_scale:int, in_channels:int, out_channels:int, filter_lengths:Union[Sequence[int],int], deconv_filter_length:Optional[int]=None, groups:int=1,, dropouts:Union[Sequence[float], float]=0.0, mode:str='deconv', mid_channels:Optional[int]=None, **config) -> NoReturn:
+    def __init__(self, up_scale:int, in_channels:int, out_channels:int, filter_lengths:Union[Sequence[int],int], deconv_filter_length:Optional[int]=None, groups:int=1, dropouts:Union[Sequence[float], float]=0.0, mode:str='deconv', **config) -> NoReturn:
         """ finished, NOT checked,
 
         Parameters:
@@ -309,9 +287,6 @@ class UpDoubleConv(nn.Module):
             dropout ratio after each `Conv_Bn_Activation`
         mode: str, default 'deconv', case insensitive,
             mode of up sampling
-        mid_channels: int, optional,
-            number of channels produced by the first deconvolutional layer,
-            defaults to `out_channels`
         config: dict,
             other parameters, including
             activation choices, weight initializer, batch normalization choices, etc.
@@ -320,7 +295,6 @@ class UpDoubleConv(nn.Module):
         super().__init__()
         self.__up_scale = up_scale
         self.__in_channels = in_channels
-        self.__mid_channels = mid_channels if mid_channels is not None else in_channels // 2
         self.__out_channels = out_channels
         self.__deconv_filter_length = deconv_filter_length
         self.__mode = mode.lower()
@@ -350,7 +324,7 @@ class UpDoubleConv(nn.Module):
             out_channels=self.__in_channels+self.__in_channels//2,
             loc="head",
         )
-        self.conv = DoubleConv(
+        self.conv = TripleConv(
             in_channels=2*self.__in_channels,
             out_channels=self.__out_channels,
             filter_lengths=filter_lengths,
@@ -361,7 +335,7 @@ class UpDoubleConv(nn.Module):
         )
 
     def forward(self, input:Tensor, down_output:Tensor) -> Tensor:
-        """ finished, NOT checked,
+        """ finished, not checked,
 
         Parameters:
         -----------
@@ -414,12 +388,12 @@ class UpDoubleConv(nn.Module):
         return output_shape
 
 
-class ECG_UNET(nn.Module):
+class ECG_SUBTRACT_UNET(nn.Module):
     """
     """
     __DEBUG__ = True
-    __name__ = "ECG_UNET"
-    
+    __name__ = "ECG_SUBTRACT_UNET"
+
     def __init__(self, classes:Sequence[str], n_leads:int, config:dict) -> NoReturn:
         """ finished, checked,
 
@@ -440,14 +414,17 @@ class ECG_UNET(nn.Module):
         self.config = ED(deepcopy(config))
         if self.__DEBUG__:
             print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
-            __debug_seq_len = 4000
+            __debug_seq_len = 5000
 
-        self.init_conv = DoubleConv(
+        # TODO: an init batch normalization?
+
+        self.init_conv = TripleConv(
             in_channels=self.__in_channels,
-            out_channels=self.n_classes,
+            out_channels=self.config.init_out_channels,
             filter_lengths=self.config.init_filter_length,
             subsample_lengths=1,
             groups=self.config.groups,
+            dropouts=self.config.init_dropouts,
             batch_norm=self.config.batch_norm,
             activation=self.config.activation,
             kw_activation=self.config.kw_activation,
@@ -463,13 +440,14 @@ class ECG_UNET(nn.Module):
         in_channels = self.n_classes
         for idx in range(self.config.down_up_block_num):
             self.down_blocks[f'down_{idx}'] = \
-                DownDoubleConv(
+                DownTripleConv(
                     down_scale=self.config.down_scales[idx],
                     in_channels=in_channels,
                     out_channels=self.config.down_num_filters[idx],
                     filter_lengths=self.config.down_filter_lengths[idx],
                     groups=self.config.groups,
                     mode=self.config.down_mode,
+                    dropouts=self.config.dropouts,
                     **(self.config.down_block)
                 )
             in_channels = self.config.down_num_filters[idx]
@@ -482,7 +460,7 @@ class ECG_UNET(nn.Module):
         in_channels = self.config.down_num_filters[-1]
         for idx in range(self.config.down_up_block_num):
             self.up_blocks[f'up_{idx}'] = \
-                UpDoubleConv(
+                UpTripleConv(
                     up_scale=self.config.up_scales[idx],
                     in_channels=in_channels,
                     out_channels=self.config.up_num_filters[idx],
@@ -490,6 +468,7 @@ class ECG_UNET(nn.Module):
                     deconv_filter_length=self.config.up_deconv_filter_lengths[idx],
                     groups=self.config.groups,
                     mode=self.config.up_mode,
+                    dropouts=self.config.dropouts,
                     **(self.config.up_block)
                 )
             in_channels = self.config.up_num_filters[idx]
