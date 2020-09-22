@@ -211,7 +211,7 @@ class Bn_Activation(nn.Sequential):
         return output_shape
 
     @property
-    def module_size(self):
+    def module_size(self) -> int:
         """
         """
         module_parameters = filter(lambda p: p.requires_grad, self.parameters())
@@ -355,7 +355,123 @@ class Conv_Bn_Activation(nn.Sequential):
         return output_shape
 
     @property
-    def module_size(self):
+    def module_size(self) -> int:
+        """
+        """
+        module_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        n_params = sum([np.prod(p.size()) for p in module_parameters])
+        return n_params
+
+
+class MultiConv(nn.Sequential):
+    """
+    """
+    __DEBUG__ = True
+    __name__ = "MultiConv"
+    
+    def __init__(self, in_channels:int, out_channels:Sequence[int], filter_lengths:Union[Sequence[int],int], subsample_lengths:Union[Sequence[int],int]=1, groups:int=1, dropouts:Union[Sequence[float], float]=0.0, **config) -> NoReturn:
+        """ finished, NOT checked,
+
+        Parameters:
+        -----------
+        in_channels: int,
+            number of channels in the input
+        out_channels: sequence of int
+            number of channels produced by the convolutional layer
+        filter_lengths: int or sequence of int,
+            length(s) of the filters (kernel size)
+        subsample_lengths: int or sequence of int,
+            subsample length(s) (stride(s)) of the convolutions
+        groups: int, default 1,
+            connection pattern (of channels) of the inputs and outputs
+        dropouts: float or sequence of float, default 0.0,
+            dropout ratio after each `Conv_Bn_Activation`
+        config: dict,
+            other parameters, including
+            activation choices, weight initializer, batch normalization choices, etc.
+            for the convolutional layers
+        """
+        super().__init__()
+        self.__in_channels = in_channels
+        self.__out_channels = list(out_channels)
+        self.__num_convs = len(self.__out_channels)
+        self.config = ED(deepcopy(config))
+        if self.__DEBUG__:
+            print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
+
+        if isinstance(filter_lengths, int):
+            kernel_sizes = list(repeat(filter_lengths, self.__num_convs))
+        else:
+            kernel_sizes = list(filter_lengths)
+        assert len(kernel_sizes) == self.__num_convs
+
+        if isinstance(subsample_lengths, int):
+            strides = list(repeat(subsample_lengths, self.__num_convs))
+        else:
+            strides = list(subsample_lengths)
+        assert len(strides) == self.__num_convs
+
+        if isinstance(dropouts, Real):
+            dropouts = list(repeat(dropouts, self.__num_convs))
+        else:
+            dropouts = list(dropouts)
+        assert len(dropouts) == self.__num_convs
+
+        conv_in_channels = self.__in_channels
+        for idx, (oc, ks, sd, dp) in \
+            enumerate(zip(self.__out_channels, kernel_sizes, strides, dropouts)):
+            self.add_module(
+                f"cba_{idx}",
+                Conv_Bn_Activation(
+                    in_channels=conv_in_channels,
+                    out_channels=oc,
+                    kernel_size=ks,
+                    stride=sd,
+                    batch_norm=self.config.batch_norm,
+                    activation=self.config.activation,
+                    kw_activation=self.config.kw_activation,
+                    kernel_initializer=self.config.kernel_initializer,
+                    kw_initializer=self.config.kw_initializer,
+                ),
+            )
+            conv_in_channels = oc
+            if dp > 0:
+                self.add_module(
+                    f"dropout_{idx}",
+                    nn.Dropout(dp),
+                )
+    
+    def forward(self, input:Tensor) -> Tensor:
+        """
+        use the forward method of `nn.Sequential`
+        """
+        out = super().forward(input)
+        return out
+
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        seq_len: int,
+            length of the 1d sequence
+        batch_size: int, optional,
+            the batch size, can be None
+
+        Returns:
+        --------
+        output_shape: sequence,
+            the output shape of this `DoubleConv` layer, given `seq_len` and `batch_size`
+        """
+        _seq_len = seq_len
+        for module in self:
+            if hasattr(module, __name__) and module.__name__ == Conv_Bn_Activation.__name__:
+                output_shape = module.compute_output_shape(_seq_len, batch_size)
+                _, _, _seq_len = output_shape
+        return output_shape
+
+    @property
+    def module_size(self) -> int:
         """
         """
         module_parameters = filter(lambda p: p.requires_grad, self.parameters())
@@ -518,7 +634,7 @@ class DownSample(nn.Sequential):
         return output_shape
 
     @property
-    def module_size(self):
+    def module_size(self) -> int:
         """
         """
         module_parameters = filter(lambda p: p.requires_grad, self.parameters())
@@ -597,7 +713,7 @@ class BidirectionalLSTM(nn.Module):
         return output_shape
 
     @property
-    def module_size(self):
+    def module_size(self) -> int:
         """
         """
         module_parameters = filter(lambda p: p.requires_grad, self.parameters())
@@ -726,7 +842,7 @@ class StackedLSTM(nn.Sequential):
         return output_shape
 
     @property
-    def module_size(self):
+    def module_size(self) -> int:
         """
         """
         module_parameters = filter(lambda p: p.requires_grad, self.parameters())
@@ -935,7 +1051,7 @@ class AttentionWithContext(nn.Module):
         return output_shape
 
     @property
-    def module_size(self):
+    def module_size(self) -> int:
         """
         """
         module_parameters = filter(lambda p: p.requires_grad, self.parameters())
@@ -1085,7 +1201,7 @@ class MultiHeadAttention(nn.Module):
         return output_shape
 
     @property
-    def module_size(self):
+    def module_size(self) -> int:
         """
         """
         module_parameters = filter(lambda p: p.requires_grad, self.parameters())
@@ -1166,7 +1282,7 @@ class SelfAttention(nn.Module):
         return output_shape
 
     @property
-    def module_size(self):
+    def module_size(self) -> int:
         """
         """
         module_parameters = filter(lambda p: p.requires_grad, self.parameters())
@@ -1243,7 +1359,7 @@ class AttentivePooling(nn.Module):
         return output_shape
 
     @property
-    def module_size(self):
+    def module_size(self) -> int:
         """
         """
         module_parameters = filter(lambda p: p.requires_grad, self.parameters())
@@ -1316,7 +1432,7 @@ class ZeroPadding(nn.Module):
         return output_shape
 
     @property
-    def module_size(self):
+    def module_size(self) -> int:
         """
         """
         module_parameters = filter(lambda p: p.requires_grad, self.parameters())
@@ -1431,7 +1547,7 @@ class SeqLin(nn.Sequential):
         return output_shape
 
     @property
-    def module_size(self):
+    def module_size(self) -> int:
         """
         """
         module_parameters = filter(lambda p: p.requires_grad, self.parameters())
