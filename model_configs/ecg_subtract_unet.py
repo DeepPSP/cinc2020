@@ -30,7 +30,7 @@ ECG_SUBTRACT_UNET_CONFIG.kw_activation = {}
 
 _num_convs = 3  # TripleConv
 
-# down
+# down, triple conv
 ECG_SUBTRACT_UNET_CONFIG.down_up_block_num = 3
 
 ECG_SUBTRACT_UNET_CONFIG.down_mode = 'max'
@@ -47,28 +47,28 @@ ECG_SUBTRACT_UNET_CONFIG.down_dropouts = [
     list(repeat([0.0, 0.15, 0.0], ECG_SUBTRACT_UNET_CONFIG.down_up_block_num))
 ]
 
-# bottom
+# bottom, double conv
 ECG_SUBTRACT_UNET_CONFIG.bottom_num_filters = [
     # branch 1
-    list(repeat(init_down_num_filters*(2**(ECG_SUBTRACT_UNET_CONFIG.down_up_block_num-1)),_num_convs)),
+    list(repeat(init_down_num_filters*(2**(ECG_SUBTRACT_UNET_CONFIG.down_up_block_num-1)), 2)),
     # branch 2
-    list(repeat(init_down_num_filters*(2**(ECG_SUBTRACT_UNET_CONFIG.down_up_block_num-1)),_num_convs)),
+    list(repeat(init_down_num_filters*(2**(ECG_SUBTRACT_UNET_CONFIG.down_up_block_num-1)), 2)),
 ]
 ECG_SUBTRACT_UNET_CONFIG.bottom_filter_lengths = [
-    list(repeat(5, _num_convs3)),  # branch 1
-    list(repeat(5, _num_convs)),  # branch 2
+    list(repeat(5, 2)),  # branch 1
+    list(repeat(5, 2)),  # branch 2
 ]
 ECG_SUBTRACT_UNET_CONFIG.bottom_dilations = [
-    list(repeat(1, _num_convs3)),  # branch 1
-    list(repeat(10, _num_convs3)),  # branch 2
+    list(repeat(1, 2)),  # branch 1
+    list(repeat(10, 2)),  # branch 2
 ]
 ECG_SUBTRACT_UNET_CONFIG.bottom_dropouts = [
-    [0.0, 0.15, 0.0],  # branch 1
-    [0.0, 0.15, 0.0],  # branch 2
+    [0.15, 0.0],  # branch 1
+    [0.15, 0.0],  # branch 2
 ]
 
 
-# up
+# up, triple conv
 ECG_SUBTRACT_UNET_CONFIG.up_mode = 'nearest'
 ECG_SUBTRACT_UNET_CONFIG.up_scales = [2, 5, 10]
 ECG_SUBTRACT_UNET_CONFIG.up_num_filters = [
