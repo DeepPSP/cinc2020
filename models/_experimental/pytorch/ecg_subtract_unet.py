@@ -11,7 +11,7 @@ import sys
 from copy import deepcopy
 from collections import OrderedDict
 from itertools import repeat
-from typing import Union, Optional, Sequence, NoReturn
+from typing import Union, Optional, Sequence, List, Tuple NoReturn
 from numbers import Real
 
 import torch
@@ -22,7 +22,7 @@ from easydict import EasyDict as ED
 
 from cfg import ModelCfg
 from models.utils.torch_utils import (
-    Conv_Bn_Activation, MultiConv,
+    Conv_Bn_Activation, MultiConv, BranchedConv,
     DownSample, ZeroPadding,
     compute_deconv_output_shape,
 )
@@ -52,7 +52,7 @@ class TripleConv(MultiConv):
         -----------
         in_channels: int,
             number of channels in the input
-        out_channels: int, or sequence of int
+        out_channels: int, or sequence of int,
             number of channels produced by the (last) convolutional layer(s)
         filter_lengths: int or sequence of int,
             length(s) of the filters (kernel size)
@@ -101,7 +101,7 @@ class DownTripleConv(nn.Sequential):
             down sampling scale
         in_channels: int,
             number of channels in the input
-        out_channels: int, or sequence of int
+        out_channels: int, or sequence of int,
             number of channels produced by the (last) convolutional layer(s)
         filter_lengths: int or sequence of int,
             length(s) of the filters (kernel size)
@@ -178,12 +178,13 @@ class DownTripleConv(nn.Sequential):
 
 class DownBranchedDoubleConv(nn.Module):
     """
+    the bottom block of the `subtract_unet`
     """
     __DEBUG__ = True
     __name__ = "DownBranchedDoubleConv"
     __MODES__ = deepcopy(DownSample.__MODES__)
 
-    def __init__(self, down_scale:int, in_channels:int, out_channels:Union[Sequence[int],int], filter_lengths:Union[Sequence[int],int], groups:int=1, dropouts:Union[Sequence[float], float]=0.0, mode:str='max', **config) -> NoReturn:
+    def __init__(self, down_scale:int, in_channels:int, out_channels:Sequence[Sequence[int]], filter_lengths:Union[Sequence[Sequence[int]],Sequence[int],int], dilations:Union[Sequence[Sequence[int]],Sequence[int],int]=1, groups:int=1, dropouts:Union[Sequence[float],float]=0.0, mode:str='max', **config) -> NoReturn:
         """ finished, NOT checked,
 
         Parameters:
@@ -192,7 +193,7 @@ class DownBranchedDoubleConv(nn.Module):
             down sampling scale
         in_channels: int,
             number of channels in the input
-        out_channels: int, or sequence of int
+        out_channels: sequence of sequence of int,
             number of channels produced by the (last) convolutional layer(s)
         filter_lengths: int or sequence of int,
             length(s) of the filters (kernel size)
@@ -218,31 +219,33 @@ class DownBranchedDoubleConv(nn.Module):
             print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
 
         self.down_sample = DownSample(
-                down_scale=self.__down_scale,
-                in_channels=self.__in_channels,
-                batch_norm=False,
-                mode=mode,
-            )
-        self.add_module(
-            "triple_conv",
-            TripleConv(
-                in_channels=self.__in_channels,
-                out_channels=self.__out_channels,
-                filter_lengths=filter_lengths,
-                subsample_lengths=1,
-                groups=groups,
-                dropouts=dropouts,
-                **(self.config)
-            ),
+            down_scale=self.__down_scale,
+            in_channels=self.__in_channels,
+            batch_norm=False,
+            mode=mode,
+        )
+        self.branched_conv = BranchedConv(
+            in_channels=self.__in_channels,
+            out_channels=self.__out_channels,
+            filter_lengths=filter_lengths,
+            subsample_lengths=1,
+            dilations=dilations,
+            groups=groups,
+            dropouts=dropouts,
+            **(self.config)
         )
 
     def forward(self, input:Tensor) -> Tensor:
         """
+        input: of shape (batch_size, channels, seq_len)
+        out: of shape (batch_size, channels, seq_len)
         """
-        out = super().forward(input)
+        out = self.down_sample(input)
+        out = self.branched_conv(out)
+        out = torch.cat(out, dim=1)  # concate along the channel axis
         return out
 
-    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> -> Sequence[Union[int, type(None)]]:
         """ finished, checked,
 
         Parameters:
@@ -332,13 +335,9 @@ class UpTripleConv(nn.Module):
                 scale_factor=self.__up_scale,
                 mode=mode,
             )
-        self.zero_pad = ZeroPadding(
-            in_channels=self.__in_channels,
-            out_channels=self.__in_channels+self.__in_channels//2,
-            loc="head",
-        )
         self.conv = TripleConv(
-            in_channels=2*self.__in_channels,
+            # `+ self.__out_channels` corr. to the output of the corr. down layer
+            in_channels=self.__in_channels + self.__out_channels,
             out_channels=self.__out_channels,
             filter_lengths=filter_lengths,
             subsample_lengths=1,
@@ -358,11 +357,6 @@ class UpTripleConv(nn.Module):
             input tensor of the last layer of corr. down block
         """
         output = self.up(input)
-        output = self.zero_pad(output)
-
-        diff_sig_len = down_output.shape[-1] - output.shape[-1]
-
-        output = F.pad(output, [diff_sig_len // 2, diff_sig_len - diff_sig_len // 2])
         output = torch.cat([down_output, output], dim=1)  # concate along the channel axis
         output = self.conv(output)
 
@@ -394,8 +388,6 @@ class UpTripleConv(nn.Module):
             )
         else:
             output_shape = [batch_size, self.__in_channels, self.__up_scale*_sep_len]
-        _, _, _seq_len = output_shape
-        output_shape = self.zero_pad.compute_output_shape(_seq_len, batch_size)
         _, _, _seq_len = output_shape
         output_shape = self.conv.compute_output_shape(_seq_len, batch_size)
         return output_shape
@@ -430,6 +422,11 @@ class ECG_SUBTRACT_UNET(nn.Module):
             __debug_seq_len = 5000
 
         # TODO: an init batch normalization?
+        self.init_bn = nn.BatchNorm1d(
+            num_features=self.__in_channels,
+            eps=1e-5,  # default val
+            momentum=0.1,  # default val
+        )
 
         self.init_conv = TripleConv(
             in_channels=self.__in_channels,
@@ -451,7 +448,7 @@ class ECG_SUBTRACT_UNET(nn.Module):
 
         self.down_blocks = nn.ModuleDict()
         in_channels = self.n_classes
-        for idx in range(self.config.down_up_block_num):
+        for idx in range(self.config.down_up_block_num-1):
             self.down_blocks[f'down_{idx}'] = \
                 DownTripleConv(
                     down_scale=self.config.down_scales[idx],
@@ -459,8 +456,8 @@ class ECG_SUBTRACT_UNET(nn.Module):
                     out_channels=self.config.down_num_filters[idx],
                     filter_lengths=self.config.down_filter_lengths[idx],
                     groups=self.config.groups,
-                    mode=self.config.down_mode,
                     dropouts=self.config.dropouts,
+                    mode=self.config.down_mode,
                     **(self.config.down_block)
                 )
             in_channels = self.config.down_num_filters[idx]
@@ -469,8 +466,20 @@ class ECG_SUBTRACT_UNET(nn.Module):
                 print(f"given seq_len = {__debug_seq_len}, down_{idx} output shape = {__debug_output_shape}")
                 _, _, __debug_seq_len = __debug_output_shape
 
+        self.bottom_block = DownBranchedDoubleConv(
+            down_scale=self.config.down_scale[-1],
+            in_channels=in_channels,
+            out_channels=self.config.bottom_num_filters,
+            filter_lengths=self.config.bottom_filter_lengths,
+            dilations=self.config.bottom_dilations,
+            groups=self.config.groups,
+            dropouts=self.config.bottom_dropouts,
+            mode=self.config.down_mode,
+            **(self.config.down_block)
+        )
+
         self.up_blocks = nn.ModuleDict()
-        in_channels = self.config.down_num_filters[-1]
+        in_channels = sum([branch[-1] for branch in self.config.bottom_num_filters])
         for idx in range(self.config.down_up_block_num):
             self.up_blocks[f'up_{idx}'] = \
                 UpTripleConv(

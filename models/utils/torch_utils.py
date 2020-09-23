@@ -36,6 +36,7 @@ __all__ = [
     "Mish", "Swish",
     "Initializers", "Activations",
     "Bn_Activation", "Conv_Bn_Activation",
+    "MultiConv", "BranchedConv",
     "DownSample",
     "BidirectionalLSTM", "StackedLSTM",
     # "AML_Attention", "AML_GatedAttention",
@@ -364,24 +365,29 @@ class Conv_Bn_Activation(nn.Sequential):
 
 
 class MultiConv(nn.Sequential):
-    """
+    """ finished, NOT checked,
+
+    a sequence (stack) of `Conv_Bn_Activation` blocks,
+    perhaps with `Dropout` between
     """
     __DEBUG__ = True
     __name__ = "MultiConv"
     
-    def __init__(self, in_channels:int, out_channels:Sequence[int], filter_lengths:Union[Sequence[int],int], subsample_lengths:Union[Sequence[int],int]=1, groups:int=1, dropouts:Union[Sequence[float], float]=0.0, **config) -> NoReturn:
+    def __init__(self, in_channels:int, out_channels:Sequence[int], filter_lengths:Union[Sequence[int],int], subsample_lengths:Union[Sequence[int],int]=1, dilations:Union[Sequence[int],int]=1, groups:int=1, dropouts:Union[Sequence[float], float]=0.0, **config) -> NoReturn:
         """ finished, NOT checked,
 
         Parameters:
         -----------
         in_channels: int,
             number of channels in the input
-        out_channels: sequence of int
-            number of channels produced by the convolutional layer
+        out_channels: sequence of int,
+            number of channels produced by the convolutional layers
         filter_lengths: int or sequence of int,
             length(s) of the filters (kernel size)
         subsample_lengths: int or sequence of int,
             subsample length(s) (stride(s)) of the convolutions
+        dilations: int or sequence of int, default 1,
+            spacing between the kernel points of (each) convolutional layer
         groups: int, default 1,
             connection pattern (of channels) of the inputs and outputs
         dropouts: float or sequence of float, default 0.0,
@@ -412,14 +418,20 @@ class MultiConv(nn.Sequential):
         assert len(strides) == self.__num_convs
 
         if isinstance(dropouts, Real):
-            dropouts = list(repeat(dropouts, self.__num_convs))
+            _dropouts = list(repeat(dropouts, self.__num_convs))
         else:
-            dropouts = list(dropouts)
-        assert len(dropouts) == self.__num_convs
+            _dropouts = list(dropouts)
+        assert len(_dropouts) == self.__num_convs
+
+        if isinstance(dilations, int):
+            _dilations = list(repeat(dilations, self.__num_convs))
+        else:
+            _dilations = list(dilations)
+        assert len(_dilations) == self.__num_convs
 
         conv_in_channels = self.__in_channels
-        for idx, (oc, ks, sd, dp) in \
-            enumerate(zip(self.__out_channels, kernel_sizes, strides, dropouts)):
+        for idx, (oc, ks, sd, dl, dp) in \
+            enumerate(zip(self.__out_channels, kernel_sizes, strides, _dilations, _dropouts)):
             self.add_module(
                 f"cba_{idx}",
                 Conv_Bn_Activation(
@@ -427,6 +439,8 @@ class MultiConv(nn.Sequential):
                     out_channels=oc,
                     kernel_size=ks,
                     stride=sd,
+                    dilation=dl,
+                    groups=groups,
                     batch_norm=self.config.batch_norm,
                     activation=self.config.activation,
                     kw_activation=self.config.kw_activation,
@@ -444,6 +458,7 @@ class MultiConv(nn.Sequential):
     def forward(self, input:Tensor) -> Tensor:
         """
         use the forward method of `nn.Sequential`
+        input: of shape (batch_size, n_channels, seq_len)
         """
         out = super().forward(input)
         return out
@@ -461,7 +476,7 @@ class MultiConv(nn.Sequential):
         Returns:
         --------
         output_shape: sequence,
-            the output shape of this `DoubleConv` layer, given `seq_len` and `batch_size`
+            the output shape of this `MultiConv` layer, given `seq_len` and `batch_size`
         """
         _seq_len = seq_len
         for module in self:
@@ -476,6 +491,130 @@ class MultiConv(nn.Sequential):
         """
         module_parameters = filter(lambda p: p.requires_grad, self.parameters())
         n_params = sum([np.prod(p.size()) for p in module_parameters])
+        return n_params
+
+
+class BranchedConv(nn.Module):
+    """
+
+    branched `MultiConv` blocks
+    """
+    __DEBUG__ = True
+    __name__ = "BranchedConv"
+
+    def __init__(self, in_channels:int, out_channels:Sequence[Sequence[int]], filter_lengths:Union[Sequence[Sequence[int]],Sequence[int],int], subsample_lengths:Union[Sequence[Sequence[int]],Sequence[int],int]=1, dilations:Union[Sequence[Sequence[int]],Sequence[int],int]=1, groups:int=1, dropouts:Union[Sequence[Sequence[float]], Sequence[float],float]=0.0, **config) -> NoReturn:
+        """ finished, NOT checked,
+
+        Parameters:
+        -----------
+        in_channels: int,
+            number of channels in the input
+        out_channels: sequence of sequence of int,
+            number of channels produced by the convolutional layers
+        filter_lengths: int or sequence of int,
+            length(s) of the filters (kernel size)
+        subsample_lengths: int or sequence of int,
+            subsample length(s) (stride(s)) of the convolutions
+        dilations: int or sequence of int, default 1,
+            spacing between the kernel points of (each) convolutional layer
+        groups: int, default 1,
+            connection pattern (of channels) of the inputs and outputs
+        dropouts: float or sequence of float, default 0.0,
+            dropout ratio after each `Conv_Bn_Activation`
+        config: dict,
+            other parameters, including
+            activation choices, weight initializer, batch normalization choices, etc.
+            for the convolutional layers
+        """
+        super().__init__()
+        self.__in_channels = in_channels
+        self.__out_channels = list(out_channels)
+        assert all([isinstance(item, (Sequence,np.ndarray)) for item in self.__out_channels])
+        self.__num_branches = len(self.__out_channels)
+        self.config = ED(deepcopy(config))
+        if self.__DEBUG__:
+            print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
+
+        if isinstance(filter_lengths, int):
+            kernel_sizes = list(repeat(filter_lengths, self.__num_branches))
+        else:
+            kernel_sizes = list(filter_lengths)
+        assert len(kernel_sizes) == self.__num_branches
+
+        if isinstance(subsample_lengths, int):
+            strides = list(repeat(subsample_lengths, self.__num_branches))
+        else:
+            strides = list(subsample_lengths)
+        assert len(strides) == self.__num_branches
+
+        if isinstance(dropouts, Real):
+            _dropouts = list(repeat(dropouts, self.__num_branches))
+        else:
+            _dropouts = list(dropouts)
+        assert len(_dropouts) == self.__num_branches
+
+        if isinstance(dilations, int):
+            _dilations = list(repeat(dilations, self.__num_branches))
+        else:
+            _dilations = list(dilations)
+        assert len(_dilations) == self.__num_branches
+
+        self.branches = nn.ModuleDict()
+        for idx, (oc, ks, sd, dl, dp) in \
+            enumerate(zip(self.__out_channels, kernel_sizes, strides, _dilations, _dropouts)):
+            self.branches[f"multi_conv_{idx}"] = \
+                MultiConv(
+                    in_channels=conv_in_channels,
+                    out_channels=oc,
+                    filter_lengths=ks,
+                    subsample_lengths=sd,
+                    dilations=dl,
+                    groups=groups,
+                    dropouts=dp,
+                    **(self.config),
+                )
+    
+    def forward(self, input:Tensor) -> List[Tensor]:
+        """
+        input: of shape (batch_size, n_channels, seq_len)
+        """
+        out = []
+        for idx in range(self.__num_branches):
+            out.append(self.branches[f"multi_conv_{idx}"](input))
+        return out
+
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> List[Sequence[Union[int, type(None)]]]:
+        """ finished, checked,
+
+        Parameters:
+        -----------
+        seq_len: int,
+            length of the 1d sequence
+        batch_size: int, optional,
+            the batch size, can be None
+
+        Returns:
+        --------
+        output_shapes: list of sequence,
+            list of output shapes of each branch of this `BranchedConv` layer,
+            given `seq_len` and `batch_size`
+        """
+        output_shapes = []
+        for idx in range(self.__num_branches):
+            branch_output_shape = \
+                self.branches[f"multi_conv_{idx}"].compute_output_shape(seq_len, batch_size)
+            output_shapes.append(branch_output_shape)
+        return output_shapes
+
+    @property
+    def module_size(self) -> int:
+        """
+        """
+        n_params = 0
+        for idx in range(self.__num_branches): 
+            module_parameters = \
+                filter(lambda p: p.requires_grad, self.branches[f"multi_conv_{idx}"].parameters())
+            n_params += sum([np.prod(p.size()) for p in module_parameters])
         return n_params
 
 
@@ -1327,7 +1466,10 @@ class AttentivePooling(nn.Module):
 
     def forward(self, input:Tensor) -> Tensor:
         """
-        input of shape (batch_size, seq_len, n_channels)
+        Parameters:
+        -----------
+        input: Tensor,
+            of shape (batch_size, seq_len, n_channels)
         """
         scores = self.dropout(input)
         scores = self.mid_linear(scores)  # -> (batch_size, seq_len, n_channels)
@@ -1519,7 +1661,10 @@ class SeqLin(nn.Sequential):
 
     def forward(self, input:Tensor) -> Tensor:
         """
-        input: of shape (batch_size, channels) or (batch_size, seq_len, channels)
+        Parameters:
+        -----------
+        input: Tensor,
+            of shape (batch_size, channels) or (batch_size, seq_len, channels)
         """
         output = super().forward(input)
         return output
