@@ -414,7 +414,8 @@ class ECG_SUBTRACT_UNET(nn.Module):
         """
         super().__init__()
         self.classes = list(classes)
-        self.n_classes = len(classes)  # final out_channels
+        self.n_classes = len(classes)  # final out_channels if > 2
+        self.__out_channels = len(classes) if len(classes) > 2 else 1
         self.__in_channels = n_leads
         self.config = ED(deepcopy(config))
         if self.__DEBUG__:
@@ -422,11 +423,12 @@ class ECG_SUBTRACT_UNET(nn.Module):
             __debug_seq_len = 5000
 
         # TODO: an init batch normalization?
-        self.init_bn = nn.BatchNorm1d(
-            num_features=self.__in_channels,
-            eps=1e-5,  # default val
-            momentum=0.1,  # default val
-        )
+        if self.config.init_batch_norm:
+            self.init_bn = nn.BatchNorm1d(
+                num_features=self.__in_channels,
+                eps=1e-5,  # default val
+                momentum=0.1,  # default val
+            )
 
         self.init_conv = TripleConv(
             in_channels=self.__in_channels,
@@ -456,7 +458,7 @@ class ECG_SUBTRACT_UNET(nn.Module):
                     out_channels=self.config.down_num_filters[idx],
                     filter_lengths=self.config.down_filter_lengths[idx],
                     groups=self.config.groups,
-                    dropouts=self.config.dropouts,
+                    dropouts=self.config.down_dropouts[idx],
                     mode=self.config.down_mode,
                     **(self.config.down_block)
                 )
@@ -490,7 +492,7 @@ class ECG_SUBTRACT_UNET(nn.Module):
                     deconv_filter_length=self.config.up_deconv_filter_lengths[idx],
                     groups=self.config.groups,
                     mode=self.config.up_mode,
-                    dropouts=self.config.dropouts,
+                    dropouts=self.config.up_dropouts[idx],
                     **(self.config.up_block)
                 )
             in_channels = self.config.up_num_filters[idx]
@@ -501,7 +503,7 @@ class ECG_SUBTRACT_UNET(nn.Module):
 
         self.out_conv = Conv_Bn_Activation(
             in_channels=self.config.up_num_filters[-1],
-            out_channels=self.n_classes,
+            out_channels=self.__out_channels,
             kernel_size=self.config.out_filter_length,
             stride=1,
             groups=self.config.groups,
@@ -518,13 +520,22 @@ class ECG_SUBTRACT_UNET(nn.Module):
     def forward(self, input:Tensor) -> Tensor:
         """
         """
-        to_concat = [self.init_conv(input)]
+        if self.config.init_batch_norm:
+            x = self.init_bn(input)
+        else:
+            x = input
+
+        # down
+        to_concat = [self.init_conv(x)]
         if self.__DEBUG__:
             print(f"shape of init conv block output = {to_concat[-1].shape}")
-        for idx in range(self.config.down_up_block_num):
+        for idx in range(self.config.down_up_block_num-1):
             to_concat.append(self.down_blocks[f"down_{idx}"](to_concat[-1]))
             if self.__DEBUG__:
                 print(f"shape of {idx}-th down block output = {to_concat[-1].shape}")
+        to_concat.append(self.bottom_block(to_concat[-1]))
+        
+        # up
         up_input = to_concat[-1]
         to_concat = to_concat[-2::-1]
         for idx in range(self.config.down_up_block_num):
@@ -532,6 +543,8 @@ class ECG_SUBTRACT_UNET(nn.Module):
             up_input = up_output
             if self.__DEBUG__:
                 print(f"shape of {idx}-th up block output = {up_output.shape}")
+        
+        # output
         output = self.out_conv(up_output)
         if self.__DEBUG__:
             print(f"shape of out_conv layer output = {output.shape}")
