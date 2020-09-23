@@ -11,7 +11,7 @@ import sys
 from copy import deepcopy
 from collections import OrderedDict
 from itertools import repeat
-from typing import Union, Optional, Sequence, List, Tuple NoReturn
+from typing import Union, Optional, Sequence, List, Tuple, NoReturn
 from numbers import Real
 
 import torch
@@ -24,8 +24,8 @@ from cfg import ModelCfg
 from models.utils.torch_utils import (
     Conv_Bn_Activation, MultiConv, BranchedConv,
     DownSample, ZeroPadding,
-    compute_deconv_output_shape,
 )
+from utils.utils_nn import compute_deconv_output_shape
 from utils.misc import dict_to_str
 
 if ModelCfg.torch_dtype.lower() == 'double':
@@ -245,7 +245,7 @@ class DownBranchedDoubleConv(nn.Module):
         out = torch.cat(out, dim=1)  # concate along the channel axis
         return out
 
-    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> -> Sequence[Union[int, type(None)]]:
+    def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
         """ finished, checked,
 
         Parameters:

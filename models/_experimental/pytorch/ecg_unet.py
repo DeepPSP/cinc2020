@@ -23,8 +23,8 @@ from cfg import ModelCfg
 from models.utils.torch_utils import (
     Conv_Bn_Activation, MultiConv,
     DownSample, ZeroPadding,
-    compute_deconv_output_shape,
 )
+from utils.utils_nn import compute_deconv_output_shape
 from utils.misc import dict_to_str
 
 if ModelCfg.torch_dtype.lower() == 'double':
@@ -214,7 +214,7 @@ class UpDoubleConv(nn.Module):
     __name__ = "UpDoubleConv"
     __MODES__ = ['nearest', 'linear', 'area', 'deconv',]
 
-    def __init__(self, up_scale:int, in_channels:int, out_channels:int, filter_lengths:Union[Sequence[int],int], deconv_filter_length:Optional[int]=None, groups:int=1,, dropouts:Union[Sequence[float], float]=0.0, mode:str='deconv', mid_channels:Optional[int]=None, **config) -> NoReturn:
+    def __init__(self, up_scale:int, in_channels:int, out_channels:int, filter_lengths:Union[Sequence[int],int], deconv_filter_length:Optional[int]=None, groups:int=1, dropouts:Union[Sequence[float], float]=0.0, mode:str='deconv', mid_channels:Optional[int]=None, **config) -> NoReturn:
         """ finished, NOT checked,
 
         Parameters:
