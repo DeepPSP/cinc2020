@@ -2,9 +2,10 @@
 basic building blocks, for 1d signal (time series)
 """
 import sys
+from copy import deepcopy
 from math import sqrt
 from itertools import repeat
-from typing import Union, Sequence, Tuple, Optional, NoReturn
+from typing import Union, Sequence, Tuple, List, Optional, NoReturn
 from numbers import Real
 
 from packaging import version
@@ -24,6 +25,7 @@ from utils.utils_nn import (
     compute_maxpool_output_shape,
     compute_avgpool_output_shape,
 )
+from utils.misc import dict_to_str
 
 if ModelCfg.torch_dtype.lower() == 'double':
     torch.set_default_tensor_type(torch.DoubleTensor)
@@ -131,6 +133,15 @@ Activations.tanh = nn.Tanh
 Activations.sigmoid = nn.Sigmoid
 Activations.softmax = nn.Softmax
 # Activations.linear = None
+
+
+_DEFAULT_CONV_CONFIGS = ED(
+    batch_norm=True,
+    activation="relu",
+    kw_activation={},
+    kernel_initializer="he_normal",
+    kw_initializer={}
+)
 
 
 # ---------------------------------------------
@@ -401,7 +412,8 @@ class MultiConv(nn.Sequential):
         self.__in_channels = in_channels
         self.__out_channels = list(out_channels)
         self.__num_convs = len(self.__out_channels)
-        self.config = ED(deepcopy(config))
+        self.config = deepcopy(_DEFAULT_CONV_CONFIGS)
+        self.config.update(config)
         if self.__DEBUG__:
             print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
 
@@ -531,7 +543,8 @@ class BranchedConv(nn.Module):
         self.__out_channels = list(out_channels)
         assert all([isinstance(item, (Sequence,np.ndarray)) for item in self.__out_channels])
         self.__num_branches = len(self.__out_channels)
-        self.config = ED(deepcopy(config))
+        self.config = deepcopy(_DEFAULT_CONV_CONFIGS)
+        self.config.update(config)
         if self.__DEBUG__:
             print(f"configuration of {self.__name__} is as follows\n{dict_to_str(self.config)}")
 
