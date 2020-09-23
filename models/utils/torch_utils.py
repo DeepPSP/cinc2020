@@ -385,7 +385,7 @@ class MultiConv(nn.Sequential):
     __name__ = "MultiConv"
     
     def __init__(self, in_channels:int, out_channels:Sequence[int], filter_lengths:Union[Sequence[int],int], subsample_lengths:Union[Sequence[int],int]=1, dilations:Union[Sequence[int],int]=1, groups:int=1, dropouts:Union[Sequence[float], float]=0.0, **config) -> NoReturn:
-        """ finished, NOT checked,
+        """ finished, checked,
 
         Parameters:
         -----------
@@ -492,7 +492,7 @@ class MultiConv(nn.Sequential):
         """
         _seq_len = seq_len
         for module in self:
-            if hasattr(module, __name__) and module.__name__ == Conv_Bn_Activation.__name__:
+            if hasattr(module, "__name__") and module.__name__ == Conv_Bn_Activation.__name__:
                 output_shape = module.compute_output_shape(_seq_len, batch_size)
                 _, _, _seq_len = output_shape
         return output_shape
@@ -577,7 +577,7 @@ class BranchedConv(nn.Module):
             enumerate(zip(self.__out_channels, kernel_sizes, strides, _dilations, _dropouts)):
             self.branches[f"multi_conv_{idx}"] = \
                 MultiConv(
-                    in_channels=conv_in_channels,
+                    in_channels=self.__in_channels,
                     out_channels=oc,
                     filter_lengths=ks,
                     subsample_lengths=sd,

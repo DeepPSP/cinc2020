@@ -73,6 +73,8 @@ class TripleConv(MultiConv):
         else:
             _out_channels = list(out_channels)
             assert _num_convs == len(_out_channels)
+        if self.__DEBUG__:
+            print(f"configuration of {self.__name__} is as follows\n{dict_to_str(config)}")
 
         super().__init__(
             in_channels=in_channels,
@@ -261,9 +263,10 @@ class DownBranchedDoubleConv(nn.Module):
             the output shape of this `DownDoubleConv` layer, given `seq_len` and `batch_size`
         """
         _seq_len = seq_len
-        for module in self:
-            output_shape = module.compute_output_shape(seq_len=_seq_len)
-            _, _, _seq_len = output_shape
+        output_shape = self.down_sample.compute_output_shape(seq_len=_seq_len)
+        _, _, _seq_len = output_shape
+        output_shapes = self.branched_conv.compute_output_shape(seq_len=_seq_len)
+        output_shape = output_shapes[0][0], sum([s[1] for s in output_shapes]), output_shapes[0][-1]
         return output_shape
 
 
@@ -337,7 +340,7 @@ class UpTripleConv(nn.Module):
             )
         self.conv = TripleConv(
             # `+ self.__out_channels` corr. to the output of the corr. down layer
-            in_channels=self.__in_channels + self.__out_channels,
+            in_channels=self.__in_channels + self.__out_channels[-1],
             out_channels=self.__out_channels,
             filter_lengths=filter_lengths,
             subsample_lengths=1,
@@ -432,7 +435,7 @@ class ECG_SUBTRACT_UNET(nn.Module):
 
         self.init_conv = TripleConv(
             in_channels=self.__in_channels,
-            out_channels=self.config.init_out_channels,
+            out_channels=self.config.init_num_filters,
             filter_lengths=self.config.init_filter_length,
             subsample_lengths=1,
             groups=self.config.groups,
@@ -449,7 +452,7 @@ class ECG_SUBTRACT_UNET(nn.Module):
             _, _, __debug_seq_len = __debug_output_shape
 
         self.down_blocks = nn.ModuleDict()
-        in_channels = self.n_classes
+        in_channels = self.config.init_num_filters
         for idx in range(self.config.down_up_block_num-1):
             self.down_blocks[f'down_{idx}'] = \
                 DownTripleConv(
@@ -462,14 +465,14 @@ class ECG_SUBTRACT_UNET(nn.Module):
                     mode=self.config.down_mode,
                     **(self.config.down_block)
                 )
-            in_channels = self.config.down_num_filters[idx]
+            in_channels = self.config.down_num_filters[idx][-1]
             if self.__DEBUG__:
                 __debug_output_shape = self.down_blocks[f'down_{idx}'].compute_output_shape(__debug_seq_len)
                 print(f"given seq_len = {__debug_seq_len}, down_{idx} output shape = {__debug_output_shape}")
                 _, _, __debug_seq_len = __debug_output_shape
 
         self.bottom_block = DownBranchedDoubleConv(
-            down_scale=self.config.down_scale[-1],
+            down_scale=self.config.down_scales[-1],
             in_channels=in_channels,
             out_channels=self.config.bottom_num_filters,
             filter_lengths=self.config.bottom_filter_lengths,
@@ -479,6 +482,10 @@ class ECG_SUBTRACT_UNET(nn.Module):
             mode=self.config.down_mode,
             **(self.config.down_block)
         )
+        if self.__DEBUG__:
+            __debug_output_shape = self.bottom_block.compute_output_shape(__debug_seq_len)
+            print(f"given seq_len = {__debug_seq_len}, bottom_block output shape = {__debug_output_shape}")
+            _, _, __debug_seq_len = __debug_output_shape
 
         self.up_blocks = nn.ModuleDict()
         in_channels = sum([branch[-1] for branch in self.config.bottom_num_filters])
@@ -495,14 +502,14 @@ class ECG_SUBTRACT_UNET(nn.Module):
                     dropouts=self.config.up_dropouts[idx],
                     **(self.config.up_block)
                 )
-            in_channels = self.config.up_num_filters[idx]
+            in_channels = self.config.up_num_filters[idx][-1]
             if self.__DEBUG__:
                 __debug_output_shape = self.up_blocks[f'up_{idx}'].compute_output_shape(__debug_seq_len)
                 print(f"given seq_len = {__debug_seq_len}, up_{idx} output shape = {__debug_output_shape}")
                 _, _, __debug_seq_len = __debug_output_shape
 
         self.out_conv = Conv_Bn_Activation(
-            in_channels=self.config.up_num_filters[-1],
+            in_channels=self.config.up_num_filters[-1][-1],
             out_channels=self.__out_channels,
             kernel_size=self.config.out_filter_length,
             stride=1,

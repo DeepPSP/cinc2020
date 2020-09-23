@@ -451,6 +451,10 @@ class ECG_UNET(nn.Module):
 
     def forward(self, input:Tensor) -> Tensor:
         """
+        Parameters:
+        -----------
+        input: Tensor,
+            of shape (batch_size, channels, seq_len)
         """
         to_concat = [self.init_conv(input)]
         if self.__DEBUG__:
@@ -478,7 +482,7 @@ class ECG_UNET(nn.Module):
         raise NotImplementedError
 
     def compute_output_shape(self, seq_len:int, batch_size:Optional[int]=None) -> Sequence[Union[int, type(None)]]:
-        """ finished, NOT checked,
+        """ finished, checked,
 
         Parameters:
         -----------

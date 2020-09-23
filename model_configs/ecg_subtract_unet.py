@@ -19,8 +19,9 @@ ECG_SUBTRACT_UNET_CONFIG.init_batch_norm = False
 
 
 # in triple conv
-ECG_SUBTRACT_UNET_CONFIG.init_num_filters = 16  # keep the same with n_classes
-ECG_SUBTRACT_UNET_CONFIG.init_filter_length = 20
+ECG_SUBTRACT_UNET_CONFIG.init_num_filters = 16
+ECG_SUBTRACT_UNET_CONFIG.init_filter_length = 21
+ECG_SUBTRACT_UNET_CONFIG.init_dropouts = [0.0, 0.15, 0.0]
 ECG_SUBTRACT_UNET_CONFIG.batch_norm = True
 ECG_SUBTRACT_UNET_CONFIG.kernel_initializer = "he_normal"
 ECG_SUBTRACT_UNET_CONFIG.kw_initializer = {}
@@ -41,11 +42,11 @@ ECG_SUBTRACT_UNET_CONFIG.down_num_filters = [
         for idx in range(0, ECG_SUBTRACT_UNET_CONFIG.down_up_block_num-1)
 ]
 ECG_SUBTRACT_UNET_CONFIG.down_filter_lengths = [
-    10, 5
+    11, 5
 ]
-ECG_SUBTRACT_UNET_CONFIG.down_dropouts = [
-    list(repeat([0.0, 0.15, 0.0], ECG_SUBTRACT_UNET_CONFIG.down_up_block_num))
-]
+ECG_SUBTRACT_UNET_CONFIG.down_dropouts = \
+    list(repeat([0.0, 0.15, 0.0], ECG_SUBTRACT_UNET_CONFIG.down_up_block_num-1))
+
 
 # bottom, double conv
 ECG_SUBTRACT_UNET_CONFIG.bottom_num_filters = [
@@ -78,7 +79,7 @@ ECG_SUBTRACT_UNET_CONFIG.up_num_filters = [
 ]
 ECG_SUBTRACT_UNET_CONFIG.up_deconv_filter_lengths = \
     list(repeat(9, ECG_SUBTRACT_UNET_CONFIG.down_up_block_num))
-ECG_SUBTRACT_UNET_CONFIG.up_conv_filter_lengths = [5, 10, 20]
+ECG_SUBTRACT_UNET_CONFIG.up_conv_filter_lengths = [5, 11, 21]
 ECG_SUBTRACT_UNET_CONFIG.up_dropouts = [
     [0.15, 0.15, 0.0],
     [0.15, 0.15, 0.0],
