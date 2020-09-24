@@ -381,7 +381,7 @@ class MultiConv(nn.Sequential):
     a sequence (stack) of `Conv_Bn_Activation` blocks,
     perhaps with `Dropout` between
     """
-    __DEBUG__ = True
+    __DEBUG__ = False
     __name__ = "MultiConv"
     
     def __init__(self, in_channels:int, out_channels:Sequence[int], filter_lengths:Union[Sequence[int],int], subsample_lengths:Union[Sequence[int],int]=1, dilations:Union[Sequence[int],int]=1, groups:int=1, dropouts:Union[Sequence[float], float]=0.0, **config) -> NoReturn:
@@ -511,7 +511,7 @@ class BranchedConv(nn.Module):
 
     branched `MultiConv` blocks
     """
-    __DEBUG__ = True
+    __DEBUG__ = False
     __name__ = "BranchedConv"
 
     def __init__(self, in_channels:int, out_channels:Sequence[Sequence[int]], filter_lengths:Union[Sequence[Sequence[int]],Sequence[int],int], subsample_lengths:Union[Sequence[Sequence[int]],Sequence[int],int]=1, dilations:Union[Sequence[Sequence[int]],Sequence[int],int]=1, groups:int=1, dropouts:Union[Sequence[Sequence[float]], Sequence[float],float]=0.0, **config) -> NoReturn:
@@ -1821,6 +1821,48 @@ class BCEWithLogitsWithClassWeightLoss(nn.BCEWithLogitsLoss):
         return loss
 
 
+def intervals_iou(itv_a:Tensor, itv_b:Tensor, iou_type="iou") -> Tensor:
+    """ NOT finished,
+
+    1d analogue of the 2d bounding boxes IoU,
+    for 1d "object detection" models
+
+    Parameters:
+    -----------
+    itv_a, itv_b: Tensor,
+        of shape (N, 2), (K, 2) resp.
+    iou_type: str, default "iou", case insensitive
+        type of IoU
+    """
+    left_intersect = torch.max(itv_a[,np.newaxis,:1], itvb[...,:1]).squeeze(-1)  # shape (N,K)
+    right_intersect = torch.min(itv_a[,np.newaxis,1:], itvb[...,1:]).squeeze(-1)  # shape (N,K)
+
+    left_union = torch.min(itv_a[,np.newaxis,:1], itvb[...,:1]).squeeze(-1)  # shape (N,K)
+    right_union = torch.max(itv_a[,np.newaxis,1:], itvb[...,1:]).squeeze(-1)  # shape (N,K)
+
+    en = (left_intersect < right_intersect).type(left_intersect.type())
+    len_intersect = (right_intersect-left_intersect) * en
+    len_union = (right_union-left_union)
+
+    iou = _true_divide(len_intersect, len_union)
+
+    if iou_type.lower() == "iou":
+        return iou
+
+    cen_a = torch.mean(itv_a, dim=-1, keepdim=True)  # shape (N,1,1)
+    cen_b = torch.mean(itv_b, dim=-1, keepdim=False)  # shape (K,1)
+    cen_dist = torch.abs(itv_a - itv_b).squeeze(-1)  # shape (N,K)
+
+    diou = iou - _true_divide(cen_dist, len_union)
+
+    if iou_type.lower() == "diou":
+        return diou
+
+    len_a = a[...,1] - a[...,0]
+    len_b = b[...,1] - b[...,0]
+
+    if iou_type.lower() == "ciou":
+        raise NotImplementedError
 
 
 def default_collate_fn(batch:Sequence[Tuple[np.ndarray, np.ndarray]]) -> Tuple[Tensor, Tensor]:

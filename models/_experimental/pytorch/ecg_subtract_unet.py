@@ -244,6 +244,10 @@ class DownBranchedDoubleConv(nn.Module):
         """
         out = self.down_sample(input)
         out = self.branched_conv(out)
+        # SUBTRACT
+        # currently (micro scope) - (macro scope)
+        # TODO: consider (macro scope) - (micro scope)
+        out.append(out[0]-out[1])
         out = torch.cat(out, dim=1)  # concate along the channel axis
         return out
 

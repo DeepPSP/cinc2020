@@ -60,6 +60,7 @@ ECG_SUBTRACT_UNET_CONFIG.bottom_filter_lengths = [
     list(repeat(5, 2)),  # branch 2
 ]
 ECG_SUBTRACT_UNET_CONFIG.bottom_dilations = [
+    # the ordering matters
     list(repeat(1, 2)),  # branch 1
     list(repeat(10, 2)),  # branch 2
 ]
