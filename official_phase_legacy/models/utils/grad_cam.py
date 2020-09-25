@@ -6,7 +6,7 @@ References:
 -----------
 https://github.com/jacobgil/pytorch-grad-cam
 """
-from typing import Union, Optional, Sequence, NoReturn
+from typing import Union, Optional, Sequence, Tuple, List, NoReturn
 
 import numpy as np
 import torch
@@ -100,7 +100,7 @@ class GradCam(object):
     """ NOT finished,
     """
     __DEBUG__ = True
-    __name__ = GradCam
+    __name__ = "GradCam"
 
     def __init__(self, model:nn.Module, feature_module:nn.Module, target_layer_names:Sequence[str], target_channel_last:bool=False, device:str='cpu') -> NoReturn:
         """

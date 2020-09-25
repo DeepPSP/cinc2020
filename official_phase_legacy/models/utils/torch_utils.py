@@ -1834,11 +1834,11 @@ def intervals_iou(itv_a:Tensor, itv_b:Tensor, iou_type="iou") -> Tensor:
     iou_type: str, default "iou", case insensitive
         type of IoU
     """
-    left_intersect = torch.max(itv_a[,np.newaxis,:1], itvb[...,:1]).squeeze(-1)  # shape (N,K)
-    right_intersect = torch.min(itv_a[,np.newaxis,1:], itvb[...,1:]).squeeze(-1)  # shape (N,K)
+    left_intersect = torch.max(itv_a[:,np.newaxis,:1], itvb[...,:1]).squeeze(-1)  # shape (N,K)
+    right_intersect = torch.min(itv_a[:,np.newaxis,1:], itvb[...,1:]).squeeze(-1)  # shape (N,K)
 
-    left_union = torch.min(itv_a[,np.newaxis,:1], itvb[...,:1]).squeeze(-1)  # shape (N,K)
-    right_union = torch.max(itv_a[,np.newaxis,1:], itvb[...,1:]).squeeze(-1)  # shape (N,K)
+    left_union = torch.min(itv_a[:,np.newaxis,:1], itvb[...,:1]).squeeze(-1)  # shape (N,K)
+    right_union = torch.max(itv_a[:,np.newaxis,1:], itvb[...,1:]).squeeze(-1)  # shape (N,K)
 
     en = (left_intersect < right_intersect).type(left_intersect.type())
     len_intersect = (right_intersect-left_intersect) * en

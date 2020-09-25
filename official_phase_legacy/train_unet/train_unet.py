@@ -279,7 +279,7 @@ def evaluate(model:nn.Module, data_loader:DataLoader, config:dict, device:torch.
 DAS = True
 
 if __name__ == "__main__":
-        config = get_args(**TrainCfg)
+    config = get_args(**TrainCfg)
     # os.environ["CUDA_VISIBLE_DEVICES"] = config.gpu
     if not DAS:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
