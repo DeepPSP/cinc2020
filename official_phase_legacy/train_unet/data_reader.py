@@ -664,6 +664,8 @@ class LUDBReader(object):
         fig_sz_w = int(round(4.8 * duration))
         fig_sz_h = 6 * y_ranges / 1500
         fig, axes = plt.subplots(nb_leads, 1, sharex=True, figsize=(fig_sz_w, np.sum(fig_sz_h)))
+        if nb_leads == 1:
+            axes = [axes]
         for idx in range(nb_leads):
             lead_name = self.all_leads[_lead_indices[idx]]
             axes[idx].plot(t, _data[idx], label=f'lead - {lead_name}')
