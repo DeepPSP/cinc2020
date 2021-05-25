@@ -6,4 +6,4 @@
 	url = https://github.com/wenh06/evaluation-2020.git
 [submodule "torch_ecg"]
 	path = torch_ecg
-	url = https://github.com/wenh06/torch_ecg.git
+	url = https://github.com/DeepPSP/torch_ecg.git
