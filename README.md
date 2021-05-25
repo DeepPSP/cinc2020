@@ -19,4 +19,4 @@
 Final rankings can be found [here](https://github.com/physionetchallenges/evaluation-2020/blob/master/Results/physionet_2020_official_scores.csv)
 
 # Update
-This repo no longer updates. Further updates will be done in [torch_ecg](https://github.com/wenh06/torch_ecg/tree/master/torch_ecg/train/train_crnn_cinc2020), if there are any.
+This repo no longer updates. Further updates will be done in [torch_ecg](https://github.com/DeepPSP/torch_ecg/tree/master/torch_ecg/train/train_crnn_cinc2020), if there are any.
