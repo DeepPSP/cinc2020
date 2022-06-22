@@ -1,4 +1,4 @@
-numpy==1.19.1
+numpy==1.22.0
 scipy==1.4.1
 joblib==0.13.2
 Cython==0.29.10
